@@ -2,7 +2,7 @@
 
 A Flask student information system with a calm, dark interface inspired by the supplied reference: pastel mesh-gradient cards, locally rendered glass sculptures, rounded controls, and a responsive campus workspace.
 
-The application source is now at the repository root. **You no longer need to unzip `dbms project.zip` to run it.** That original archive is retained only as a reference; the code in it is not the current application.
+The application source lives at the repository root. The original `dbms project.zip` archive is no longer required and is not part of this project.
 
 ## Private deployment — free hosting
 
