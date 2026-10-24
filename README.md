@@ -184,6 +184,8 @@ The MySQL data volume persists across restarts. The database is not exposed on a
 
 **GitHub Pages cannot run Flask or a database.** The existing `CNAME` file does not deploy this application. Use a Python/container host and point your domain to that service. No external production deployment has been performed by these changes.
 
+A file-by-file comparison with the original `dbms project.zip` — what was kept, what was rewritten, and every logic bug fixed — is in **[docs/WHAT_CHANGED.md](docs/WHAT_CHANGED.md)**.
+
 ## Project layout
 
 ```text
