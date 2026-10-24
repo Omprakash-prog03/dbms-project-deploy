@@ -45,7 +45,8 @@ def create_app(test_config=None):
     from routes.fees import fee_bp
     from routes.admissions import admissions_bp
     from routes.insights import insights_bp
-    for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp):
+    from routes.reports import reports_bp
+    for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp, reports_bp):
         app.register_blueprint(blueprint)
 
     # Bounded, per-session query traces. Never a process-global feed of other users' SQL.
@@ -61,7 +62,7 @@ def create_app(test_config=None):
             payload = request.get_json(silent=True)
             if not isinstance(payload, dict):
                 return jsonify(success=False, message='Send a JSON object with the required fields.'), 400
-            text_fields = {'username','password','first_name','last_name','email','phone','dob','admission_date','gender','address','roll_no','status','course_code','title','designation','hire_date','academic_year','term','class_date','mode','receipt_no','user_type','new_password','initial_password','dept_code','dept_name','applicant_name','exam_type','exam_date'}
+            text_fields = {'username','password','first_name','last_name','email','phone','dob','admission_date','gender','address','roll_no','status','course_code','title','designation','hire_date','academic_year','term','class_date','mode','receipt_no','user_type','new_password','initial_password','dept_code','dept_name','applicant_name','exam_type','exam_date','password'}
             if any(key in payload and not isinstance(payload[key], str) for key in text_fields):
                 return jsonify(success=False, message='Text fields must contain text values.'), 400
         if 'csrf_token' not in session:

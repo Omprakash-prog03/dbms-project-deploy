@@ -121,6 +121,31 @@ class StudentRepository:
         return db_pool.execute_query(sql, (roll_no,), fetch="one")
 
     @staticmethod
+    def get_attendance_summary(student_id):
+        sql = """
+            SELECT course_code, course_title, academic_year, term,
+                   COALESCE(total_classes, 0) AS total_classes,
+                   COALESCE(present_count, 0) AS present_count,
+                   COALESCE(late_count, 0) AS late_count,
+                   COALESCE(absent_count, 0) AS absent_count,
+                   COALESCE(attendance_percentage, 0) AS attendance_percentage
+            FROM v_attendance_summary
+            WHERE student_id = %s
+            ORDER BY course_code ASC
+        """
+        return db_pool.execute_query(sql, (student_id,), fetch="all")
+
+    @staticmethod
+    def faculty_can_access(student_id, faculty_id):
+        if not faculty_id:
+            return False
+        return bool(db_pool.execute_query(
+            """SELECT COUNT(*) FROM enrollment e
+               JOIN course_offering co ON e.offering_id = co.offering_id
+               WHERE e.student_id = %s AND co.faculty_id = %s""",
+            (student_id, faculty_id), fetch='val'))
+
+    @staticmethod
     def get_guardians(student_id):
         sql = "SELECT * FROM guardian WHERE student_id = %s ORDER BY guardian_id ASC"
         return db_pool.execute_query(sql, (student_id,), fetch="all")
@@ -201,6 +226,31 @@ class StudentRepository:
         res = db_pool.execute_dml(sql, params)
 
         return res["lastrowid"]
+
+    @staticmethod
+    def create_with_portal(roll_no, first_name, last_name, email, phone, dob, gender, address, dept_id,
+                           admission_date, password, current_semester=1, status='Active', photo_url=None):
+        """Create the student and their portal login in one transaction, using the chosen password."""
+        from repositories.accounts import create_account, sql
+        with db_pool.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('START TRANSACTION' if db_pool.is_mysql else 'BEGIN IMMEDIATE')
+                cursor.execute(sql("""
+                    INSERT INTO student (roll_no, first_name, last_name, email, phone, dob, gender,
+                                         address, dept_id, admission_date, current_semester, status, photo_url)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """), (roll_no, first_name, last_name, email, phone, dob, gender, address, dept_id,
+                       admission_date, current_semester, status, photo_url))
+                student_id = cursor.lastrowid
+                username = create_account(cursor, roll_no, password, 'student', student_id=student_id)
+                conn.commit()
+                return student_id, username
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                cursor.close()
 
     @staticmethod
     def update(student_id, first_name, last_name, email, phone, address, current_semester, status,

@@ -45,7 +45,8 @@
   </div>
 
   <!-- KPI Badges derived from DB functions -->
-  <div style="display: flex; gap: 14px;">
+  <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+    <a class="btn-primary-pill" href="{{ url_for('reports.student_pdf', student_id=student.student_id) }}">Download report PDF</a>
     <div style="background: var(--surface-raised); padding: 12px 18px; border-radius: 14px; text-align: center; min-width: 100px;">
       <div style="font-size: 22px; font-weight: 550; color: var(--ink-black);">{{ student.cgpa or '0.00' }}</div>
       <div style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Cumulative CGPA<br><span style="font-size: 9px;">(fn_student_cgpa)</span></div>

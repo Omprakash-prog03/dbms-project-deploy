@@ -3,6 +3,7 @@ import datetime
 import bcrypt
 import secrets
 import re
+from repositories.accounts import validate_password
 
 class AdmissionsRepository:
     @staticmethod
@@ -52,7 +53,7 @@ class AdmissionsRepository:
                 cursor.close()
 
     @staticmethod
-    def approve_admission(application_id, reviewer_id=None, date_of_birth=None, address=""):
+    def approve_admission(application_id, reviewer_id=None, date_of_birth=None, address="", password=None):
         """
         Implements sp_approve_admission transactional logic.
         """
@@ -145,8 +146,16 @@ class AdmissionsRepository:
                 )
                 student_id = cur.lastrowid
 
-                # Provision user account
-                temporary_password = secrets.token_urlsafe(12)
+                # Provision user account. Staff may choose the password; otherwise a
+                # one-time password is generated and shown once.
+                chosen = str(password or "").strip()
+                if chosen:
+                    try:
+                        validate_password(chosen, "Student portal password")
+                    except ValueError as error:
+                        conn.rollback()
+                        return {"status_code": 400, "message": str(error)}
+                temporary_password = chosen or secrets.token_urlsafe(12)
                 pw_hash = bcrypt.hashpw(temporary_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
                 cur.execute(
                     "INSERT INTO app_user (username, password_hash, role, student_id) VALUES (?, ?, 'student', ?)" if not db_pool.is_mysql else
@@ -177,7 +186,8 @@ class AdmissionsRepository:
                     "student_id": student_id,
                     "roll_no": roll_no,
                     "username": roll_no.lower(),
-                    "temporary_password": temporary_password
+                    "temporary_password": temporary_password,
+                    "password_generated": not bool(chosen)
                 }
             except Exception as e:
                 conn.rollback()

@@ -1,4 +1,4 @@
-# Publish Hogwards Student Management System — free, private installation
+# Publish NIST University Portal Management — free, private installation
 
 **Target:** PythonAnywhere Beginner ($0), Flask/WSGI, persistent SQLite, one private administrator, no demo accounts or records.
 
@@ -58,7 +58,7 @@ from wsgi import application
 **D. Open `https://YOURUSERNAME.pythonanywhere.com/healthz`.** It must return:
 
 ```json
-{ "application": "Hogwards Student Management System", "status": "ok" }
+{ "application": "NIST University Portal Management", "status": "ok" }
 ```
 
 Then open `/login` (no demo buttons), sign in, and add your first department. Do **not** run `db/seed.py`; it refuses to run in production mode and the private installation must stay free of sample records.
@@ -110,7 +110,7 @@ Do not start Gunicorn or `python app.py` in a background console on this host. P
 
 Use the HTTPS URL shown by PythonAnywhere, not an Arena preview URL.
 
-- Open `/healthz`: it should return `"status": "ok"` and the Hogwards application name, with no personal records.
+- Open `/healthz`: it should return `"status": "ok"` and the NIST University application name, with no personal records.
 - Open `/login`: there should be **no demo buttons**.
 - Sign in with the private credentials you chose in step 2.
 - Open the dashboard: all school counts should initially be zero.

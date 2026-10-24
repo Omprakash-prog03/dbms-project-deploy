@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
             : "Reject this application?",
         message:
           action === "approve"
-            ? `Approve ${name}? This creates a student record, a unique roll number, and a portal account. Course enrollment is a separate step. Confirm their date of birth. A unique password will be generated and shown only once.`
+            ? `Approve ${name}? This creates a student record, a unique roll number, and a portal account. Course enrollment is a separate step. Confirm their date of birth, and optionally choose their portal password (leave blank to generate one).`
             : `Reject ${name}'s application? It will move to the rejected list and cannot be approved from the pending queue.`,
         confirmLabel:
           action === "approve" ? "Approve application" : "Reject application",
@@ -26,6 +26,11 @@ document.addEventListener("DOMContentLoaded", () => {
                   max: new Date().toISOString().slice(0, 10),
                 },
                 { name: "address", label: "Residential address (optional)" },
+                {
+                  name: "password",
+                  label: "Student portal password (optional, 8+ characters)",
+                  type: "password",
+                },
               ]
             : [],
       });
@@ -50,7 +55,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (action === "approve") {
           await confirmAction({
             title: "Their new chapter is ready.",
-            message: `Save these login details now; the password is only shown once. Username: ${data.username}. Temporary password: ${data.temporary_password}. Share them privately with the student. An administrator can reset the password later.`,
+            message: data.password_generated
+              ? `Usernames and passwords are set by university staff. Username: ${data.username}. Generated password: ${data.temporary_password}. Save it now; it is shown only once. An administrator can reset it later.`
+              : `Portal login created with the password you chose. Username: ${data.username}. Share it privately; an administrator can reset it later.`,
             confirmLabel: "I have saved the details",
           });
         }

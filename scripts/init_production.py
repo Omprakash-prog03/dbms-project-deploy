@@ -60,7 +60,7 @@ def initialize(username, password, config_path=None, database_path=None, proxy_h
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Initialize an empty, private Hogwards Student Management System installation.')
+    parser = argparse.ArgumentParser(description='Initialize an empty, private NIST University Portal Management installation.')
     parser.add_argument('--config-path', type=Path)
     parser.add_argument('--database-path', type=Path)
     parser.add_argument('--proxy-hops', type=int, choices=(0, 1), default=0)

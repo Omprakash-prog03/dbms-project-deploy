@@ -1,4 +1,4 @@
-# Hogwards Student Management System
+# NIST University Portal Management
 
 A Flask student information system with a calm, dark interface inspired by the supplied reference: pastel mesh-gradient cards, locally rendered glass sculptures, rounded controls, and a responsive campus workspace.
 
@@ -12,7 +12,7 @@ The selected deployment target is **PythonAnywhere Beginner**, using persistent 
 
 The free tier has one worker, 512 MiB of private storage, restricted resources, and monthly web-app renewal. It is intended here for a small installation, not guaranteed high-traffic uptime. No paid hosting is provisioned. [1](https://www.pythonanywhere.com/pricing/) [12](https://help.pythonanywhere.com/pages/FreeAccountsFeatures/)
 
-The production initializer creates **no shared demo logins and no student records**. The seed script refuses to run in production mode. The administrator starts with Departments, then Faculty/Courses/Offerings, Admissions or Students, and fees. Internal legacy database identifiers remain unchanged to preserve existing data compatibility; displayed branding and exports use Hogwards.
+The production initializer creates **no shared demo logins and no student records**. The seed script refuses to run in production mode. The administrator starts with Departments, then Faculty/Courses/Offerings, Admissions or Students, and fees. Internal legacy database identifiers remain unchanged to preserve existing data compatibility; displayed branding and exports use NIST University.
 
 ## Run a local development/demo instance
 
@@ -54,6 +54,20 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 - Working student create/edit/delete dialogs; populated dates and address fields; useful validation errors; real filtered CSV exports.
 - Responsive mobile navigation, scrollable tables, keyboard-focusable controls, accessible dialogs, focus return, Escape dismissal, reduced-motion support, and status notifications.
 - Locally hosted Inter fonts (including the rupee symbol), icons, and six reproducible glass sculptures. No Chart.js/CDN dependency.
+
+### Reports and PDF exports
+
+- **Reports & PDF** (staff section) shows overall campus figures from live records: students by department, statuses, grade mix, and — for administrators — the fee position and a row count for every database table.
+- **Download campus PDF** produces a paginated summary; each student profile has **Download report PDF** with enrolment, exam results, attendance, and (for administrators and that student) the fee ledger.
+- Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
+- PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
+
+### Passwords chosen by staff
+
+- Staff set student portal passwords when creating a student (optional) or while approving an admission application. No password is generated unless the field is left blank at approval, in which case a one-time password is shown once.
+- Faculty accounts are created with a password the administrator types in the Faculty dialog.
+- Any administrator can reset a student/faculty password from the row action, or reset the administrator's own via `scripts/reset_password.py` on the server console.
+- Students sign in with their roll number and the password staff set. They can only see their own profile, results, attendance, fees, and report PDF.
 
 ### Correctness and access control
 

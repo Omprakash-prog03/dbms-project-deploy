@@ -8,9 +8,10 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(Path(os.getenv('HOGWARDS_ENV_FILE', BASE_DIR / '.env')))
 
 class Config:
-    PORTAL_NAME = "Hogwards Student Management System"
-    PORTAL_SHORT_NAME = "Hogwards"
-    PORTAL_DESCRIPTOR = "Student Management System"
+    PORTAL_NAME = "NIST University Portal Management"
+    PORTAL_SHORT_NAME = "NIST University"
+    PORTAL_DESCRIPTOR = "Portal Management"
+    PORTAL_LEGAL_NAME = "NIST University"
     APP_ENV = os.getenv('APP_ENV', 'development').lower()
     # Production must never silently replace its signing key on a restart.
     SECRET_KEY = os.getenv('SECRET_KEY') or (None if APP_ENV == 'production' else secrets.token_hex(32))

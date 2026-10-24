@@ -13,7 +13,7 @@ client = application.test_client()
 assert client.get('/healthz', base_url=base).status_code == 200
 assert client.get('/dashboard', base_url=base).status_code == 302
 login = client.get('/login', base_url=base)
-assert b'Hogwards Student Management System' in login.data
+assert b'NIST University Portal Management' in login.data
 assert b'data-demo=' not in login.data
 assert login.headers['X-Frame-Options'] == 'SAMEORIGIN'
 assert "frame-ancestors 'self'" in login.headers['Content-Security-Policy']
@@ -55,7 +55,7 @@ post('/api/fees/pay', {'student_id':student_id,'semester_no':1,'amount':'100.25'
 for path in ('/dashboard','/students',f'/students/{student_id}','/faculty','/departments','/courses','/offerings','/enrollments','/attendance','/results','/fees','/admissions','/insights'):
     response = client.get(path, base_url=base)
     assert response.status_code == 200, path
-    assert b'Hogwards Student Management System' in response.data, path
+    assert b'NIST University Portal Management' in response.data, path
 assert client.get('/api/dashboard/export-students',base_url=base).headers['Content-Disposition'].endswith('hogwards_students_export.csv')
 assert client.post('/logout',data={'csrf_token':token},base_url=base).status_code == 302
 assert client.get('/api/dashboard/stats',base_url=base).status_code == 401

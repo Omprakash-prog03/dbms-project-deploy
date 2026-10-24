@@ -37,7 +37,7 @@
         {% if current_user.role == 'student' %}<a class="nav-link {% if request.path.startswith('/students/') %}active{% endif %}" href="{{ url_for('students.profile_view', student_id=session.student_id) }}">{{ icon('person',18) }}<span>My profile</span></a>{% endif %}
         {% if current_user.role in ['admin','faculty'] %}
         <div class="nav-label">CAMPUS OPERATIONS</div>
-        {% for label, symbol, endpoint, path in [('Course offerings','calendar','academics.offerings_view','/offerings'),('Enrollments','check-square','operations.enrollments_view','/enrollments'),('Attendance','clock','operations.attendance_view','/attendance'),('Results','chart','operations.results_view','/results'),('Admissions','sparkles','admissions.admissions_view','/admissions')] %}
+        {% for label, symbol, endpoint, path in [('Course offerings','calendar','academics.offerings_view','/offerings'),('Enrollments','check-square','operations.enrollments_view','/enrollments'),('Attendance','clock','operations.attendance_view','/attendance'),('Results','chart','operations.results_view','/results'),('Admissions','sparkles','admissions.admissions_view','/admissions'),('Reports & PDF','chart','reports.reports_view','/reports')] %}
         <a class="nav-link {% if request.path == path %}active{% endif %}" href="{{ url_for(endpoint) }}" {% if request.path == path %}aria-current="page"{% endif %}>{{ icon(symbol,18) }}<span>{{ label }}</span>{% if path == '/admissions' and pending_count %}<span class="nav-count" data-pending-count>{{ pending_count }}</span>{% endif %}</a>
         {% endfor %}
         {% endif %}

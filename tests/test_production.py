@@ -31,18 +31,18 @@ def test_hogwards_brand_is_on_every_page(admin,path):
     response = admin.get(path)
     assert response.status_code == 200
     title = re.search(rb'<title>(.*?)</title>',response.data).group(1)
-    assert b'Hogwards Student Management System' in title
+    assert b'NIST University Portal Management' in title
     assert b'SIMS' not in title
-    assert b'aria-label="Hogwards Student Management System home"' in response.data
+    assert b'aria-label="NIST University Portal Management home"' in response.data
 
 
 def test_public_branding_and_cookie_free_health():
     client = create_app({'TESTING':True}).test_client()
     for path in ('/login','/not-a-real-page'):
-        assert b'Hogwards Student Management System' in client.get(path).data
+        assert b'NIST University Portal Management' in client.get(path).data
     response = create_app({'TESTING':True}).test_client().get('/healthz')
     assert response.status_code == 200
-    assert response.get_json()['application'] == 'Hogwards Student Management System'
+    assert response.get_json()['application'] == 'NIST University Portal Management'
     assert 'Set-Cookie' not in response.headers
 
 
