@@ -205,3 +205,5 @@ tests/                   Isolated pytest suite and browser regression checks
 ```
 
 Rebuild the decorative artwork with `npm run art`. The committed PNGs are ready to use; no WebGL is required in visitors' browsers. Historical design/viva notes in `docs/` describe the original project; this README is the current runbook.
+
+For a complete file-by-file inventory grouped by work area — Python backend, database, UI, tests, scripts, deployment and docs, with line counts and the purpose of every file — see **[docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)**.
