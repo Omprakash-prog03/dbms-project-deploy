@@ -6,7 +6,7 @@ The application source is now at the repository root. **You no longer need to un
 
 ## Private deployment — free hosting
 
-The selected deployment target is **PythonAnywhere Beginner**, using persistent SQLite and a fresh private administrator account. Follow **[the complete free-host deployment guide](docs/DEPLOY_PYTHONANYWHERE.md)**. It includes a setup script, owner-only configuration, production WSGI entry point, HTTPS/CSRF requirements, login throttling, and post-publication checks.
+The selected deployment target is **PythonAnywhere Beginner**, using persistent SQLite and a fresh private administrator account. Follow the **[free-host deployment guide](docs/DEPLOY_PYTHONANYWHERE.md)**, which starts with the exact copy-paste commands and Web-tab values. It includes a setup script, owner-only configuration, production WSGI entry point, HTTPS/CSRF requirements, login throttling, and post-publication checks.
 
 **No public production site is provisioned by this repository alone.** Publishing requires the owner's PythonAnywhere sign-in and Web-tab setup. The Arena preview is temporary and uses demonstration data; it is not the private production database.
 
@@ -31,11 +31,11 @@ Open **http://localhost:5000**. The server binds to `0.0.0.0` for container/prox
 
 Set `DEMO_MODE=true` in `.env` to show one-click demo account buttons on the sign-in page. This only displays shortcuts; normal password verification is still required. Run the seed script first.
 
-| Demo role | Username | Password |
-|---|---|---|
-| Administrator | `admin` | `admin123` |
-| Faculty | `faculty` | `faculty123` |
-| Student | `student` | `student123` |
+| Demo role     | Username  | Password     |
+| ------------- | --------- | ------------ |
+| Administrator | `admin`   | `admin123`   |
+| Faculty       | `faculty` | `faculty123` |
+| Student       | `student` | `student123` |
 
 **These accounts are for demonstrations only.** Do not seed a production database. Running the seed script again leaves existing seeded records and passwords unchanged. The provided data is synthetic, dated primarily to the 2025–2026 academic session; sparse months in the activity chart are actual zeroes, not missing UI data.
 

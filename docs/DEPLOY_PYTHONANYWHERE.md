@@ -2,13 +2,66 @@
 
 **Target:** PythonAnywhere Beginner ($0), Flask/WSGI, persistent SQLite, one private administrator, no demo accounts or records.
 
-**Publishing status:** this repository includes the configuration and setup commands. It does not create a PythonAnywhere account or publish a site by itself. The owner must sign in to their hosting account, run the setup, configure the Web tab, and click Reload. Do not share hosting passwords, API keys, or administrator passwords in chat.
+**Publishing status:** the configuration and setup commands are verified on a clean clone, but this repository cannot sign in to, or publish to, your PythonAnywhere account. Only the account owner can run the console commands and Web-tab steps below. Do not share hosting passwords, API keys, or administrator passwords in chat.
 
 ## Free-tier limitations — read before deployment
 
 The current free plan provides one web application on your PythonAnywhere subdomain, one worker, 512 MiB of private file storage, two consoles, and a 100 CPU-second allowance. Free applications have a **one-month expiry**; renew the app before the date displayed in the Web tab. New free accounts do not include MySQL or scheduled tasks. Use the supplied SQLite configuration, not Docker/MySQL. [1](https://www.pythonanywhere.com/pricing/) [12](https://help.pythonanywhere.com/pages/FreeAccountsFeatures/)
 
 This is a small, low-traffic deployment, **not an always-on enterprise hosting guarantee**. Monitor capacity and free-account renewal, download backups manually, and obtain your institution's approval before uploading real student information to a third-party host. No paid service is provisioned by the scripts.
+
+## Fast path (copy-paste)
+
+Everything below has been rehearsed on a clean clone of the pushed branch, including a private sign-in, production headers, empty-dashboard onboarding, and static assets. Gunicorn is **not** used on PythonAnywhere; the host serves `wsgi:application`.
+
+**A. In your PythonAnywhere Bash console**
+
+```bash
+git clone --depth 1 --single-branch --branch arena/e027de8b-dbms-project-deploy \
+  https://github.com/Omprakash-prog03/dbms-project-deploy.git \
+  ~/hogwards-student-management-system
+cd ~/hogwards-student-management-system
+bash scripts/setup_pythonanywhere.sh
+```
+
+Choose an administrator username and a unique 12+ character password **in the console**. Expected last lines:
+
+```text
+PASS: private administrator, no shared demo passwords, database ready, ...
+NEXT: Web → Add a new web app → Manual configuration.
+```
+
+**B. In the Web tab**
+
+| Setting           | Value                                                                           |
+| ----------------- | ------------------------------------------------------------------------------- |
+| Add a new web app | **Manual configuration**, same Python version the script printed (3.11–3.13)    |
+| Virtualenv        | `/home/YOURUSERNAME/hogwards-student-management-system/.venv`                   |
+| Source code       | `/home/YOURUSERNAME/hogwards-student-management-system`                         |
+| Working directory | `/home/YOURUSERNAME/hogwards-student-management-system`                         |
+| Static files      | URL `/static/` → `/home/YOURUSERNAME/hogwards-student-management-system/static` |
+| Force HTTPS       | **Enabled**                                                                     |
+
+**C. Replace the WSGI configuration file** with exactly this, then click **Reload**:
+
+```python
+import sys
+from pathlib import Path
+
+path = str(Path.home() / "hogwards-student-management-system")
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+from wsgi import application
+```
+
+**D. Open `https://YOURUSERNAME.pythonanywhere.com/healthz`.** It must return:
+
+```json
+{ "application": "Hogwards Student Management System", "status": "ok" }
+```
+
+Then open `/login` (no demo buttons), sign in, and add your first department. Do **not** run `db/seed.py`; it refuses to run in production mode and the private installation must stay free of sample records.
 
 ## 1. Create/sign in to a free account
 
@@ -69,6 +122,20 @@ Use the HTTPS URL shown by PythonAnywhere, not an Arena preview URL.
 - Sign out, reload, and confirm that staff screens require authentication.
 
 The repository tests exercise the fresh-install workflow against a disposable local database. They are not a substitute for these live-host checks. The hosting URL cannot be claimed as deployed until the Web-tab configuration and HTTPS verification succeed.
+
+## If the published site does not load
+
+| Symptom                                              | Check                                                                                                                                                                   |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 502 / 504, or “Something went wrong”                 | Web tab → **Error log**. Usually the WSGI path above is wrong, the virtualenv is not selected, or `.env` is missing because setup was not run in the project directory. |
+| `RuntimeError: Initialize the private installation…` | `scripts/setup_pythonanywhere.sh` never completed (or `.env` was deleted). Re-run it in a Bash console; it preserves existing data.                                     |
+| Login page loads but CSS/artwork is missing          | The `/static/` mapping must point at the project's **`static`** folder, ending in `/static`, not the project root.                                                      |
+| Sign-in returns “Your session expired”               | CSRF cookie missing. Confirm Force HTTPS is on, the site is opened over `https://`, and `COOKIE_SECURE="true"` remains in `.env`.                                       |
+| Everything redirects to `/login` after signing in    | Cookies are blocked or the browser is on `http://`. Use the HTTPS URL.                                                                                                  |
+| `Disk quota exceeded`                                | Free accounts have 512 MiB. Remove unused old backups after downloading them; keep `instance/hogwards.db`.                                                              |
+| Site suddenly stops                                  | Free web apps expire monthly. Renew in the Web tab before the listed date.                                                                                              |
+
+Change the administrator password, or add staff accounts, only through the application. Do not edit `app_user` rows by hand.
 
 ## Maintenance without deleting records
 
