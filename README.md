@@ -62,6 +62,20 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 - Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
 - PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
 
+### Who can do what
+
+| Capability                                      | Administrator | Faculty                                                              | Student             |
+| ----------------------------------------------- | ------------- | -------------------------------------------------------------------- | ------------------- |
+| Campus overview, reports, CSV/PDF exports       | Yes (all)     | Own classes, no finance                                              | Own profile and PDF |
+| Departments, courses, offerings, faculty        | Yes           | View                                                                 | View                |
+| Students: add/edit/delete                       | Yes           | Add, and edit **their own** students' records only through enrolment | No                  |
+| Attendance roll-call                            | Yes           | **Yes, for their own offerings**                                     | No                  |
+| Exams, marks/results                            | Yes           | Yes, for their own offerings                                         | Read own results    |
+| Fees and payments                               | Yes           | No                                                                   | Own fee summary     |
+| Password resets, database tables, SQL inspector | Yes           | No                                                                   | No                  |
+
+A faculty account only sees classes where they are the instructor. If the Attendance page says "No class assigned yet", an administrator needs to create a course offering with that faculty member as the instructor.
+
 ### Passwords chosen by staff
 
 - Staff set student portal passwords when creating a student (optional) or while approving an admission application. No password is generated unless the field is left blank at approval, in which case a one-time password is shown once.

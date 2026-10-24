@@ -160,3 +160,92 @@ def test_pdf_escapes_awkward_text(admin):
     pdf = admin.get('/reports/summary.pdf')
     assert b'\\(' in pdf.data or b'\\)' in pdf.data or pdf.data.startswith(b'%PDF-')
     assert b'\x00' not in pdf.data
+
+
+def test_page_scripts_can_send_the_csrf_token():
+    """Raw fetch() calls in page scripts must still carry the CSRF token."""
+    from pathlib import Path
+    app_js = Path('static/js/app.js').read_text()
+    assert 'X-CSRF-Token' in app_js
+    assert 'window.fetch =' in app_js
+    templates = Path('templates').rglob('*.html')
+    raw_posts = [str(path) for path in templates if 'await fetch(' in path.read_text()]
+    assert raw_posts, 'this regression test expects the legacy raw fetch calls to exist'
+
+
+def test_attendance_save_requires_csrf_and_faculty_can_mark_own_offering():
+    app = create_app({'TESTING': True, 'CSRF_ENABLED': True, 'RATELIMIT_ENABLED': False})
+    offering = db_pool.execute_query(
+        'SELECT offering_id, faculty_id FROM course_offering WHERE faculty_id = 1 LIMIT 1', fetch='one')
+    assert offering, 'seed data should give faculty 1 an offering'
+    roster = db_pool.execute_query(
+        "SELECT enrollment_id FROM enrollment WHERE offering_id=%s AND status='Enrolled'",
+        (offering['offering_id'],), fetch='all')
+    assert roster, 'seed data should enrol students'
+    records = [{'enrollment_id': row['enrollment_id'], 'status': 'Present'} for row in roster[:3]]
+    payload = {'offering_id': offering['offering_id'], 'class_date': date.today().isoformat(), 'records': records}
+
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session.update(user_id=2, username='faculty', role='faculty', faculty_id=offering['faculty_id'])
+        session['csrf_token'] = 'csrf-token-for-test'
+    # Without the token the session guard refuses the write ...
+    assert client.post('/api/attendance/mark', json=payload).status_code == 400
+    # ... and with it, the owning faculty member's roll-call is saved.
+    saved = client.post('/api/attendance/mark', json=payload, headers={'X-CSRF-Token': 'csrf-token-for-test'})
+    assert saved.status_code == 200, saved.get_json()
+    assert saved.get_json()['success'] is True
+    ids = [row['enrollment_id'] for row in records]
+    count = db_pool.execute_query(
+        'SELECT COUNT(*) FROM attendance WHERE class_date=%s AND enrollment_id IN (%s,%s,%s)',
+        (date.today().isoformat(), *ids), fetch='val')
+    assert count == 3
+
+
+def test_faculty_attendance_page_lists_their_offering():
+    client = create_app({'TESTING': True, 'CSRF_ENABLED': False}).test_client()
+    with client.session_transaction() as session:
+        session.update(user_id=2, username='faculty', role='faculty', faculty_id=1)
+    page = client.get('/attendance')
+    assert page.status_code == 200
+    assert b'Mark All Present' in page.data
+    assert b'Save Roll-Call' in page.data
+    # A different instructor's offering must not be selectable.
+    other = db_pool.execute_query(
+        'SELECT offering_id FROM course_offering WHERE faculty_id != 1 LIMIT 1', fetch='val')
+    if other:
+        assert client.post('/api/attendance/mark', json={'offering_id': other, 'class_date': date.today().isoformat(),
+                                                         'records': []}).status_code == 403
+
+
+def test_console_can_set_a_specific_short_password(tmp_path):
+    """Admin123-style passwords are allowed (8+), with a written warning."""
+    import json, os, subprocess, sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    configuration, database = tmp_path/'.env', tmp_path/'short.db'
+    setup = subprocess.run(
+        [sys.executable, '-c',
+         'import json,sys; from scripts.init_production import initialize; initialize(**json.loads(sys.stdin.read()))'],
+        input=json.dumps({'username': 'owner', 'password': 'Initial-Private-Pass-2026!',
+                          'config_path': str(configuration), 'database_path': str(database)}),
+        capture_output=True, text=True, cwd=root)
+    assert setup.returncode == 0, setup.stderr
+    environment = {key: value for key, value in os.environ.items()
+                   if key not in {'APP_ENV', 'SECRET_KEY', 'DB_ENGINE', 'SQLITE_PATH', 'DEMO_MODE',
+                                  'COOKIE_SECURE', 'EMBEDDED_PREVIEW', 'TRUSTED_PROXY_HOPS'}}
+    environment['HOGWARDS_ENV_FILE'] = str(configuration)
+    reset = subprocess.run(
+        [sys.executable, 'scripts/reset_password.py', '--username', 'owner', '--password', 'Admin123'],
+        capture_output=True, text=True, cwd=root, env=environment)
+    assert reset.returncode == 0, reset.stderr
+    assert 'WARNING' in reset.stdout
+    assert 'Verified against the database: OK' in reset.stdout
+    check = subprocess.run(
+        [sys.executable, 'scripts/reset_password.py', '--check'],
+        input='owner\nAdmin123\n', capture_output=True, text=True, cwd=root, env=environment)
+    assert 'MATCH - these credentials work' in check.stdout
+    too_short = subprocess.run(
+        [sys.executable, 'scripts/reset_password.py', '--username', 'owner', '--password', 'short'],
+        capture_output=True, text=True, cwd=root, env=environment)
+    assert too_short.returncode != 0

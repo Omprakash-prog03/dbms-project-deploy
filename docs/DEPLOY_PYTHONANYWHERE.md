@@ -170,6 +170,17 @@ git checkout -B deployed FETCH_HEAD
 
 Then click **Reload** in the Web tab. The portal now reads **NIST University Portal Management**; your administrator account, password, and all records stay as they were.
 
+### Set an exact password in one command
+
+To set a specific password without any hidden prompts (for example to match a password you already use elsewhere):
+
+```bash
+cd ~/hogwards-student-management-system
+.venv/bin/python scripts/reset_password.py --username omprakash --password 'YourNewPassword'
+```
+
+The script prints the database path, a weak-password warning when the value is under 12 characters, and `Verified against the database: OK`. Short passwords (8+ characters) are accepted, but a command-line password stays in the shell session history — change it from the hidden prompt afterwards if other people can see that console.
+
 ### Set a known administrator password
 
 Passwords are typed at a hidden prompt (never on the command line or in chat):

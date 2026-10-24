@@ -25,6 +25,24 @@
   };
 })();
 
+// Page scripts still call fetch() directly, so attach the CSRF token here for
+// every same-origin mutation. Without this, POSTs fail with "session expired".
+const nativeFetch = window.fetch.bind(window);
+window.fetch = function csrfFetch(input, init = {}) {
+  const request = new Request(input, init);
+  const method = (request.method || "GET").toUpperCase();
+  const token = document.querySelector('meta[name="csrf-token"]')?.content;
+  if (
+    token &&
+    !["GET", "HEAD", "OPTIONS"].includes(method) &&
+    !request.headers.has("X-CSRF-Token") &&
+    new URL(request.url, location.href).origin === location.origin
+  ) {
+    request.headers.set("X-CSRF-Token", token);
+  }
+  return nativeFetch(request);
+};
+
 window.apiRequest = async function (url, options = {}) {
   const response = await fetch(url, options);
   let data;

@@ -245,6 +245,27 @@ try {
         .count(),
       0,
     );
+    if (role === "faculty") {
+      // Faculty must be able to run roll-call for their own class. This also
+      // guards the shared fetch wrapper that attaches the CSRF token.
+      await visit("/attendance");
+      await page.waitForSelector("#rosterTable");
+      assert.ok(
+        (await page
+          .locator("#rosterTable tbody tr[data-enrollment-id]")
+          .count()) > 0,
+        "faculty should have a class to mark",
+      );
+      await page.getByRole("button", { name: "Mark All Present" }).click();
+      const saveEvent = page.waitForResponse((response) =>
+        response.url().endsWith("/api/attendance/mark"),
+      );
+      await page.getByRole("button", { name: "Save Roll-Call" }).click();
+      const saved = await saveEvent;
+      assert.equal(saved.status(), 200, "faculty roll-call save");
+      assert.equal((await saved.json()).success, true);
+      await page.waitForLoadState("networkidle");
+    }
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await page.waitForURL("**/login");
   }
@@ -338,7 +359,7 @@ try {
   }
   assert.deepEqual(errors, [], "Browser/runtime errors");
   console.log(
-    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, filtered CSV, campus/student PDFs, 14 routes at desktop/mobile, keyboard navigation, accessibility.`,
+    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, faculty roll-call save, filtered CSV, campus/student PDFs, 14 routes at desktop/mobile, keyboard navigation, accessibility.`,
   );
 } finally {
   await context?.close();

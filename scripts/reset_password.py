@@ -1,7 +1,8 @@
-"""Reset an existing portal account password from the server console.
+"""Reset a portal account password from the server console.
 
-Passwords are typed with hidden input and never accepted as command-line
-arguments, so they do not end up in shell history or process listings.
+Preferred: omit --password and type the new password at the hidden prompt.
+--username/--password exist for one-shot automation; a command-line password is
+visible in shell history, so the script warns when it is used.
 """
 import getpass
 import secrets
@@ -26,13 +27,14 @@ def _verify(username, password):
     return bool(user) and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8'))
 
 
-def main(create_admin=False, random_password=False, check=False):
+def main(create_admin=False, random_password=False, check=False,
+         username_arg=None, password_arg=None):
     if Config.APP_ENV == 'production' and not db_pool.execute_query(
         "SELECT user_id FROM app_user WHERE role='admin' LIMIT 1", fetch='one'
     ):
         raise SystemExit('No administrator exists. Run scripts/init_production.py first.')
     print(f'Database: {Config.SQLITE_PATH if not db_pool.is_mysql else Config.DB_NAME}')
-    username = input('Account username to reset: ').strip()
+    username = (username_arg or input('Account username to reset: ')).strip()
     user = _lookup(username)
     if check:
         if not user:
@@ -46,16 +48,22 @@ def main(create_admin=False, random_password=False, check=False):
             raise SystemExit('No account with that username. Nothing was changed. '
                              'Use --create-admin to create a new administrator.')
         print('That username does not exist; a new administrator account will be created.')
-    if random_password:
+    if password_arg is not None:
+        password = password_arg
+        print('Using the password supplied on the command line.')
+        if len(password) < 12:
+            print('WARNING: that password is short and easy to guess. It is also kept in this '
+                  'shell session history, so change it after signing in.')
+    elif random_password:
         # Avoid hidden-input typos entirely: a one-time password is printed once.
         password = secrets.token_urlsafe(15)
         print(f'Generated password: {password}')
         print('Copy it now; it is not stored in plaintext and will not be shown again.')
     else:
-        password = getpass.getpass('New password (12+ characters): ')
-    if len(password) < 12 or len(password.encode('utf-8')) > 72:
-        raise SystemExit('Use at least 12 characters and at most 72 UTF-8 bytes. Nothing was changed.')
-    if not random_password and password != getpass.getpass('Confirm new password: '):
+        password = getpass.getpass('New password (8+ characters): ')
+    if len(password) < 8 or len(password.encode('utf-8')) > 72:
+        raise SystemExit('Use at least 8 characters and at most 72 UTF-8 bytes. Nothing was changed.')
+    if password_arg is None and not random_password and password != getpass.getpass('Confirm new password: '):
         raise SystemExit('Passwords did not match. Nothing was changed.')
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     if user:
@@ -69,8 +77,13 @@ def main(create_admin=False, random_password=False, check=False):
 
 
 if __name__ == '__main__':
+    arguments = sys.argv[1:]
+    options = {name: arguments[index + 1] for index, name in enumerate(arguments[:-1])
+               if name in ('--username', '--password')}
     main(
-        create_admin='--create-admin' in sys.argv[1:],
-        random_password='--random' in sys.argv[1:],
-        check='--check' in sys.argv[1:],
+        create_admin='--create-admin' in arguments,
+        random_password='--random' in arguments,
+        check='--check' in arguments,
+        username_arg=options.get('--username'),
+        password_arg=options.get('--password'),
     )

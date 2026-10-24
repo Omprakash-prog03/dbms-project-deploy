@@ -5,6 +5,16 @@
 {% block page_subtitle %}Show up. Stay connected. Make every day count.{% endblock %}
 
 {% block content %}
+{% if not offerings %}
+<section class="sims-card">
+  <div class="panel-heading" style="margin-bottom:0"><div>
+    <h2>No class assigned yet</h2>
+    {% if current_user.role == 'faculty' %}<p>An administrator needs to create a course offering with you as the instructor. Once that exists, your class list appears here for roll-call.</p>
+    {% else %}<p>Create a course offering first, then its enrolled students will appear here.</p>{% endif %}
+  </div>
+  {% if current_user.role == 'admin' %}<a class="btn-primary-pill" href="{{ url_for('academics.offerings_view') }}">Create a course offering</a>{% endif %}</div>
+</section>
+{% else %}
 <!-- Section Selector & Controls -->
 <div class="sims-card" style="margin-bottom: 24px;">
   <form method="GET" action="{{ url_for('operations.attendance_view') }}" id="attendanceFilterForm">
@@ -201,4 +211,5 @@ async function saveAttendanceSheet() {
   }
 }
 </script>
+{% endif %}
 {% endblock %}
