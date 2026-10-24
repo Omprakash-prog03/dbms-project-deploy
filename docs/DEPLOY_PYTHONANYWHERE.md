@@ -179,7 +179,23 @@ cd ~/hogwards-student-management-system
 .venv/bin/python scripts/reset_password.py --create-admin
 ```
 
-Enter the username `omprakash` and type the new password twice. `--create-admin` creates the account if the username does not exist yet; without it, an unknown username is rejected and nothing changes.
+Enter the username and type the new password twice. `--create-admin` creates the account if the username does not exist yet; without it, an unknown username is rejected and nothing changes.
+
+If a hidden prompt keeps producing “Invalid username or password”, skip typing altogether:
+
+```bash
+.venv/bin/python scripts/reset_password.py --random --create-admin
+```
+
+The script prints the database path it is writing to and a one-time password, then verifies it against the stored hash (`Verified against the database: OK`). The database path must be `…/hogwards-student-management-system/instance/hogwards.db`; a different path means the console and the web app are looking at different data.
+
+To test credentials without changing anything:
+
+```bash
+.venv/bin/python scripts/reset_password.py --check
+```
+
+It reports `MATCH - these credentials work` or `NO MATCH - the stored password is different`, and prints no hashes.
 
 ### Staff-chosen passwords for students and faculty
 
