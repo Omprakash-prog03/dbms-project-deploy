@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Gradebook & Results - {{ portal_name }}{% endblock %}
+{% block page_title %}Gradebook & Exam Evaluations{% endblock %}
+{% block page_subtitle %}A thoughtful view of every milestone and achievement.{% endblock %}
+
+{% block content %}
+<!-- Section & Exam Filter Bar -->
+<div class="sims-card" style="margin-bottom: 24px;">
+  <form method="GET" action="{{ url_for('operations.results_view') }}" id="resultsFilterForm">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+
+      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <!-- Offering Selection -->
+        <div>
+          <label style="font-size: 11px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">COURSE OFFERING</label>
+          <select name="offering_id" class="pill-select" onchange="this.form.querySelector('[name=exam_id]').value='';this.form.submit()" style="font-weight: 600;">
+            {% for o in offerings %}
+              <option value="{{ o.offering_id }}" {% if offering_id == o.offering_id %}selected{% endif %}>
+                {{ o.course_code }} - {{ o.course_title }} ({{ o.instructor_name }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Exam Selection -->
+        <div>
+          <label style="font-size: 11px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">EXAMINATION</label>
+          <select name="exam_id" class="pill-select" onchange="document.getElementById('resultsFilterForm').submit()" style="font-weight: 600;">
+            {% for ex in exams %}
+              <option value="{{ ex.exam_id }}" {% if exam_id == ex.exam_id %}selected{% endif %}>
+                {{ ex.exam_type }} (Max: {{ ex.max_marks }} pts) &bull; {{ ex.exam_date }}
+              </option>
+            {% else %}
+              <option value="">No exams scheduled</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <button type="button" class="btn-primary-pill" id="addExamBtn" {% if not current_offering %}disabled title="Create a course offering first"{% endif %}>Add examination</button>
+
+    </div>
+  </form>
+</div>
+
+<!-- Gradebook Table Card -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">
+        {% if current_exam %}
+          {{ current_exam.exam_type }} Evaluation &mdash; {{ current_exam.course_code }}
+        {% else %}
+          Evaluation Gradebook
+        {% endif %}
+      </h3>
+      <p style="font-size: 12px; color: var(--text-muted);">
+        {% if current_exam %}
+          Maximum Marks: <strong>{{ current_exam.max_marks }}</strong> &bull; Exam Date: {{ current_exam.exam_date }}
+        {% else %}
+          Please select an active examination from the dropdown above.
+        {% endif %}
+      </p>
+    </div>
+    {% if current_exam %}
+      <span class="status-chip active">{{ gradebook|length }} Students Registered</span>
+    {% endif %}
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>ROLL NO</th>
+          <th>STUDENT NAME</th>
+          <th>DEPT</th>
+          <th style="width: 140px;">MARKS (Max: {{ current_exam.max_marks or '-' }})</th>
+          <th>PERCENTAGE</th>
+          <th>LETTER GRADE (fn_grade)</th>
+          <th style="text-align: right;">ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in gradebook %}
+        <tr id="row-{{ g.enrollment_id }}">
+          <td>
+            <strong style="font-size: 13.5px;">{{ g.roll_no }}</strong>
+          </td>
+          <td>
+            <div class="student-col">
+              <div class="student-avatar-cell">{{ g.student_name[:1] }}</div>
+              <div class="student-name-text">{{ g.student_name }}</div>
+            </div>
+          </td>
+          <td>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px;">{{ g.dept_code }}</span>
+          </td>
+          <td>
+            <input type="number" step="0.01" min="0" max="{{ current_exam.max_marks }}" aria-label="Marks for {{ g.student_name }}" id="mark-{{ g.enrollment_id }}" value="{{ g.marks_obtained if g.marks_obtained is not none else '' }}" placeholder="0 - {{ current_exam.max_marks }}" class="pill-select" style="width: 110px; border: 1px solid var(--border-light); border-radius: 8px; padding: 6px 10px; font-weight: 500;">
+          </td>
+          <td>
+            <span id="pct-{{ g.enrollment_id }}" style="font-weight: 600; font-size: 13px;">
+              {% if g.percentage is not none %}{{ g.percentage }}%{% else %}&mdash;{% endif %}
+            </span>
+          </td>
+          <td>
+            <span id="grade-{{ g.enrollment_id }}" class="status-chip {% if g.grade in ['A+', 'A', 'B+'] %}active{% elif g.grade == 'F' %}dropped{% elif g.grade %}pending{% endif %}" style="font-weight: 550; min-width: 38px; justify-content: center;">
+              {{ g.grade or '—' }}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <button type="button" class="action-pill-btn" onclick="saveStudentMark({{ g.enrollment_id }})" style="padding: 6px 14px; font-size: 11.5px;">
+              Save
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No enrolled students found for this examination.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-overlay" id="examModal" role="dialog" aria-modal="true" aria-labelledby="examModalTitle" tabindex="-1"><div class="modal-card">
+ <div class="modal-header"><h3 id="examModalTitle">Add an examination</h3><button type="button" class="close-modal-btn" aria-label="Close examination form" onclick="closeModal('examModal')">×</button></div>
+ <p class="subtle" style="margin-bottom:18px">{{ current_offering.course_code if current_offering else '' }} · {{ current_offering.course_title if current_offering else 'Choose a course offering first.' }}</p>
+ <form id="examForm"><input type="hidden" name="offering_id" value="{{ offering_id or '' }}"><div class="form-grid">
+  <div class="form-group full-width"><label for="newExamType">Examination type</label><select class="form-input" id="newExamType" name="exam_type" required>{% for type in ['Internal','Midterm','Final'] %}<option value="{{ type }}">{{ type }}</option>{% endfor %}</select></div>
+  <div class="form-group"><label for="newExamDate">Examination date</label><input class="form-input" id="newExamDate" name="exam_date" type="date" value="{{ today.isoformat() }}" required></div>
+  <div class="form-group"><label for="newExamMaxMarks">Maximum marks</label><input class="form-input" id="newExamMaxMarks" name="max_marks" type="number" min="0.01" max="999.99" step="0.01" value="100" required></div>
+ </div><p class="login-error" id="examFormError" role="alert" hidden></p><div class="form-actions"><button type="button" class="btn-secondary-pill" onclick="closeModal('examModal')">Cancel</button><button type="submit" class="btn-primary-pill" id="saveExamBtn">Save examination</button></div></form>
+</div></div>
+<script src="{{ url_for('static',filename='js/exams.js') }}"></script>
+<script>
+async function saveStudentMark(enrollmentId) {
+  const markInput = document.getElementById(`mark-${enrollmentId}`);
+  const val = markInput.value.trim();
+  if (val === '') {
+    showToast('Please enter a marks value.', 'error');
+    return;
+  }
+
+  const payload = {
+    exam_id: {{ exam_id or 0 }},
+    enrollment_id: enrollmentId,
+    marks_obtained: parseFloat(val)
+  };
+
+  try {
+    const res = await fetch('/api/results/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message);
+      // Recalculate display
+      const maxMarks = {{ current_exam.max_marks or 100 }};
+      const pct = (parseFloat(val) / maxMarks * 100).toFixed(1);
+      document.getElementById(`pct-${enrollmentId}`).innerText = pct + '%';
+
+      // Let server recalculation update grade
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      showToast(data.message || 'Validation error from database', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect: ' + err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

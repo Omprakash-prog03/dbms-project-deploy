@@ -1,0 +1,32 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Runtime data (seed locally; never commit student data)
+*.db
+*.db-*
+*.sqlite*
+backups/
+instance/
+*.log
+
+# Browser tests and tooling
+node_modules/
+test-results/
+playwright-report/
+.artifacts/
+
+# Editor files
+.DS_Store
+.vscode/
+.idea/

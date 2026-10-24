@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ student.first_name }} {{ student.last_name }} ({{ student.roll_no }}) - {{ portal_name }}{% endblock %}
+{% block page_title %}Student 360° Dossier{% endblock %}
+{% block page_subtitle %}One learner. Every milestone. Their whole journey, connected.{% endblock %}
+
+{% block content %}
+<!-- Back button & Header Info -->
+<div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+  {% if current_user.role != 'student' %}<a href="{{ url_for('students.list_view') }}" class="pill-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+    &larr; Back to Student Directory
+  </a>{% endif %}
+  <div style="display: flex; align-items: center; gap: 10px;">
+    {% if current_user.role == 'admin' %}
+    <button type="button" class="pill-btn" onclick='openPasswordResetModal("student", {{ student.student_id }}, {{ (student.first_name ~ " " ~ student.last_name ~ " (" ~ student.roll_no ~ ")")|tojson }})'  style="font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Reset Password
+    </button>
+    {% endif %}
+    <span class="status-chip {% if student.status == 'Active' %}active{% elif student.status == 'Graduated' %}completed{% else %}dropped{% endif %}">
+      <span class="status-dot"></span>
+      Status: {{ student.status }}
+    </span>
+  </div>
+</div>
+
+<!-- Profile Top Summary Card -->
+<div class="sims-card" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+  <div style="display: flex; align-items: center; gap: 20px;">
+    <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--ink-black); color: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 550;">
+      {{ student.first_name[:1] }}{{ student.last_name[:1] }}
+    </div>
+    <div>
+      <h2 style="font-size: 22px; font-weight: 550; margin-bottom: 4px;">{{ student.first_name }} {{ student.last_name }}</h2>
+      <div style="display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap;">
+        <span><strong>Roll No:</strong> {{ student.roll_no }}</span>
+        <span>&bull;</span>
+        <span><strong>Dept:</strong> {{ student.dept_name }} ({{ student.dept_code }})</span>
+        <span>&bull;</span>
+        <span><strong>Current Semester:</strong> {{ student.current_semester }}</span>
+        <span>&bull;</span>
+        <span><strong>Admitted:</strong> {{ student.admission_date }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Badges derived from DB functions -->
+  <div style="display: flex; gap: 14px;">
+    <div style="background: var(--surface-raised); padding: 12px 18px; border-radius: 14px; text-align: center; min-width: 100px;">
+      <div style="font-size: 22px; font-weight: 550; color: var(--ink-black);">{{ student.cgpa or '0.00' }}</div>
+      <div style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Cumulative CGPA<br><span style="font-size: 9px;">(fn_student_cgpa)</span></div>
+    </div>
+    <div style="background: var(--surface-raised); padding: 12px 18px; border-radius: 14px; text-align: center; min-width: 100px;">
+      <div style="font-size: 22px; font-weight: 550; color: var(--ink-black);">{{ enrollments|length }}</div>
+      <div style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Registered<br>Courses</div>
+    </div>
+  </div>
+</div>
+
+<!-- Grid: Contact & Demographic + Guardians (1:N 3NF Showcase) -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- Demographics Card -->
+  <div class="sims-card">
+    <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 14px;">Demographics & Contact</h3>
+    <table style="width: 100%; font-size: 13px; line-height: 2;">
+      <tr>
+        <td style="color: var(--text-muted); width: 140px;">Email:</td>
+        <td style="font-weight: 600;">{{ student.email }}</td>
+      </tr>
+      <tr>
+        <td style="color: var(--text-muted);">Phone:</td>
+        <td style="font-weight: 600;">{{ student.phone }}</td>
+      </tr>
+      <tr>
+        <td style="color: var(--text-muted);">Date of Birth:</td>
+        <td style="font-weight: 600;">{{ student.dob }}</td>
+      </tr>
+      <tr>
+        <td style="color: var(--text-muted);">Gender:</td>
+        <td style="font-weight: 600;">{{ student.gender }}</td>
+      </tr>
+      <tr>
+        <td style="color: var(--text-muted);">Residential Address:</td>
+        <td style="font-weight: 600;">{{ student.address or 'N/A' }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Guardians Card (Normalized 1:N Table) -->
+  <div class="sims-card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+      <h3 style="font-size: 16px; font-weight: 500;">Guardian Records (3NF Normalized)</h3>
+      <span style="font-size: 11px; background: var(--surface-raised); padding: 2px 8px; border-radius: 10px; color: var(--text-muted);">Table: guardian</span>
+    </div>
+    {% if guardians %}
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        {% for g in guardians %}
+        <div style="background: var(--surface); padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-weight: 500; font-size: 13.5px;">{{ g.name }}</div>
+            <div style="font-size: 11.5px; color: var(--text-muted);">Relation: <strong>{{ g.relation }}</strong> &bull; Contact: {{ g.phone }}</div>
+          </div>
+          <span class="status-chip active" style="font-size: 11px;">Contact</span>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); font-size: 13px; padding: 16px 0;">No guardian records registered for this student.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Academic Course Enrollments & Attendance -->
+<div class="sims-card" style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <div>
+      <h3 style="font-size: 16px; font-weight: 500;">Course Enrollments & Attendance Rates</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">M:N Junction Table <code>enrollment</code> &bull; Attendance % calculated via <code>fn_attendance_pct()</code></p>
+    </div>
+    <span class="status-chip active">{{ enrollments|length }} Courses</span>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>COURSE</th>
+          <th>ACADEMIC TERM</th>
+          <th>INSTRUCTOR</th>
+          <th>CREDITS</th>
+          <th>ATTENDANCE %</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in enrollments %}
+        <tr>
+          <td>
+            <div style="font-weight: 500;">{{ e.course_code }} - {{ e.title }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Semester {{ e.semester_no }}</div>
+          </td>
+          <td>{{ e.academic_year }} ({{ e.term }})</td>
+          <td>{{ e.faculty_name or 'TBD' }}</td>
+          <td><span class="pill-select" style="padding: 2px 8px; font-size: 11px;">{{ e.credits }} Credits</span></td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="flex: 1; max-width: 80px; height: 6px; background: var(--border-light); border-radius: 3px; overflow: hidden;">
+                <div style="width: {{ e.attendance_pct or 0 }}%; height: 100%; background: {% if (e.attendance_pct or 0) >= 75 %}var(--status-present){% else %}var(--status-absent){% endif %};"></div>
+              </div>
+              <span style="font-weight: 500; font-size: 12px; {% if (e.attendance_pct or 0) < 75 %}color: var(--status-absent);{% endif %}">
+                {{ e.attendance_pct or 0 }}%
+              </span>
+            </div>
+          </td>
+          <td>
+            <span class="status-chip {% if e.status == 'Enrolled' %}active{% elif e.status == 'Completed' %}completed{% else %}dropped{% endif %}">
+              <span class="status-dot"></span>
+              {{ e.status }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No course enrollments on record.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Examination Results & Gradebook -->
+<div class="sims-card" style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <div>
+      <h3 style="font-size: 16px; font-weight: 500;">Examination Results & Transcript</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Table <code>result</code> with <code>trg_result_before_insert/update</code> max marks ceiling and <code>fn_grade()</code></p>
+    </div>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>COURSE</th>
+          <th>EXAM TYPE</th>
+          <th>EXAM DATE</th>
+          <th>MARKS OBTAINED</th>
+          <th>MAX MARKS</th>
+          <th>PERCENTAGE</th>
+          <th>LETTER GRADE</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td><strong style="font-size: 13px;">{{ r.course_code }}</strong> - {{ r.title }}</td>
+          <td><span class="pill-select" style="padding: 2px 8px; font-size: 11px;">{{ r.exam_type }}</span></td>
+          <td style="color: var(--text-muted); font-size: 12px;">{{ r.exam_date }}</td>
+          <td><strong style="font-size: 14px;">{{ r.marks_obtained }}</strong></td>
+          <td style="color: var(--text-muted);">{{ r.max_marks }}</td>
+          <td>{{ "%.1f"|format(r.marks_obtained / r.max_marks * 100) }}%</td>
+          <td>
+            <span class="status-chip {% if r.grade in ['A+', 'A', 'B+'] %}active{% elif r.grade == 'F' %}dropped{% else %}pending{% endif %}" style="font-weight: 550; min-width: 36px; justify-content: center;">
+              {{ r.grade }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">No examination marks published.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if current_user.role in ['admin','student'] %}
+<!-- Fee Account Status & Defaulter Check -->
+<div class="sims-card" style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <div>
+      <h3 style="font-size: 16px; font-weight: 500;">Fee Ledger & Payment Summary</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Synthesized from <code>fee_structure</code> and <code>fee_payment</code></p>
+    </div>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>SEMESTER</th>
+          <th>TOTAL TUITION</th>
+          <th>AMOUNT PAID</th>
+          <th>BALANCE DUE</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fee_summary %}
+        <tr>
+          <td><strong>Semester {{ f.semester_no }}</strong></td>
+          <td>&#8377; {{ "{:,.2f}".format(f.total_fee or 0) }}</td>
+          <td style="color: var(--status-present); font-weight: 500;">&#8377; {{ "{:,.2f}".format(f.total_paid or 0) }}</td>
+          <td style="color: {% if (f.balance_due or 0) > 0 %}var(--status-absent){% else %}var(--text-muted){% endif %}; font-weight: 500;">
+            &#8377; {{ "{:,.2f}".format(f.balance_due or 0) }}
+          </td>
+          <td>
+            {% if f.is_defaulter %}
+              <span class="status-chip dropped"><span class="status-dot"></span> Payment Due</span>
+            {% else %}
+              <span class="status-chip active"><span class="status-dot"></span> Cleared</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">No fee ledger entries available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endif %}
+{% if current_user.role == 'admin' %}
+<!-- Audit Trail (Audit Log Trigger Inspection) -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <div>
+      <h3 style="font-size: 16px; font-weight: 500;">Audit Trail</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Populated automatically by MySQL trigger <code>trg_student_audit</code> storing old/new values in JSON format</p>
+    </div>
+    <span style="font-size: 11px; background: var(--surface-raised); padding: 2px 8px; border-radius: 10px; color: var(--text-muted);">Table: audit_log</span>
+  </div>
+
+  {% if audit_rows %}
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>ACTION</th>
+          <th>TIMESTAMP</th>
+          <th>PERFORMED BY</th>
+          <th>OLD STATE (JSON)</th>
+          <th>NEW STATE (JSON)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in audit_rows %}
+        <tr>
+          <td>
+            <span class="status-chip {% if a.action == 'INSERT' %}active{% elif a.action == 'UPDATE' %}pending{% else %}dropped{% endif %}" style="font-weight: 500;">
+              {{ a.action }}
+            </span>
+          </td>
+          <td style="font-size: 12px; color: var(--text-muted);">{{ a.changed_at }}</td>
+          <td style="font-size: 12px; font-weight: 600;">{{ a.changed_by }}</td>
+          <td>
+            <pre style="font-family: monospace; font-size: 11px; background: var(--surface-raised); padding: 6px 10px; border-radius: 6px; max-width: 250px; overflow-x: auto;">{{ a.old_values or '{}' }}</pre>
+          </td>
+          <td>
+            <pre style="font-family: monospace; font-size: 11px; background: var(--surface-raised); padding: 6px 10px; border-radius: 6px; max-width: 250px; overflow-x: auto;">{{ a.new_values or '{}' }}</pre>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color: var(--text-muted); font-size: 13px; padding: 12px 0;">No audit modifications logged for this student yet.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

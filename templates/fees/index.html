@@ -1,0 +1,507 @@
+{% extends 'base.html' %}
+
+{% block title %}Fees & Ledgers - {{ portal_name }}{% endblock %}
+{% block page_title %}Fee Accounting & Ledgers{% endblock %}
+{% block page_subtitle %}Clear balances. Simple payments. A little peace of mind.{% endblock %}
+
+{% block content %}
+<!-- Sub Navigation Tabs & Action -->
+<div class="sims-card" style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <a href="{{ url_for('fees.fees_view', tab='payments') }}" class="pill-btn {% if tab == 'payments' %}active-tab-pill{% endif %}" style="text-decoration: none; padding: 7px 16px; font-size: 12.5px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'payments' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'payments' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        Payments ({{ payments|length }})
+      </a>
+      <a href="{{ url_for('fees.fees_view', tab='defaulters') }}" class="pill-btn {% if tab == 'defaulters' %}active-tab-pill{% endif %}" style="text-decoration: none; padding: 7px 16px; font-size: 12.5px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'defaulters' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'defaulters' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        Defaulters ({{ defaulters|length }})
+      </a>
+      <a href="{{ url_for('fees.fees_view', tab='unpaid') }}" class="pill-btn {% if tab == 'unpaid' %}active-tab-pill{% endif %}" style="text-decoration: none; padding: 7px 16px; font-size: 12.5px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'unpaid' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'unpaid' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        Unpaid Students ({{ unpaid|length }})
+      </a>
+      <a href="{{ url_for('fees.fees_view', tab='structures') }}" class="pill-btn {% if tab == 'structures' %}active-tab-pill{% endif %}" style="text-decoration: none; padding: 7px 16px; font-size: 12.5px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'structures' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'structures' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        Fee Schedules ({{ structures|length }})
+      </a>
+      <a href="{{ url_for('fees.fees_view', tab='missing') }}" class="pill-btn {% if tab == 'missing' %}active-tab-pill{% endif %}" style="text-decoration: none; padding: 7px 16px; font-size: 12.5px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'missing' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'missing' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        Fees Not Added ({{ missing_structures|length }})
+      </a>
+    </div>
+
+    {% if current_user.role in ['admin', 'faculty'] %}
+    <div style="display: flex; gap: 8px;">
+      {% if current_user.role == 'admin' %}
+      <button type="button" class="pill-btn" onclick="openStructureModal()" style="display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 12.5px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Set Fee Schedule
+      </button>
+      {% endif %}
+      <button type="button" class="action-pill-btn" onclick="openPaymentModal()" style="display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 12.5px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Record Payment
+      </button>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% if tab == 'payments' %}
+<!-- TAB 1: Payment Transactions -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">Recent Fee Payments</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Table <code>fee_payment</code> with trigger-backed audit logging</p>
+    </div>
+    <span class="status-chip active">{{ payments|length }} Payments</span>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>RECEIPT NO</th>
+          <th>STUDENT</th>
+          <th>SEMESTER</th>
+          <th>AMOUNT PAID</th>
+          <th>MODE</th>
+          <th>DATE</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td>
+            <strong style="font-size: 12.5px; font-family: monospace;">{{ p.receipt_no }}</strong>
+          </td>
+          <td>
+            <div class="student-col">
+              <div class="student-avatar-cell">{{ p.student_name[:1] }}</div>
+              <div>
+                <a href="{{ url_for('students.profile_view', student_id=p.student_id) }}" class="student-name-text" style="text-decoration: none;">
+                  {{ p.student_name }}
+                </a>
+                <div class="student-roll-text">{{ p.roll_no }} &bull; {{ p.dept_code }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px;">Sem {{ p.semester_no }}</span>
+          </td>
+          <td>
+            <strong style="font-size: 14px; color: var(--status-present);">&#8377; {{ "{:,.2f}".format(p.amount) }}</strong>
+          </td>
+          <td>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px; font-weight: 600;">{{ p.mode }}</span>
+          </td>
+          <td style="font-size: 12px; color: var(--text-muted);">
+            {{ p.paid_on }}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No fee payment transactions found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'defaulters' %}
+<!-- TAB 2: Fee Defaulters View (v_fee_status) -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">Outstanding Fee Defaulters</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Queried live from database view <code>v_fee_status WHERE is_defaulter = 1</code></p>
+    </div>
+    <span class="status-chip dropped">{{ defaulters|length }} Overdue Accounts</span>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>ROLL NO</th>
+          <th>STUDENT NAME</th>
+          <th>DEPARTMENT</th>
+          <th>SEMESTER</th>
+          <th>TOTAL TUITION</th>
+          <th>PAID SO FAR</th>
+          <th>BALANCE DUE</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in defaulters %}
+        <tr>
+          <td><strong style="font-size: 13px;">{{ d.roll_no }}</strong></td>
+          <td>
+            <a href="{{ url_for('students.profile_view', student_id=d.student_id) }}" class="student-name-text" style="text-decoration: none;">
+              {{ d.full_name or (d.first_name ~ ' ' ~ d.last_name) }}
+            </a>
+          </td>
+          <td>{{ d.dept_code }}</td>
+          <td><span class="pill-select" style="padding: 2px 8px; font-size: 11px;">Sem {{ d.current_semester or d.semester_no }}</span></td>
+          <td>&#8377; {{ "{:,.2f}".format(d.semester_fee_due or d.total_fee or 0) }}</td>
+          <td style="color: var(--status-present); font-weight: 600;">&#8377; {{ "{:,.2f}".format(d.total_paid or 0) }}</td>
+          <td>
+            <strong style="color: var(--status-absent); font-size: 13.5px;">&#8377; {{ "{:,.2f}".format(d.balance_due or 0) }}</strong>
+          </td>
+          <td>
+            <button class="action-pill-btn" onclick="quickPayDefaulter({{ d.student_id }}, {{ d.current_semester or d.semester_no }}, {{ d.balance_due }})" style="padding: 4px 12px; font-size: 11px;">
+              Clear Due
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align: center; color: var(--status-present); padding: 30px;">Zero outstanding defaulters! All accounts cleared.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'unpaid' %}
+<!-- TAB 3: Unpaid Students (Zero Payments Logged for Semester) -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">Students with Unpaid Fees</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Active students who have zero fee payments logged for their active semester</p>
+    </div>
+    <span class="status-chip dropped">{{ unpaid|length }} Unpaid Students</span>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>ROLL NO</th>
+          <th>STUDENT NAME</th>
+          <th>DEPARTMENT</th>
+          <th>SEMESTER</th>
+          <th>SEMESTER TUITION</th>
+          <th>PAID</th>
+          <th>STATUS</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in unpaid %}
+        <tr>
+          <td><strong style="font-size: 13px;">{{ u.roll_no }}</strong></td>
+          <td>
+            <a href="{{ url_for('students.profile_view', student_id=u.student_id) }}" class="student-name-text" style="text-decoration: none;">
+              {{ u.full_name or (u.first_name ~ ' ' ~ u.last_name) }}
+            </a>
+          </td>
+          <td>{{ u.dept_code }}</td>
+          <td><span class="pill-select" style="padding: 2px 8px; font-size: 11px;">Sem {{ u.current_semester }}</span></td>
+          <td><strong>&#8377; {{ "{:,.2f}".format(u.semester_fee_due or 0) }}</strong></td>
+          <td style="color: var(--text-muted);">&#8377; 0.00</td>
+          <td>
+            <span class="status-chip dropped"><span class="status-dot"></span> Unpaid</span>
+          </td>
+          <td>
+            <button class="action-pill-btn" onclick="quickPayDefaulter({{ u.student_id }}, {{ u.current_semester }}, {{ u.semester_fee_due }})" style="padding: 4px 12px; font-size: 11px;">
+              Pay Full Fee
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align: center; color: var(--status-present); padding: 30px;">No unpaid students found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'structures' %}
+<!-- TAB 4: Fee Structures Matrix -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">Departmental Fee Schedule</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Composite Primary Key <code>PK(dept_id, semester_no)</code> with <code>CHECK (amount &gt; 0)</code></p>
+    </div>
+    {% if current_user.role == 'admin' %}
+    <button type="button" class="action-pill-btn" onclick="openStructureModal()" style="font-size: 12px; padding: 6px 16px;">
+      + Configure Fee Schedule
+    </button>
+    {% endif %}
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>DEPT CODE</th>
+          <th>DEPARTMENT NAME</th>
+          <th>SEMESTER NO</th>
+          <th>SEMESTER TUITION FEE</th>
+          {% if current_user.role == 'admin' %}
+          <th style="text-align: right;">ACTION</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in structures %}
+        <tr>
+          <td><strong style="font-size: 13.5px;">{{ s.dept_code }}</strong></td>
+          <td>{{ s.dept_name }}</td>
+          <td><span class="pill-select" style="padding: 2px 8px; font-size: 11px;">Semester {{ s.semester_no }}</span></td>
+          <td><strong style="font-size: 14px;">&#8377; {{ "{:,.2f}".format(s.amount) }}</strong></td>
+          {% if current_user.role == 'admin' %}
+          <td style="text-align: right;">
+            <button class="pill-btn" onclick="editFeeStructure({{ s.dept_id }}, {{ s.semester_no }}, {{ s.amount }})" style="font-size: 11.5px;">
+              Edit Amount
+            </button>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'missing' %}
+<!-- TAB 5: Missing Fee Structures (Fees Not Added) -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">Fees Not Configured (Missing Fee Structures)</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">
+        Relational Anti-Join (Recursive CTE cross joined with Departments where <code>fee_structure.amount IS NULL</code>)
+      </p>
+    </div>
+    <span class="status-chip {% if missing_structures %}pending{% else %}active{% endif %}">
+      {{ missing_structures|length }} Slots Unconfigured
+    </span>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>DEPT CODE</th>
+          <th>DEPARTMENT NAME</th>
+          <th>SEMESTER</th>
+          <th>CONFIGURATION STATUS</th>
+          <th style="text-align: right;">ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in missing_structures %}
+        <tr>
+          <td><strong style="font-size: 13.5px;">{{ m.dept_code }}</strong></td>
+          <td>{{ m.dept_name }}</td>
+          <td><span class="pill-select" style="padding: 2px 8px; font-size: 11px;">Semester {{ m.semester_no }}</span></td>
+          <td>
+            <span class="status-chip dropped">
+              <span class="status-dot"></span> Not Configured
+            </span>
+          </td>
+          <td style="text-align: right;">
+            {% if current_user.role == 'admin' %}
+            <button class="action-pill-btn" onclick="editFeeStructure({{ m.dept_id }}, {{ m.semester_no }}, 60000)" style="font-size: 11.5px; padding: 4px 14px;">
+              + Add Fee Amount
+            </button>
+            {% else %}
+            <span style="font-size: 12px; color: var(--text-muted);">Admin only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align: center; color: var(--status-present); padding: 30px;">All departments across all semesters (1-8) have fee structures configured!</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal: Record Payment -->
+<div id="paymentModal" class="sql-modal-backdrop" style="display: none; align-items: center; justify-content: center;">
+  <div class="sql-modal-content" style="max-width: 520px; width: 100%;">
+    <div class="sql-modal-header">
+      <div>
+        <h3 style="font-size: 17px; font-weight: 500;">Record Fee Payment</h3>
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Atomic payment recording with balance and receipt validation</p>
+      </div>
+      <button class="sql-close-btn" onclick="closePaymentModal()">&times;</button>
+    </div>
+    <form id="paymentForm" onsubmit="handlePaymentSubmit(event)" style="padding: 24px;">
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Select Student *</label>
+        <select id="payStudentId" name="student_id" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+          {% for s in students %}
+            <option value="{{ s.student_id }}">{{ s.roll_no }} - {{ s.first_name }} {{ s.last_name }} ({{ s.dept_code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Semester (1-8) *</label>
+          <input type="number" id="paySemesterNo" name="semester_no" min="1" max="8" value="1" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Amount (&#8377;) *</label>
+          <input type="number" step="100" min="100" id="payAmount" name="amount" value="50000" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px; font-weight: 500;">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Payment Mode</label>
+          <select id="payMode" name="mode" class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+            <option value="UPI">UPI / QR</option>
+            <option value="NetBanking">Net Banking</option>
+            <option value="Cash">Cash</option>
+            <option value="DemandDraft">Demand Draft</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Receipt Number (Optional)</label>
+          <input type="text" id="payReceiptNo" name="receipt_no" placeholder="Auto-generated if blank" class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+        </div>
+      </div>
+
+      <div style="background: var(--surface); padding: 12px; border-radius: 8px; font-size: 11.5px; color: var(--text-muted); margin-bottom: 20px;">
+        <strong>Overpayment Guard:</strong> <code>sp_record_payment</code> checks cumulative payments for this semester against <code>fee_structure.amount</code>. If amount exceeds balance, the transaction rolls back.
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="pill-btn" onclick="closePaymentModal()">Cancel</button>
+        <button type="submit" class="action-pill-btn" style="padding: 8px 22px;">Confirm & Issue Receipt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Configure Fee Structure -->
+<div id="structureModal" class="sql-modal-backdrop" style="display: none; align-items: center; justify-content: center;">
+  <div class="sql-modal-content" style="max-width: 480px; width: 100%;">
+    <div class="sql-modal-header">
+      <h3 style="font-size: 17px; font-weight: 500;">Set Tuition Fee Schedule</h3>
+      <button class="sql-close-btn" onclick="closeStructureModal()">&times;</button>
+    </div>
+    <form id="structureForm" onsubmit="handleStructureSubmit(event)" style="padding: 24px;">
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Department *</label>
+        <select id="structDeptId" name="dept_id" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+          {% for d in departments %}
+            <option value="{{ d.dept_id }}">{{ d.dept_code }} - {{ d.dept_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Semester (1-8) *</label>
+          <input type="number" id="structSemester" name="semester_no" min="1" max="8" value="1" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Tuition Amount (&#8377;) *</label>
+          <input type="number" step="500" min="1000" id="structAmount" name="amount" value="65000" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px; font-weight: 500;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="pill-btn" onclick="closeStructureModal()">Cancel</button>
+        <button type="submit" class="action-pill-btn" style="padding: 8px 22px;">Save Fee Schedule</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openPaymentModal() {
+  openModal('paymentModal');
+}
+function closePaymentModal() {
+  closeModal('paymentModal');
+}
+
+function openStructureModal() {
+  document.getElementById('structureForm').reset();
+  openModal('structureModal');
+}
+function closeStructureModal() {
+  closeModal('structureModal');
+}
+
+function editFeeStructure(deptId, semNo, amount) {
+  openStructureModal();
+  document.getElementById('structDeptId').value = deptId;
+  document.getElementById('structSemester').value = semNo;
+  document.getElementById('structAmount').value = amount;
+}
+
+function quickPayDefaulter(studentId, semNo, amountDue) {
+  openPaymentModal();
+  document.getElementById('payStudentId').value = studentId;
+  document.getElementById('paySemesterNo').value = semNo;
+  document.getElementById('payAmount').value = amountDue;
+}
+
+async function handlePaymentSubmit(e) {
+  e.preventDefault();
+  const payload = {
+    student_id: document.getElementById('payStudentId').value,
+    semester_no: document.getElementById('paySemesterNo').value,
+    amount: document.getElementById('payAmount').value,
+    mode: document.getElementById('payMode').value,
+    receipt_no: document.getElementById('payReceiptNo').value
+  };
+
+  try {
+    const res = await fetch('/api/fees/pay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(`${data.message} (Receipt: ${data.receipt_no})`);
+      closePaymentModal();
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      showToast(data.message || 'Payment rejected by database guard.', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect: ' + err.message, 'error');
+  }
+}
+
+async function handleStructureSubmit(e) {
+  e.preventDefault();
+  const payload = {
+    dept_id: document.getElementById('structDeptId').value,
+    semester_no: document.getElementById('structSemester').value,
+    amount: document.getElementById('structAmount').value
+  };
+
+  try {
+    const res = await fetch('/api/fees/structure/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message);
+      closeStructureModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      showToast(data.message || 'Failed to update fee schedule', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect: ' + err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

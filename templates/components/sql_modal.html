@@ -1,0 +1,22 @@
+<!-- "Show SQL" Inspection Modal -->
+<div id="sqlModal" class="modal-overlay">
+  <div class="modal-card" style="max-width: 800px;">
+    <div class="modal-header">
+      <div>
+        <h3>Live SQL Execution Inspector</h3>
+        <p id="sqlModalEngine" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+          Engine: MySQL 8.0 (InnoDB)
+        </p>
+      </div>
+      <button class="close-modal-btn" onclick="closeModal('sqlModal')">✕</button>
+    </div>
+
+    <div id="sqlModalContent" style="max-height: 60vh; overflow-y: auto;">
+      <p style="color: var(--text-muted);">Fetching queries...</p>
+    </div>
+
+    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+      <button class="btn-primary-pill" onclick="closeModal('sqlModal')">Close Inspector</button>
+    </div>
+  </div>
+</div>

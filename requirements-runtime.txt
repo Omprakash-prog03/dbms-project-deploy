@@ -1,0 +1,5 @@
+# Minimal SQLite/WSGI runtime for the free production host (no Node or demo seed).
+Flask>=3.1,<4
+Flask-Limiter>=4,<5
+bcrypt>=4.2,<6
+python-dotenv>=1.0,<2
