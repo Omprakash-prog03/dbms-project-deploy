@@ -116,6 +116,16 @@ gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 wsgi:application
 
 Use HTTPS and `COOKIE_SECURE=true`, disable `DEMO_MODE`, choose a least-privilege database user, keep a persistent database volume, configure backups, and review authorization for your institution before using real student data. Production mode includes a ten-attempts-per-minute, per-client-IP login limit for the selected single-worker host. Limits reset on worker restart; use a shared rate-limit store if scaling to multiple workers. For an HTTPS embedded preview such as Arena, set `EMBEDDED_PREVIEW=true`: this uses Secure, SameSite=None, partitioned session cookies so sign-in works inside the preview iframe without disabling CSRF. Leave it false for ordinary HTTP development. Changing `SECRET_KEY` invalidates existing sessions. Without an explicitly configured key, the local development fallback is random per process.
 
+### Reset a forgotten password
+
+From the server console, with the virtual environment active:
+
+```bash
+python scripts/reset_password.py
+```
+
+The password is typed twice at a hidden prompt and never passed as an argument. The account's role and other users are untouched. Deployments created with `scripts/init_production.py` start with only the administrator you chose — the demo logins below exist only in the seeded local database.
+
 ### Back up / restore
 
 With the virtual environment active, `python scripts/backup.py` creates a timestamped snapshot of the **configured** database under ignored `backups/`. SQLite uses its online backup API; MySQL requires the `mysqldump` client and never puts the database password in command-line arguments.

@@ -137,6 +137,25 @@ The repository tests exercise the fresh-install workflow against a disposable lo
 
 Change the administrator password, or add staff accounts, only through the application. Do not edit `app_user` rows by hand.
 
+## Signing in (and what to do if the password is lost)
+
+The production site has exactly the accounts you created — there are **no** `admin`/`faculty`/`student` demo logins on it.
+
+- **Administrator username:** the one you typed during setup (for example `omprakash`).
+- **Password:** the 12+ character password typed into the hidden prompt during setup. It is never stored in plaintext, printed, or sent anywhere, so it cannot be recovered — only reset.
+
+To reset it, in a Bash console:
+
+```bash
+cd ~/hogwards-student-management-system
+git pull --ff-only origin arena/e027de8b-dbms-project-deploy
+.venv/bin/python scripts/reset_password.py
+```
+
+Type the username (`omprakash`), then the new password twice. Sign in at `https://YOURUSERNAME.pythonanywhere.com/login`. Other users' passwords are unchanged, and the account's role is preserved.
+
+The demo shortcuts on the local/development preview (`admin` / `admin123`, etc.) belong to a **separate local database** and do not work on the deployed site.
+
 ## Maintenance without deleting records
 
 In the same Bash console:
