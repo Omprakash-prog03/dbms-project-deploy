@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+{% block title %}Departments · {{ portal_name }}{% endblock %}
+{% block page_title %}Academic Departments{% endblock %}
+{% block page_subtitle %}Different disciplines. One connected community.{% endblock %}
+{% block content %}
+<section class="sims-card">
+  <div class="panel-heading" style="flex-wrap:wrap;gap:16px">
+    <div><h2>Your academic community</h2><p>Set up departments before adding faculty, courses, and students.</p></div>
+    {% if current_user.role == 'admin' %}<button class="btn-primary-pill" id="addDepartmentBtn" type="button">{{ icon('plus',16) }} Add department</button>{% endif %}
+  </div>
+  <div class="sims-table-container"><table class="sims-table">
+    <thead><tr><th>Code</th><th>Department</th><th>Head of department</th><th>Established</th><th>Students</th><th>Courses</th>{% if current_user.role == 'admin' %}<th><span class="sr-only">Actions</span></th>{% endif %}</tr></thead>
+    <tbody>{% for department in departments %}<tr>
+      <td><strong>{{ department.dept_code }}</strong></td><td>{{ department.dept_name }}</td><td>{{ department.hod_name or 'Not assigned' }}</td><td>{{ department.established_year }}</td><td>{{ department.student_count }}</td><td>{{ department.course_count }}</td>
+      {% if current_user.role == 'admin' %}<td><button type="button" class="text-link edit-department" data-department="{{ department|tojson|forceescape }}" aria-label="Edit {{ department.dept_name }}">Edit {{ icon('arrow-up-right',13) }}</button></td>{% endif %}
+    </tr>{% else %}<tr><td colspan="{{ 7 if current_user.role == 'admin' else 6 }}" class="empty-note">Your campus starts here. {% if current_user.role == 'admin' %}Add your first department to begin setting up the system.{% else %}Departments will appear once your administrator configures them.{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% if current_user.role == 'admin' %}
+<div class="modal-overlay" id="departmentModal" role="dialog" aria-modal="true" aria-labelledby="departmentModalTitle" tabindex="-1">
+  <div class="modal-card">
+    <div class="modal-header"><h3 id="departmentModalTitle">Add a department</h3><button type="button" class="close-modal-btn" aria-label="Close department form" onclick="closeModal('departmentModal')">×</button></div>
+    <form id="departmentForm">
+      <input type="hidden" name="dept_id">
+      <div class="form-grid">
+        <div class="form-group"><label for="departmentCode">Department code</label><input class="form-input" id="departmentCode" name="dept_code" required maxlength="10" pattern="[A-Za-z][A-Za-z0-9_-]{0,9}" placeholder="e.g. CSE"></div>
+        <div class="form-group"><label for="departmentYear">Established year</label><input class="form-input" id="departmentYear" name="established_year" type="number" min="1900" max="{{ today.year }}" step="1" value="{{ today.year }}" required></div>
+        <div class="form-group full-width"><label for="departmentName">Department name</label><input class="form-input" id="departmentName" name="dept_name" required maxlength="100" placeholder="e.g. Computer Science & Engineering"></div>
+        <div class="form-group full-width" id="departmentHeadGroup" hidden><label for="departmentHead">Head of department</label><select class="form-input" id="departmentHead" name="hod_faculty_id"><option value="">Not assigned</option>{% for member in faculty %}{% if member.status == 'Active' %}<option value="{{ member.faculty_id }}" data-dept-id="{{ member.dept_id }}">{{ member.full_name }}</option>{% endif %}{% endfor %}</select><p class="subtle">Only active faculty from this department can be assigned.</p></div>
+      </div>
+      <p id="departmentFormError" class="login-error" role="alert" hidden></p>
+      <div class="form-actions"><button type="button" class="btn-secondary-pill" onclick="closeModal('departmentModal')">Cancel</button><button type="submit" class="btn-primary-pill" id="saveDepartmentBtn">Save department</button></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if current_user.role == 'admin' %}<script src="{{ url_for('static',filename='js/departments.js') }}"></script>{% endif %}{% endblock %}

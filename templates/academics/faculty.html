@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}Faculty - {{ portal_name }}{% endblock %}
+{% block page_title %}Faculty Directory{% endblock %}
+{% block page_subtitle %}The people who inspire what comes next.{% endblock %}
+
+{% block content %}
+<div class="sims-card" style="margin-bottom: 24px;">
+  <!-- Filter & Action Bar -->
+  <form method="GET" action="{{ url_for('academics.faculty_view') }}" id="facFilterForm">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <select name="dept_id" class="pill-select" onchange="document.getElementById('facFilterForm').submit()">
+          <option value="">All Departments</option>
+          {% for d in departments %}
+            <option value="{{ d.dept_id }}" {% if dept_id == d.dept_id %}selected{% endif %}>{{ d.dept_code }} - {{ d.dept_name }}</option>
+          {% endfor %}
+        </select>
+        {% if dept_id %}
+          <a href="{{ url_for('academics.faculty_view') }}" class="pill-btn" style="text-decoration: none; font-size: 12px; color: var(--text-muted);">Clear Filter</a>
+        {% endif %}
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="font-size: 13px; color: var(--text-muted);">
+          Total Faculty: <strong>{{ faculty_list|length }}</strong>
+        </div>
+        {% if current_user.role == 'admin' %}
+        <button type="button" class="action-pill-btn" onclick="openFacultyModal()" style="display: flex; align-items: center; gap: 6px; padding: 8px 18px; font-size: 13px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Faculty
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  <!-- Faculty Table -->
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>FACULTY MEMBER</th>
+          <th>DEPARTMENT</th>
+          <th>DESIGNATION</th>
+          <th>CONTACT</th>
+          <th>HIRE DATE</th>
+          <th>STATUS</th>
+          {% if current_user.role == 'admin' %}
+          <th style="text-align: right;">CREDENTIALS</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in faculty_list %}
+        <tr>
+          <td>
+            <div class="student-col">
+              <div class="student-avatar-cell">{{ f.first_name[:1] }}{{ f.last_name[:1] }}</div>
+              <div>
+                <span class="student-name-text">{{ f.first_name }} {{ f.last_name }}</span>
+                <div class="student-roll-text">ID: FAC-{{ "%03d"|format(f.faculty_id) }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <strong>{{ f.dept_code }}</strong>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ f.dept_name }}</div>
+          </td>
+          <td>
+            <span class="pill-select" style="padding: 3px 10px; font-size: 11.5px; font-weight: 600;">
+              {{ f.designation }}
+            </span>
+          </td>
+          <td>
+            <div style="font-size: 12px;">{{ f.email }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ f.phone }}</div>
+          </td>
+          <td style="font-size: 12px; color: var(--text-muted);">
+            {{ f.hire_date }}
+          </td>
+          <td>
+            <span class="status-chip {% if f.status == 'Active' %}active{% else %}dropped{% endif %}">
+              <span class="status-dot"></span>
+              {{ f.status }}
+            </span>
+          </td>
+          {% if current_user.role == 'admin' %}
+          <td style="text-align: right;">
+            <button type="button" class="pill-btn" onclick='openPasswordResetModal("faculty", {{ f.faculty_id }}, {{ (f.first_name ~ " " ~ f.last_name)|tojson }})'  title="Change / Set Portal Password" style="font-size: 11.5px; display: inline-flex; align-items: center; gap: 4px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Set Password
+            </button>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No faculty found for this department.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Faculty Modal -->
+<div id="facultyModal" class="sql-modal-backdrop" style="display: none; align-items: center; justify-content: center;">
+  <div class="sql-modal-content" style="max-width: 580px; width: 100%;">
+    <div class="sql-modal-header">
+      <h3 style="font-size: 17px; font-weight: 500;">Appoint Faculty Member</h3>
+      <button class="sql-close-btn" onclick="closeFacultyModal()">&times;</button>
+    </div>
+    <form id="facultyForm" onsubmit="handleFacultySubmit(event)" style="padding: 24px;">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">First Name *</label>
+          <input type="text" id="facFirstName" name="first_name" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Last Name *</label>
+          <input type="text" id="facLastName" name="last_name" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Email Address *</label>
+          <input type="email" id="facEmail" name="email" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;" placeholder="name@hogwards.example">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Phone *</label>
+          <input type="text" id="facPhone" name="phone" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;" placeholder="9876543210">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Department *</label>
+          <select id="facDeptId" name="dept_id" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+            {% for d in departments %}
+              <option value="{{ d.dept_id }}">{{ d.dept_code }} - {{ d.dept_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Designation</label>
+          <select id="facDesignation" name="designation" class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+            <option value="Professor">Professor</option>
+            <option value="Associate Professor">Associate Professor</option>
+            <option value="Assistant Professor" selected>Assistant Professor</option>
+            <option value="Lecturer">Lecturer</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Annual Salary (CHECK &gt; 0) *</label>
+          <input type="number" step="1000" min="10000" id="facSalary" name="salary" value="95000" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px; font-weight: 500;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Hire Date</label>
+          <input type="date" id="facHireDate" name="hire_date" value="2026-01-15" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Initial Login Password</label>
+        <input type="password" id="facPassword" name="initial_password" required minlength="8" class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;" placeholder="Choose a unique password (8+ characters)">
+        <span style="font-size: 11px; color: var(--text-muted);">Provisions an <code>app_user</code> entry for portal authentication.</span>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="pill-btn" onclick="closeFacultyModal()">Cancel</button>
+        <button type="submit" class="action-pill-btn" style="padding: 8px 22px;">Appoint Faculty</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openFacultyModal() {
+  document.getElementById('facultyForm').reset();
+  openModal('facultyModal');
+}
+function closeFacultyModal() {
+  closeModal('facultyModal');
+}
+
+async function handleFacultySubmit(e) {
+  e.preventDefault();
+  const payload = {
+    first_name: document.getElementById('facFirstName').value,
+    last_name: document.getElementById('facLastName').value,
+    email: document.getElementById('facEmail').value,
+    phone: document.getElementById('facPhone').value,
+    dept_id: document.getElementById('facDeptId').value,
+    designation: document.getElementById('facDesignation').value,
+    salary: document.getElementById('facSalary').value,
+    hire_date: document.getElementById('facHireDate').value,
+    initial_password: document.getElementById('facPassword').value,
+    status: 'Active'
+  };
+
+  try {
+    const res = await fetch('/api/faculty/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message);
+      closeFacultyModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      showToast(data.message || 'Error appointing faculty', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect: ' + err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

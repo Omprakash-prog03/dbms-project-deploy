@@ -1,0 +1,43 @@
+# MySQL deployment. Set the three required secrets in your local .env first.
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: sims_db
+      MYSQL_USER: sims_app
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./db/indexes.sql:/docker-entrypoint-initdb.d/02_indexes.sql:ro
+      - ./db/views.sql:/docker-entrypoint-initdb.d/05_views.sql:ro
+      - ./db/triggers.sql:/docker-entrypoint-initdb.d/04_triggers.sql:ro
+      - ./db/procedures.sql:/docker-entrypoint-initdb.d/03_procedures.sql:ro
+      - ./db/roles.sql:/docker-entrypoint-initdb.d/06_roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DB_ENGINE: mysql
+      DB_HOST: db
+      DB_USER: sims_app
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      DB_NAME: sims_db
+      SECRET_KEY: ${SECRET_KEY:?Set a random SECRET_KEY in .env}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      EMBEDDED_PREVIEW: ${EMBEDDED_PREVIEW:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  mysql_data:

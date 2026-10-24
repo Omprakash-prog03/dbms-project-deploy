@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Enrollments - {{ portal_name }}{% endblock %}
+{% block page_title %}Enrollment Operations{% endblock %}
+{% block page_subtitle %}Connect every learner to their next opportunity.{% endblock %}
+
+{% block content %}
+<div class="sims-card" style="margin-bottom: 24px;">
+  <!-- Filter & Action Bar -->
+  <form method="GET" action="{{ url_for('operations.enrollments_view') }}" id="enrollFilterForm">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <!-- Offering Filter -->
+        <select name="offering_id" class="pill-select" onchange="document.getElementById('enrollFilterForm').submit()">
+          <option value="">All Course Offerings</option>
+          {% for o in offerings %}
+            <option value="{{ o.offering_id }}" {% if offering_id == o.offering_id %}selected{% endif %}>
+              {{ o.course_code }} - {{ o.course_title }} ({{ o.term }} {{ o.academic_year }})
+            </option>
+          {% endfor %}
+        </select>
+
+        {% if offering_id or student_id %}
+          <a href="{{ url_for('operations.enrollments_view') }}" class="pill-btn" style="text-decoration: none; font-size: 12px; color: var(--text-muted);">Clear Filters</a>
+        {% endif %}
+      </div>
+
+      <!-- Action: Enroll Student -->
+      {% if current_user.role in ['admin', 'faculty'] %}
+      <div>
+        <button type="button" class="action-pill-btn" onclick="openEnrollModal()" style="display: flex; align-items: center; gap: 6px; padding: 8px 18px; font-size: 13px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Enroll Student (SP Lock)
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Enrollments Table -->
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>ENROLLMENT ID</th>
+          <th>STUDENT</th>
+          <th>COURSE SECTION</th>
+          <th>TERM</th>
+          <th>ENROLLED ON</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in enrollments %}
+        <tr>
+          <td>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px;">#ENR-{{ "%04d"|format(e.enrollment_id) }}</span>
+          </td>
+          <td>
+            <div class="student-col">
+              <div class="student-avatar-cell">{{ e.student_name[:1] }}</div>
+              <div>
+                <a href="{{ url_for('students.profile_view', student_id=e.student_id) }}" class="student-name-text" style="text-decoration: none;">
+                  {{ e.student_name }}
+                </a>
+                <div class="student-roll-text">{{ e.roll_no }} &bull; {{ e.dept_code }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div style="font-weight: 500;">{{ e.course_code }} - {{ e.course_title }}</div>
+          </td>
+          <td>
+            <strong>{{ e.term }}</strong>
+            <span style="font-size: 11px; color: var(--text-muted);"> {{ e.academic_year }}</span>
+          </td>
+          <td style="font-size: 12px; color: var(--text-muted);">
+            {{ e.enroll_date }}
+          </td>
+          <td>
+            <span class="status-chip {% if e.status == 'Enrolled' %}active{% elif e.status == 'Completed' %}completed{% else %}dropped{% endif %}">
+              <span class="status-dot"></span>
+              {{ e.status }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">No enrollments found for current filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Enroll Student (Calls Stored Procedure) -->
+<div id="enrollModal" class="sql-modal-backdrop" style="display: none; align-items: center; justify-content: center;">
+  <div class="sql-modal-content" style="max-width: 540px; width: 100%;">
+    <div class="sql-modal-header">
+      <div>
+        <h3 style="font-size: 17px; font-weight: 500;">Enroll Student in Section</h3>
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Executes <code>sp_enroll_student</code> with <code>SELECT ... FOR UPDATE</code> lock</p>
+      </div>
+      <button class="sql-close-btn" onclick="closeEnrollModal()">&times;</button>
+    </div>
+    <form id="enrollForm" onsubmit="handleEnrollSubmit(event)" style="padding: 24px;">
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Select Student *</label>
+        <select id="enrollStudentId" name="student_id" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+          {% for s in students %}
+            <option value="{{ s.student_id }}">{{ s.roll_no }} - {{ s.first_name }} {{ s.last_name }} ({{ s.dept_code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Select Course Offering *</label>
+        <select id="enrollOfferingId" name="offering_id" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+          {% for o in offerings %}
+            <option value="{{ o.offering_id }}">
+              {{ o.course_code }} - {{ o.course_title }} ({{ o.enrolled_count }}/{{ o.capacity }} filled)
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="background: var(--surface); padding: 12px; border-radius: 8px; font-size: 11.5px; color: var(--text-muted); margin-bottom: 20px;">
+        <strong>Database Safety Guarantee:</strong> If the offering is at capacity, or the student is not <code>Active</code>, or the student is already registered, the transaction executes <code>ROLLBACK</code> immediately and maintains zero overselling.
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="pill-btn" onclick="closeEnrollModal()">Cancel</button>
+        <button type="submit" class="action-pill-btn" style="padding: 8px 22px;">Confirm Enrollment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEnrollModal() {
+  openModal('enrollModal');
+}
+function closeEnrollModal() {
+  closeModal('enrollModal');
+}
+
+async function handleEnrollSubmit(e) {
+  e.preventDefault();
+  const payload = {
+    student_id: document.getElementById('enrollStudentId').value,
+    offering_id: document.getElementById('enrollOfferingId').value
+  };
+
+  try {
+    const res = await fetch('/api/enrollments/enroll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message);
+      closeEnrollModal();
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      showToast(data.message || 'Enrollment rejected by database.', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect: ' + err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

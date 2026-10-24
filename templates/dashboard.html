@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+{% block page_header %}
+<section class="dashboard-greeting" aria-labelledby="welcome-title">
+  <div><div class="eyebrow">A LITTLE CLARITY FOR YOUR DAY</div><h1 id="welcome-title">Your campus. <em>In harmony.</em></h1><p>People, progress, and possibilities. All in one place.</p></div>
+  <div class="greeting-actions"><span class="date-pill">{{ icon('calendar',14) }} {{ today.strftime('%A, %d %b %Y') }}</span><a class="btn-light" href="{{ url_for('students.list_view', new=1) }}">{{ icon('plus',14) }} Add a student</a></div>
+</section>
+{% endblock %}
+{% block content %}
+{% if current_user.role == 'admin' and stats.total_departments == 0 %}
+<div class="sims-card" style="margin-bottom:20px"><div class="panel-heading" style="margin-bottom:0;flex-wrap:wrap;gap:16px"><div><h2>Welcome to {{ portal_short_name }}.</h2><p>Your private workspace is empty. Add a department first, then faculty, courses, and students.</p></div><a class="btn-primary-pill" href="{{ url_for('academics.departments_view') }}">Set up your first department {{ icon('arrow-right',15) }}</a></div></div>
+{% endif %}
+
+<div class="workspace-tabs-row"><div class="workspace-tabs" role="tablist" aria-label="Filter your overview">
+  <button class="workspace-tab" id="tab-all" role="tab" aria-selected="true" aria-controls="moduleGrid" data-category="all">For you <span>6</span></button>
+  <button class="workspace-tab" id="tab-academics" role="tab" aria-selected="false" aria-controls="moduleGrid" tabindex="-1" data-category="academics">Academics <span>2</span></button>
+  <button class="workspace-tab" id="tab-people" role="tab" aria-selected="false" aria-controls="moduleGrid" tabindex="-1" data-category="people">People <span>3</span></button>
+  <button class="workspace-tab" id="tab-operations" role="tab" aria-selected="false" aria-controls="moduleGrid" tabindex="-1" data-category="operations">Operations <span>{{ 3 if current_user.role == 'admin' else 2 }}</span></button>
+</div>{% if current_user.role == 'admin' %}<button class="connection-state" id="showSqlBtn" style="background:none;color:var(--text-muted)" title="Inspect the SQL behind your workspace"><i></i> Live data <span aria-hidden="true">·</span> Show SQL {{ icon('arrow-up-right',12) }}</button>{% else %}<span class="connection-state"><i></i> A live view of your campus</span>{% endif %}</div>
+<div class="module-grid" id="moduleGrid" role="tabpanel" aria-labelledby="tab-all">
+  <a href="{{ url_for('students.list_view') }}" class="module-card module-blue" data-categories="people">
+    <h2>Students</h2><p class="module-description">Every learner, connected.</p><span class="module-arrow">{{ icon('arrow-up-right',15) }}</span><img class="module-art" src="{{ url_for('static',filename='images/flower.png') }}" width="176" height="176" alt="">
+    <div class="module-metric"><span class="module-value" data-stat="total_students">{{ '{:,}'.format(stats.total_students) }}</span><span class="module-footnote"><i></i> Across {{ stats.total_departments }} departments</span></div>
+  </a>
+  <a href="{{ url_for('academics.courses_view') }}" class="module-card module-lilac" data-categories="academics">
+    <h2>Courses</h2><p class="module-description">Make room for discovery.</p><span class="module-arrow">{{ icon('arrow-up-right',15) }}</span><img class="module-art" src="{{ url_for('static',filename='images/knot.png') }}" width="176" height="176" alt="">
+    <div class="module-metric"><span class="module-value">{{ stats.total_courses }}</span><span class="module-footnote"><i></i> {{ stats.total_offerings }} course offerings</span></div>
+  </a>
+  <a href="{{ url_for('academics.faculty_view') }}" class="module-card module-mint" data-categories="people">
+    <h2>Faculty</h2><p class="module-description">Guiding bright futures.</p><span class="module-arrow">{{ icon('arrow-up-right',15) }}</span><img class="module-art" src="{{ url_for('static',filename='images/orbit.png') }}" width="176" height="176" alt="">
+    <div class="module-metric"><span class="module-value">{{ stats.faculty_members }}</span><span class="module-footnote"><i></i> Active faculty members</span></div>
+  </a>
+  <a href="{{ url_for('operations.attendance_view') }}" class="module-card module-peach" data-categories="academics operations">
+    <h2>Attendance</h2><p class="module-description">Small steps. Steady progress.</p><span class="module-arrow">{{ icon('arrow-up-right',15) }}</span><img class="module-art" src="{{ url_for('static',filename='images/helix.png') }}" width="176" height="176" alt="">
+    <div class="module-metric"><span class="module-value">{{ stats.attendance_pct }}<span class="module-unit">%</span></span><span class="module-footnote"><i></i> {{ '{:,}'.format(stats.attendance_records) }} attendance records</span></div>
+  </a>
+  <a href="{{ url_for('admissions.admissions_view') }}" class="module-card module-rose" data-categories="people operations">
+    <h2>Admissions</h2><p class="module-description">A new chapter begins.</p><span class="module-arrow">{{ icon('arrow-up-right',15) }}</span><img class="module-art" src="{{ url_for('static',filename='images/bloom.png') }}" width="176" height="176" alt="">
+    <div class="module-metric"><span class="module-value" data-stat="pending_admissions" data-pending-count>{{ stats.pending_admissions }}</span><span class="module-footnote"><i></i> Applications awaiting review</span></div>
+  </a>
+  {% if current_user.role == 'admin' %}
+  <a href="{{ url_for('fees.fees_view') }}" class="module-card module-sky" data-categories="operations">
+    <h2>Fees & payments</h2><p class="module-description">A little peace of mind.</p><span class="module-arrow">{{ icon('arrow-up-right',15) }}</span><img class="module-art" src="{{ url_for('static',filename='images/ribbon.png') }}" width="176" height="176" alt="">
+    <div class="module-metric"><span class="module-value">{{ stats.total_collected|compact_inr }}</span><span class="module-footnote"><i></i> {{ '{:,}'.format(stats.payment_count) }} payments recorded</span></div>
+  </a>
+  {% else %}
+  <a href="{{ url_for('operations.results_view') }}" class="module-card module-sky" data-categories="academics"><h2>Results</h2><p class="module-description">Celebrate every milestone.</p><span class="module-arrow">{{ icon('arrow-up-right',15) }}</span><img class="module-art" src="{{ url_for('static',filename='images/ribbon.png') }}" width="176" height="176" alt=""><div class="module-metric"><span class="module-value">{{ '{:,}'.format(stats.result_count) }}</span><span class="module-footnote"><i></i> Exam results recorded</span></div></a>
+  {% endif %}
+</div>
+<div class="overview-lower">
+  <section class="sims-card activity-card" aria-labelledby="activity-title">
+    <div class="panel-heading"><div><h2 id="activity-title">A campus in motion</h2><p>Every number is a new beginning.</p></div><select class="pill-select chart-year" id="chartYear" aria-label="Activity year">{% for year in chart_years %}<option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>{% endfor %}</select></div>
+    <div class="chart-toolbar"><div class="chart-legend"><span><i class="legend-dot admissions"></i>Admissions</span><span><i class="legend-dot enrollments"></i>Enrollments</span></div><span class="subtle" id="chartTotal"></span></div>
+    <div class="chart-container" id="activityChart" role="img" aria-label="Monthly admissions and enrollments"><p class="empty-note">Loading campus activity…</p></div>
+    <div class="chart-caption" id="chartCaption">{{ icon('sparkles',12) }} A fresh perspective, powered by your data.</div>
+  </section>
+  <section class="sims-card" aria-labelledby="pending-title">
+    <div class="panel-heading"><div><h2 id="pending-title">New beginnings <span class="count-badge" data-pending-count>{{ stats.pending_admissions }}</span></h2><p>A few people ready for their next chapter.</p></div><a class="text-link" href="{{ url_for('admissions.admissions_view') }}">View all {{ icon('arrow-up-right',13) }}</a></div>
+    <div class="pending-list" id="dashboardPending">
+      {% for application in pending_apps %}<div class="pending-item" id="pending-item-{{ application.application_id }}"><div class="applicant-avatar">{{ application.applicant_name|initials }}</div><div class="applicant-info"><div class="applicant-name">{{ application.applicant_name }}</div><div class="applicant-meta">{{ application.dept_code }} <span aria-hidden="true">·</span> {{ application.applied_on|short_date }}</div></div><button class="approve-btn" data-admission-action="approve" data-id="{{ application.application_id }}" data-name="{{ application.applicant_name }}" aria-label="Approve {{ application.applicant_name }}" title="Review & approve">{{ icon('check',13) }}</button></div>{% else %}<div class="empty-note">All caught up.<br>New applications will appear here.</div>{% endfor %}
+    </div>
+  </section>
+</div>
+<section class="sims-card dashboard-students" aria-labelledby="students-title">
+  <div class="panel-heading"><div><h2 id="students-title">The people behind the progress</h2><p>The latest additions to your campus community.</p></div><a href="{{ url_for('students.list_view') }}" class="text-link">All students {{ icon('arrow-up-right',13) }}</a></div>
+  <div class="sims-table-container"><table class="sims-table"><thead><tr><th>Student</th><th>Department</th><th>Semester</th><th>Status</th><th>Joined</th><th><span class="sr-only">Profile</span></th></tr></thead><tbody>{% for student in students %}<tr><td><div class="student-col"><div class="student-avatar-cell">{{ student.full_name|initials }}</div><div><a class="student-name-text" href="{{ url_for('students.profile_view',student_id=student.student_id) }}">{{ student.full_name }}</a><div class="student-roll-text">{{ student.roll_no }}</div></div></div></td><td>{{ student.dept_code }}</td><td>Semester {{ student.current_semester }}</td><td><span class="status-chip {{ student.status|lower }}"><i class="status-dot {{ student.status|lower }}"></i>{{ student.status }}</span></td><td class="subtle">{{ student.admission_date|short_date }}</td><td><a class="text-link" href="{{ url_for('students.profile_view',student_id=student.student_id) }}" aria-label="View {{ student.full_name }}">{{ icon('arrow-up-right',15) }}</a></td></tr>{% else %}<tr><td colspan="6" class="empty-note">Your campus story starts with its first student. <a href="{{ url_for('students.list_view',new=1) }}">Add one now.</a></td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static',filename='js/dashboard.js') }}"></script><script src="{{ url_for('static',filename='js/admissions.js') }}"></script>{% endblock %}

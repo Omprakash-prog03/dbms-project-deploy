@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Courses - {{ portal_name }}{% endblock %}
+{% block page_title %}Course Catalog{% endblock %}
+{% block page_subtitle %}A little curiosity goes a long way. Explore your academic possibilities.{% endblock %}
+
+{% block content %}
+<div class="sims-card" style="margin-bottom: 24px;">
+  <!-- Filter & Action Bar -->
+  <form method="GET" action="{{ url_for('academics.courses_view') }}" id="courseFilterForm">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <input type="search" name="search" value="{{ search }}" class="pill-select" placeholder="Find a course…" aria-label="Search courses"><button class="btn-secondary-pill" type="submit">Search</button>
+        <!-- Department Filter -->
+        <select name="dept_id" class="pill-select" onchange="document.getElementById('courseFilterForm').submit()">
+          <option value="">All Departments</option>
+          {% for d in departments %}
+            <option value="{{ d.dept_id }}" {% if dept_id == d.dept_id %}selected{% endif %}>{{ d.dept_code }} - {{ d.dept_name }}</option>
+          {% endfor %}
+        </select>
+
+        <!-- Semester Filter -->
+        <select name="semester_no" class="pill-select" onchange="document.getElementById('courseFilterForm').submit()">
+          <option value="">All Semesters</option>
+          {% for sem in range(1, 9) %}
+            <option value="{{ sem }}" {% if semester_no == sem %}selected{% endif %}>Semester {{ sem }}</option>
+          {% endfor %}
+        </select>
+
+        {% if dept_id or semester_no %}
+          <a href="{{ url_for('academics.courses_view') }}" class="pill-btn" style="text-decoration: none; font-size: 12px; color: var(--text-muted);">Clear Filters</a>
+        {% endif %}
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="font-size: 13px; color: var(--text-muted);">
+          Total Courses: <strong>{{ courses|length }}</strong>
+        </div>
+        {% if current_user.role == 'admin' %}
+        <button type="button" class="action-pill-btn" onclick="openCourseModal()" style="display: flex; align-items: center; gap: 6px; padding: 8px 18px; font-size: 13px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Course
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  <!-- Courses Table -->
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>COURSE CODE</th>
+          <th>TITLE</th>
+          <th>DEPARTMENT</th>
+          <th>SEMESTER</th>
+          <th>CREDITS</th>
+          <th>OFFERINGS COUNT</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in courses %}
+        <tr>
+          <td>
+            <strong style="font-size: 13.5px; letter-spacing: 0.5px;">{{ c.course_code }}</strong>
+          </td>
+          <td>
+            <div style="font-weight: 500; font-size: 13.5px;">{{ c.title }}</div>
+          </td>
+          <td>
+            <strong>{{ c.dept_code }}</strong>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ c.dept_name }}</div>
+          </td>
+          <td>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px;">Sem {{ c.semester_no }}</span>
+          </td>
+          <td>
+            <span class="status-chip active" style="font-weight: 500;">{{ c.credits }} Cr</span>
+          </td>
+          <td>
+            <a href="{{ url_for('academics.offerings_view') }}" style="text-decoration: none; font-weight: 600; color: var(--ink-black);">
+              {{ c.total_offerings }} scheduled
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">No courses found matching selected filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Course Modal -->
+<div id="courseModal" class="sql-modal-backdrop" style="display: none; align-items: center; justify-content: center;">
+  <div class="sql-modal-content" style="max-width: 520px; width: 100%;">
+    <div class="sql-modal-header">
+      <h3 style="font-size: 17px; font-weight: 500;">Create Catalog Course</h3>
+      <button class="sql-close-btn" onclick="closeCourseModal()">&times;</button>
+    </div>
+    <form id="courseForm" onsubmit="handleCourseSubmit(event)" style="padding: 24px;">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Course Code *</label>
+          <input type="text" id="courseCode" name="course_code" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px; text-transform: uppercase;" placeholder="e.g. CS401">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Department *</label>
+          <select id="courseDeptId" name="dept_id" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+            {% for d in departments %}
+              <option value="{{ d.dept_id }}">{{ d.dept_code }} - {{ d.dept_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Course Title *</label>
+        <input type="text" id="courseTitle" name="title" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;" placeholder="e.g. Distributed Database Systems">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Credits (CHECK 1..6) *</label>
+          <input type="number" id="courseCredits" name="credits" min="1" max="6" value="4" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px; font-weight: 500;">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Semester (1..8) *</label>
+          <input type="number" id="courseSemester" name="semester_no" min="1" max="8" value="1" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="pill-btn" onclick="closeCourseModal()">Cancel</button>
+        <button type="submit" class="action-pill-btn" style="padding: 8px 22px;">Create Course</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openCourseModal() {
+  document.getElementById('courseForm').reset();
+  openModal('courseModal');
+}
+function closeCourseModal() {
+  closeModal('courseModal');
+}
+
+async function handleCourseSubmit(e) {
+  e.preventDefault();
+  const payload = {
+    course_code: document.getElementById('courseCode').value,
+    title: document.getElementById('courseTitle').value,
+    dept_id: document.getElementById('courseDeptId').value,
+    credits: document.getElementById('courseCredits').value,
+    semester_no: document.getElementById('courseSemester').value
+  };
+
+  try {
+    const res = await fetch('/api/courses/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message);
+      closeCourseModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      showToast(data.message || 'Error creating course', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect: ' + err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance - {{ portal_name }}{% endblock %}
+{% block page_title %}Class Roll-Call & Attendance{% endblock %}
+{% block page_subtitle %}Show up. Stay connected. Make every day count.{% endblock %}
+
+{% block content %}
+<!-- Section Selector & Controls -->
+<div class="sims-card" style="margin-bottom: 24px;">
+  <form method="GET" action="{{ url_for('operations.attendance_view') }}" id="attendanceFilterForm">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+
+      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <!-- Offering Selection -->
+        <div>
+          <label style="font-size: 11px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">COURSE OFFERING</label>
+          <select name="offering_id" class="pill-select" onchange="document.getElementById('attendanceFilterForm').submit()" style="font-weight: 600;">
+            {% for o in offerings %}
+              <option value="{{ o.offering_id }}" {% if offering_id == o.offering_id %}selected{% endif %}>
+                {{ o.course_code }} - {{ o.course_title }} ({{ o.instructor_name }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Class Date Selection -->
+        <div>
+          <label style="font-size: 11px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">CLASS DATE</label>
+          <input type="date" name="class_date" max="{{ today.isoformat() }}" value="{{ class_date }}" class="pill-select" onchange="document.getElementById('attendanceFilterForm').submit()">
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button type="button" class="pill-btn" onclick="markAllStatus('Present')">
+          Mark All Present
+        </button>
+        <button type="button" class="action-pill-btn" onclick="saveAttendanceSheet()" style="padding: 8px 20px; font-size: 13px;">
+          Save Roll-Call
+        </button>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- Class Aggregate Summary Banner -->
+{% if summary and summary.total_classes_conducted %}
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+  <div class="sims-card" style="text-align: center; padding: 14px;">
+    <div style="font-size: 22px; font-weight: 550; color: var(--ink-black);">{{ summary.total_classes_conducted }}</div>
+    <div style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);">Total Lectures</div>
+  </div>
+  <div class="sims-card" style="text-align: center; padding: 14px;">
+    <div style="font-size: 22px; font-weight: 550; color: var(--status-present);">{{ summary.present_count or 0 }}</div>
+    <div style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);">Presents Logged</div>
+  </div>
+  <div class="sims-card" style="text-align: center; padding: 14px;">
+    <div style="font-size: 22px; font-weight: 550; color: var(--status-late);">{{ summary.late_count or 0 }}</div>
+    <div style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);">Lates Logged</div>
+  </div>
+  <div class="sims-card" style="text-align: center; padding: 14px;">
+    <div style="font-size: 22px; font-weight: 550; color: var(--status-absent);">{{ summary.absent_count or 0 }}</div>
+    <div style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);">Absents Logged</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Class Roll-Call Roster Table -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">
+        {{ current_offering.course_code }} - {{ current_offering.course_title }}
+      </h3>
+      <p style="font-size: 12px; color: var(--text-muted);">
+        Instructor: {{ current_offering.instructor_name }} &bull; Date: {{ class_date }}
+      </p>
+    </div>
+    <span class="status-chip active">{{ roster|length }} Students Registered</span>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table" id="rosterTable">
+      <thead>
+        <tr>
+          <th>ROLL NO</th>
+          <th>STUDENT NAME</th>
+          <th>DEPT</th>
+          <th>OVERALL ATTENDANCE %</th>
+          <th style="text-align: center;">ATTENDANCE FOR {{ class_date }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in roster %}
+        <tr data-enrollment-id="{{ s.enrollment_id }}">
+          <td>
+            <strong style="font-size: 13.5px;">{{ s.roll_no }}</strong>
+          </td>
+          <td>
+            <div class="student-col">
+              <div class="student-avatar-cell">{{ s.student_name[:1] }}</div>
+              <div class="student-name-text">{{ s.student_name }}</div>
+            </div>
+          </td>
+          <td>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px;">{{ s.dept_code }}</span>
+          </td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="flex: 1; max-width: 70px; height: 6px; background: var(--border-light); border-radius: 3px; overflow: hidden;">
+                <div style="width: {{ s.current_attendance_pct or 0 }}%; height: 100%; background: {% if (s.current_attendance_pct or 0) >= 75 %}var(--status-present){% else %}var(--status-absent){% endif %};"></div>
+              </div>
+              <span style="font-weight: 500; font-size: 12px; {% if (s.current_attendance_pct or 0) < 75 %}color: var(--status-absent);{% endif %}">
+                {{ s.current_attendance_pct or 0 }}%
+              </span>
+            </div>
+          </td>
+          <td style="text-align: center;">
+            <div style="display: inline-flex; align-items: center; gap: 14px; background: var(--surface-raised); padding: 6px 16px; border-radius: 20px;">
+              <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--status-present);">
+                <input type="radio" name="att_{{ s.enrollment_id }}" value="Present" {% if s.attendance_status == 'Present' %}checked{% endif %}>
+                Present
+              </label>
+              <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--status-late);">
+                <input type="radio" name="att_{{ s.enrollment_id }}" value="Late" {% if s.attendance_status == 'Late' %}checked{% endif %}>
+                Late
+              </label>
+              <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--status-absent);">
+                <input type="radio" name="att_{{ s.enrollment_id }}" value="Absent" {% if s.attendance_status == 'Absent' %}checked{% endif %}>
+                Absent
+              </label>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No students enrolled in this offering section.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function markAllStatus(status) {
+  document.querySelectorAll('#rosterTable tbody tr').forEach(row => {
+    const enrId = row.getAttribute('data-enrollment-id');
+    const radio = row.querySelector(`input[name="att_${enrId}"][value="${status}"]`);
+    if (radio) radio.checked = true;
+  });
+  showToast(`Marked all as ${status}`);
+}
+
+async function saveAttendanceSheet() {
+  const rows = document.querySelectorAll('#rosterTable tbody tr');
+  const records = [];
+
+  rows.forEach(row => {
+    const enrId = row.getAttribute('data-enrollment-id');
+    if (!enrId) return;
+    const selected = row.querySelector(`input[name="att_${enrId}"]:checked`);
+    if (selected) {
+      records.push({
+        enrollment_id: parseInt(enrId),
+        status: selected.value
+      });
+    }
+  });
+
+  const rosterCount = document.querySelectorAll('#rosterTable tbody tr[data-enrollment-id]').length;
+  if (records.length !== rosterCount) {
+    showToast('Please mark every student or use Mark All Present before saving.', 'error');
+    return;
+  }
+  if (records.length === 0) {
+    showToast('No student records to save.', 'error');
+    return;
+  }
+
+  const payload = {
+    offering_id: {{ offering_id }},
+    class_date: {{ class_date|tojson }},
+    records: records
+  };
+
+  try {
+    const res = await fetch('/api/attendance/mark', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message);
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      showToast(data.message || 'Failed to record attendance', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect: ' + err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

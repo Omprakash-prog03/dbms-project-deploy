@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block title %}Course Offerings - {{ portal_name }}{% endblock %}
+{% block page_title %}Active Course Offerings{% endblock %}
+{% block page_subtitle %}Make space for learning. Plan courses, instructors, and seats.{% endblock %}
+
+{% block content %}
+<div class="sims-card" style="margin-bottom: 24px;">
+  <!-- Filter & Action Bar -->
+  <form method="GET" action="{{ url_for('academics.offerings_view') }}" id="offeringFilterForm">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <!-- Academic Year Filter -->
+        <select name="academic_year" class="pill-select" onchange="document.getElementById('offeringFilterForm').submit()">
+          {% for year in years %}<option value="{{ year }}" {% if academic_year == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+          </select>
+
+        <!-- Term Filter -->
+        <select name="term" class="pill-select" onchange="document.getElementById('offeringFilterForm').submit()">
+          <option value="">All Terms</option>
+          <option value="Fall" {% if term == 'Fall' %}selected{% endif %}>Fall</option>
+          <option value="Spring" {% if term == 'Spring' %}selected{% endif %}>Spring</option>
+          <option value="Summer" {% if term == 'Summer' %}selected{% endif %}>Summer</option>
+        </select>
+
+        {% if term %}
+          <a href="{{ url_for('academics.offerings_view', academic_year=academic_year) }}" class="pill-btn" style="text-decoration: none; font-size: 12px; color: var(--text-muted);">Clear Term</a>
+        {% endif %}
+      </div>
+
+      {% if current_user.role == 'admin' %}
+      <div>
+        <button type="button" class="action-pill-btn" onclick="openOfferingModal()" style="display: flex; align-items: center; gap: 6px; padding: 8px 18px; font-size: 13px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Open New Section
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Offerings Table -->
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>OFFERING ID</th>
+          <th>COURSE</th>
+          <th>INSTRUCTOR</th>
+          <th>TERM / YEAR</th>
+          <th>CAPACITY & UTILIZATION</th>
+          <th>SEAT STATUS</th>
+          <th style="text-align: right;">QUICK ACTIONS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in offerings %}
+        <tr>
+          <td>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px;">#OFF-{{ "%03d"|format(o.offering_id) }}</span>
+          </td>
+          <td>
+            <div style="font-weight: 500; font-size: 13.5px;">{{ o.course_code }} - {{ o.course_title }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ o.dept_name }} &bull; {{ o.credits }} Credits</div>
+          </td>
+          <td>
+            <div style="font-weight: 600;">{{ o.instructor_name }}</div>
+          </td>
+          <td>
+            <strong>{{ o.term }}</strong>
+            <span style="font-size: 11px; color: var(--text-muted);"> {{ o.academic_year }}</span>
+          </td>
+          <td style="min-width: 170px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px;">
+              <span><strong>{{ o.enrolled_count }}</strong> / {{ o.capacity }} enrolled</span>
+              <span style="color: var(--text-muted); font-weight: 600;">{{ o.utilization_pct }}%</span>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--surface-raised); border-radius: 3px; overflow: hidden;">
+              <div style="width: {{ [o.utilization_pct, 100]|min }}%; height: 100%; background: {% if o.enrolled_count >= o.capacity %}var(--status-absent){% elif o.enrolled_count >= o.capacity * 0.8 %}var(--status-late){% else %}var(--ink-black){% endif %};"></div>
+            </div>
+          </td>
+          <td>
+            {% if o.seat_status == 'FULL' %}
+              <span class="status-chip dropped"><span class="status-dot"></span> Full</span>
+            {% elif o.seat_status == 'ALMOST FULL' %}
+              <span class="status-chip pending"><span class="status-dot"></span> Limited</span>
+            {% else %}
+              <span class="status-chip active"><span class="status-dot"></span> Available</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <a href="{{ url_for('operations.enrollments_view', offering_id=o.offering_id) }}" class="pill-btn" style="text-decoration: none; font-size: 11.5px;">
+              Roster
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No course offerings scheduled for {{ academic_year }}.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Open New Offering -->
+<div id="offeringModal" class="sql-modal-backdrop" style="display: none; align-items: center; justify-content: center;">
+  <div class="sql-modal-content" style="max-width: 520px; width: 100%;">
+    <div class="sql-modal-header">
+      <h3 style="font-size: 17px; font-weight: 500;">Schedule Course Offering</h3>
+      <button class="sql-close-btn" onclick="closeOfferingModal()">&times;</button>
+    </div>
+    <form id="offeringForm" onsubmit="handleOfferingSubmit(event)" style="padding: 24px;">
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Course *</label>
+        <select id="offeringCourseId" name="course_id" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+          {% for c in courses %}
+            <option value="{{ c.course_id }}">{{ c.course_code }} - {{ c.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Faculty Instructor *</label>
+        <select id="offeringFacultyId" name="faculty_id" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+          {% for f in faculty_list %}
+            <option value="{{ f.faculty_id }}">{{ f.first_name }} {{ f.last_name }} ({{ f.dept_code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Academic Year *</label>
+          <input type="text" id="offeringYear" name="academic_year" value="{{ today.year }}-{{ today.year + 1 }}" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Term *</label>
+          <select id="offeringTerm" name="term" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+            <option value="Fall">Fall</option>
+            <option value="Spring">Spring</option>
+            <option value="Summer">Summer</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Max Student Capacity (CHECK &gt; 0) *</label>
+        <input type="number" id="offeringCapacity" name="capacity" min="5" max="120" value="40" required class="pill-select" style="width: 100%; border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px;">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="pill-btn" onclick="closeOfferingModal()">Cancel</button>
+        <button type="submit" class="action-pill-btn" style="padding: 8px 22px;">Create Offering</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openOfferingModal() {
+  openModal('offeringModal');
+}
+function closeOfferingModal() {
+  closeModal('offeringModal');
+}
+
+async function handleOfferingSubmit(e) {
+  e.preventDefault();
+  const payload = {
+    course_id: document.getElementById('offeringCourseId').value,
+    faculty_id: document.getElementById('offeringFacultyId').value,
+    academic_year: document.getElementById('offeringYear').value,
+    term: document.getElementById('offeringTerm').value,
+    capacity: document.getElementById('offeringCapacity').value
+  };
+
+  try {
+    const res = await fetch('/api/offerings/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message);
+      closeOfferingModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      showToast(data.message || 'Error occurred', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect: ' + err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

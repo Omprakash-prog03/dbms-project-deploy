@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+
+{% block title %}Database Insights & Viva Lab - {{ portal_name }}{% endblock %}
+{% block page_title %}Database Insights & Viva Lab{% endblock %}
+{% block page_subtitle %}Your data has a story. Take a closer look, one query at a time.{% endblock %}
+
+{% block content %}
+<!-- Sub Navigation Tabs -->
+<div class="sims-card" style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <a href="{{ url_for('insights.insights_view', tab='queries') }}" class="pill-btn" style="text-decoration: none; padding: 8px 18px; font-size: 13px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'queries' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'queries' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        25 Queries Showcase
+      </a>
+      <a href="{{ url_for('insights.insights_view', tab='transaction') }}" class="pill-btn" style="text-decoration: none; padding: 8px 18px; font-size: 13px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'transaction' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'transaction' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        ACID Transaction Demo
+      </a>
+      <a href="{{ url_for('insights.insights_view', tab='schema') }}" class="pill-btn" style="text-decoration: none; padding: 8px 18px; font-size: 13px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'schema' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'schema' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        Schema & Table Stats
+      </a>
+      <a href="{{ url_for('insights.insights_view', tab='audit') }}" class="pill-btn" style="text-decoration: none; padding: 8px 18px; font-size: 13px; font-weight: 500; border-radius: var(--radius-pill); background: {% if tab == 'audit' %}var(--ink-black){% else %}var(--pill-bg){% endif %}; color: {% if tab == 'audit' %}var(--surface){% else %}var(--text-muted){% endif %};">
+        Audit Trail (audit_log)
+      </a>
+    </div>
+
+    <div style="font-size: 12px; color: var(--text-muted);">
+      Relational Engine: <strong style="color: var(--ink-black);">{{ 'MySQL 8' if is_mysql else 'SQLite · Embedded engine' }}</strong>
+    </div>
+  </div>
+</div>
+
+{% if tab == 'queries' %}
+<!-- TAB 1: 25 SQL Queries Showcase -->
+<div style="display: grid; grid-template-columns: 280px minmax(0,1fr); gap: 24px; align-items: start;">
+
+  <!-- Left Column: Query Selector List -->
+  <div class="sims-card query-catalogue" style="padding: 16px; max-height: 800px; overflow-y: auto;">
+    <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Query Catalogue</h3>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      {% for q in queries %}
+      <a href="{{ url_for('insights.insights_view', tab='queries', qid=q.id) }}" style="text-decoration: none; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; transition: all 0.15s ease; background: {% if selected_qid == q.id %}var(--ink-black){% else %}var(--surface-raised){% endif %}; color: {% if selected_qid == q.id %}var(--surface){% else %}var(--text-primary){% endif %}; border: 1px solid {% if selected_qid == q.id %}var(--ink-black){% else %}var(--border-light){% endif %};">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+          <strong style="font-size: 11px; letter-spacing: 0.5px; opacity: 0.85;">{{ q.id }}</strong>
+          <span style="font-size: 10px; opacity: 0.75;">{{ q.group.split(' ')[0] }}</span>
+        </div>
+        <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ q.name }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Right Column: Query Viewer & Execution Console -->
+  <div>
+    {% if current_query %}
+    <div class="sims-card" style="margin-bottom: 20px;">
+      <!-- Query Title & Category -->
+      <div class="query-heading" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 14px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span class="status-chip active" style="font-weight: 550; font-size: 11px;">{{ current_query.id }}</span>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px;">{{ current_query.group }}</span>
+          </div>
+          <h2 style="font-size: 18px; font-weight: 550;">{{ current_query.name }}</h2>
+          <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">{{ current_query.description }}</p>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="button" class="action-pill-btn" onclick="executeShowcaseQuery('{{ current_query.id }}')" style="padding: 8px 18px; font-size: 12.5px; display: flex; align-items: center; gap: 6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Execute Query
+          </button>
+          <button type="button" class="pill-btn" onclick="explainShowcaseQuery('{{ current_query.id }}')" style="font-size: 12.5px;">
+            EXPLAIN Plan
+          </button>
+        </div>
+      </div>
+
+      <!-- SQL Code Box -->
+      <div style="position: relative; margin-top: 14px;">
+        <pre id="querySqlPre" style="background: #131419; color: #cbbddf; padding: 16px; border-radius: 12px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12.5px; line-height: 1.5; overflow-x: auto; max-height: 300px;">{{ current_query.sql }}</pre>
+      </div>
+    </div>
+
+    <!-- Live Execution Results Display -->
+    <div id="resultsCard" class="sims-card" style="display: none;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h3 id="resultsTitle" style="font-size: 16px; font-weight: 500;">Query Results</h3>
+          <span id="resultsMeta" class="pill-select" style="padding: 2px 8px; font-size: 11px;">0 rows (0.0 ms)</span>
+        </div>
+        <button class="pill-btn" onclick="document.getElementById('resultsCard').style.display = 'none'" style="font-size: 11px;">Close</button>
+      </div>
+
+      <div class="sims-table-container" style="max-height: 400px; overflow-y: auto;">
+        <table class="sims-table" id="resultsTable">
+          <thead id="resultsThead"></thead>
+          <tbody id="resultsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% elif tab == 'transaction' %}
+<!-- TAB 2: ACID Transaction Atomicity Demo -->
+<div class="sims-card" style="max-width: 900px; margin: 0 auto;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <div>
+      <h2 style="font-size: 20px; font-weight: 550;">ACID Transaction Atomicity & Concurrency Test</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+        Demonstrates that multi-statement transactions execute with absolute atomicity: either all changes commit, or <code>ROLLBACK</code> restores the database with zero side effects.
+      </p>
+    </div>
+    <button type="button" class="action-pill-btn" onclick="triggerTransactionDemo()" style="padding: 10px 22px; font-size: 13px; font-weight: 500;">
+      Trigger Atomic Rollback Demo
+    </button>
+  </div>
+
+  <div style="background: var(--surface); padding: 18px; border-radius: 14px; margin-bottom: 24px; font-size: 13px; line-height: 1.6;">
+    <h4 style="font-weight: 500; margin-bottom: 8px;">Protocol Executed on Database:</h4>
+    <ol style="margin-left: 20px; color: var(--text-primary); display: flex; flex-direction: column; gap: 6px;">
+      <li><code>START TRANSACTION;</code> opens a private transaction context.</li>
+      <li>First student insert succeeds into the transaction log buffer.</li>
+      <li>Second student insert deliberately violates the <code>UNIQUE(roll_no)</code> constraint.</li>
+      <li>Database engine raises an integrity constraint violation exception.</li>
+      <li>Application exception handler immediately issues <code>ROLLBACK;</code>.</li>
+      <li>Final student count is verified against the initial count: Delta is guaranteed <strong>0</strong>.</li>
+    </ol>
+  </div>
+
+  <!-- Live Output Console -->
+  <div id="txOutputCard" style="display: none;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+      <h4 style="font-size: 14px; font-weight: 500;">Execution Step Log:</h4>
+      <span id="txStatusChip" class="status-chip active">VERIFIED ATOMIC</span>
+    </div>
+    <div id="txStepsList" style="background: var(--text-primary); color: #4AF626; padding: 18px; border-radius: 12px; font-family: monospace; font-size: 12.5px; line-height: 1.7; overflow-x: auto;"></div>
+  </div>
+</div>
+
+{% elif tab == 'schema' %}
+<!-- TAB 3: Relational Schema & Table Stats -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">Relational Tables (Schema: sims_db)</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">15 normalized 3NF/BCNF relational tables with active physical row counts</p>
+    </div>
+    <span class="status-chip active">{{ tables|length }} Tables</span>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>TABLE NAME</th>
+          <th>TOTAL ROWS</th>
+          <th>NORMALIZATION LEVEL</th>
+          <th>KEY CONSTRAINTS</th>
+          <th>AUDIT / TRIGGER HOOK</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tables %}
+        <tr>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+              <strong style="font-size: 13.5px; font-family: monospace;">{{ t.table_name }}</strong>
+            </div>
+          </td>
+          <td>
+            <strong style="font-size: 14px;">{{ t.table_rows }}</strong>
+            <span style="font-size: 11px; color: var(--text-muted);"> records</span>
+          </td>
+          <td>
+            <span class="pill-select" style="padding: 2px 8px; font-size: 11px; font-weight: 500;">3NF / BCNF</span>
+          </td>
+          <td style="font-size: 12px; color: var(--text-muted);">
+            {% if t.table_name == 'student' %}
+              PK(student_id), UNIQUE(roll_no, email), FK(dept_id) RESTRICT
+            {% elif t.table_name == 'course_offering' %}
+              PK(offering_id), UNIQUE(course_id, academic_year, term)
+            {% elif t.table_name == 'enrollment' %}
+              PK(enrollment_id), UNIQUE(student_id, offering_id)
+            {% elif t.table_name == 'fee_structure' %}
+              PK(dept_id, semester_no)
+            {% elif t.table_name == 'app_user' %}
+              PK(user_id), UNIQUE(username), CHECK(role XOR links)
+            {% else %}
+              PK, FK Referential Integrity Enabled
+            {% endif %}
+          </td>
+          <td>
+            {% if t.table_name in ['student', 'enrollment', 'result', 'attendance', 'fee_payment'] %}
+              <span class="status-chip active" style="font-size: 11px;">Trigger Attached</span>
+            {% else %}
+              <span style="font-size: 11px; color: var(--text-muted);">Declarative FK</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'audit' %}
+<!-- TAB 4: Audit Trail -->
+<div class="sims-card">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <div>
+      <h3 style="font-size: 17px; font-weight: 500;">System Audit Trail (Table: audit_log)</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Chronological event stream generated by AFTER INSERT/UPDATE/DELETE triggers</p>
+    </div>
+    <span class="status-chip active">{{ audit_rows|length }} Log Entries</span>
+  </div>
+
+  <div class="sims-table-container">
+    <table class="sims-table">
+      <thead>
+        <tr>
+          <th>LOG ID</th>
+          <th>TABLE</th>
+          <th>ACTION</th>
+          <th>RECORD ID</th>
+          <th>CHANGED BY</th>
+          <th>TIMESTAMP</th>
+          <th>OLD VALUES (JSON)</th>
+          <th>NEW VALUES (JSON)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in audit_rows %}
+        <tr>
+          <td><span class="pill-select" style="padding: 2px 6px; font-size: 11px;">#{{ a.log_id }}</span></td>
+          <td><strong style="font-family: monospace;">{{ a.table_name }}</strong></td>
+          <td>
+            <span class="status-chip {% if a.action == 'INSERT' %}active{% elif a.action == 'UPDATE' %}pending{% else %}dropped{% endif %}" style="font-weight: 500; font-size: 11px;">
+              {{ a.action }}
+            </span>
+          </td>
+          <td><strong>#{{ a.record_id }}</strong></td>
+          <td style="font-size: 12px;">{{ a.changed_by }}</td>
+          <td style="font-size: 11.5px; color: var(--text-muted);">{{ a.changed_at }}</td>
+          <td>
+            <pre style="font-family: monospace; font-size: 10.5px; background: var(--surface-raised); padding: 4px 8px; border-radius: 6px; max-width: 180px; overflow-x: auto;">{{ a.old_values or '{}' }}</pre>
+          </td>
+          <td>
+            <pre style="font-family: monospace; font-size: 10.5px; background: var(--surface-raised); padding: 4px 8px; border-radius: 6px; max-width: 180px; overflow-x: auto;">{{ a.new_values or '{}' }}</pre>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">No audit events logged yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<script>
+async function executeShowcaseQuery(qid) {
+  const card = document.getElementById('resultsCard');
+  const title = document.getElementById('resultsTitle');
+  const meta = document.getElementById('resultsMeta');
+  const thead = document.getElementById('resultsThead');
+  const tbody = document.getElementById('resultsTbody');
+
+  card.style.display = 'block';
+  title.innerText = `Executing ${qid}...`;
+  meta.innerText = 'Running query against relational database...';
+  thead.innerHTML = '';
+  tbody.innerHTML = '<tr><td style="text-align: center; padding: 20px;">Fetching records...</td></tr>';
+
+  try {
+    const res = await fetch(`/api/insights/execute/${qid}`);
+    const data = await res.json();
+    if (data.error) {
+      title.innerText = `Query Error (${qid})`;
+      meta.innerText = 'Failed';
+      tbody.innerHTML = `<tr><td style="color: var(--status-absent); padding: 16px;">${escapeHtml(data.error)}</td></tr>`;
+      return;
+    }
+
+    title.innerText = `Results for ${qid}: ${data.query ? data.query.name : ''}`;
+    meta.innerText = `${data.row_count} rows returned in ${data.duration_ms} ms`;
+
+    // Render table
+    let thHtml = '<tr>';
+    data.columns.forEach(col => {
+      thHtml += `<th>${escapeHtml(col.toUpperCase())}</th>`;
+    });
+    thHtml += '</tr>';
+    thead.innerHTML = thHtml;
+
+    let trHtml = '';
+    data.rows.forEach(r => {
+      trHtml += '<tr>';
+      data.columns.forEach(col => {
+        let val = r[col];
+        if (val === null || val === undefined) val = 'NULL';
+        trHtml += `<td>${escapeHtml(val)}</td>`;
+      });
+      trHtml += '</tr>';
+    });
+    tbody.innerHTML = trHtml || '<tr><td colspan="10" style="text-align:center; padding:20px;">0 rows returned</td></tr>';
+    card.scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    title.innerText = 'Connection Error';
+    tbody.innerHTML = `<tr><td style="color: var(--status-absent);">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function explainShowcaseQuery(qid) {
+  const card = document.getElementById('resultsCard');
+  const title = document.getElementById('resultsTitle');
+  const meta = document.getElementById('resultsMeta');
+  const thead = document.getElementById('resultsThead');
+  const tbody = document.getElementById('resultsTbody');
+
+  card.style.display = 'block';
+  title.innerText = `EXPLAIN Plan for ${qid}`;
+  meta.innerText = 'Query Execution Plan';
+  thead.innerHTML = '';
+  tbody.innerHTML = '<tr><td style="text-align: center; padding: 20px;">Computing execution plan...</td></tr>';
+
+  try {
+    const res = await fetch(`/api/insights/explain/${qid}`);
+    const data = await res.json();
+    if (data.error) {
+      tbody.innerHTML = `<tr><td style="color: var(--status-absent); padding: 16px;">${escapeHtml(data.error)}</td></tr>`;
+      return;
+    }
+
+    let thHtml = '<tr>';
+    data.columns.forEach(col => {
+      thHtml += `<th>${escapeHtml(col.toUpperCase())}</th>`;
+    });
+    thHtml += '</tr>';
+    thead.innerHTML = thHtml;
+
+    let trHtml = '';
+    data.rows.forEach(r => {
+      trHtml += '<tr>';
+      data.columns.forEach(col => {
+        trHtml += `<td>${escapeHtml(r[col] !== null ? r[col] : 'NULL')}</td>`;
+      });
+      trHtml += '</tr>';
+    });
+    tbody.innerHTML = trHtml;
+    card.scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    tbody.innerHTML = `<tr><td style="color: var(--status-absent);">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function triggerTransactionDemo() {
+  const outputCard = document.getElementById('txOutputCard');
+  const stepsList = document.getElementById('txStepsList');
+  const statusChip = document.getElementById('txStatusChip');
+
+  outputCard.style.display = 'block';
+  stepsList.innerHTML = 'Executing transaction demo...';
+
+  try {
+    const res = await fetch('/api/insights/transaction-demo', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      statusChip.innerText = 'VERIFIED ATOMIC (0 CORRUPT ROWS)';
+      statusChip.className = 'status-chip active';
+      let html = '';
+      data.steps.forEach(st => {
+        html += `<div>&gt; ${escapeHtml(st)}</div>`;
+      });
+      stepsList.innerHTML = html;
+      showToast('Atomic rollback demonstrated successfully!');
+    } else {
+      statusChip.innerText = 'FAILED ATOMICITY CHECK';
+      statusChip.className = 'status-chip dropped';
+      stepsList.innerHTML = 'Transaction did not cleanly roll back.';
+    }
+  } catch (err) {
+    stepsList.textContent = 'Execution failed: ' + err.message;
+  }
+}
+</script>
+{% endblock %}
