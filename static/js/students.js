@@ -7,6 +7,9 @@ document.addEventListener("DOMContentLoaded", () => {
     error.hidden = true;
     form.elements.student_id.value = student?.student_id || "";
     form.elements.roll_no.readOnly = Boolean(student);
+    // Passwords are only set when creating; existing accounts are reset explicitly.
+    document.getElementById("studentPasswordGroup").hidden = Boolean(student);
+    form.elements.initial_password.value = "";
     if (student)
       Object.entries(student).forEach(([key, value]) => {
         if (form.elements.namedItem(key))
@@ -69,6 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const payload = Object.fromEntries(new FormData(form));
     const id = payload.student_id;
     delete payload.student_id;
+    if (id) delete payload.initial_password;
     saveButton.disabled = true;
     error.hidden = true;
     try {

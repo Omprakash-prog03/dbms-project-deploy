@@ -14,7 +14,7 @@ from config import Config, BASE_DIR
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Restore a Hogwards Student Management System backup. Stop the app and take a current backup first.')
+    parser = argparse.ArgumentParser(description='Restore a NIST University Portal Management backup. Stop the app and take a current backup first.')
     parser.add_argument('backup', type=Path)
     parser.add_argument('--confirm', action='store_true', help='Confirm that the server is stopped and replacing database contents is intended.')
     args = parser.parse_args()
@@ -34,7 +34,7 @@ def main():
                 raise SystemExit('The backup failed SQLite integrity verification.')
             tables = {r[0] for r in backup.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if not {'student','app_user'}.issubset(tables):
-                raise SystemExit('This file is not a Hogwards Student Management System database.')
+                raise SystemExit('This file is not a NIST University Portal Management database.')
             destination.parent.mkdir(parents=True, exist_ok=True)
             if destination.exists():
                 directory = BASE_DIR/'backups'

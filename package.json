@@ -1,7 +1,7 @@
 {
-  "name": "hogwards-student-management-system",
+  "name": "nist-university-portal-management",
   "version": "1.0.0",
-  "description": "Hogwards Student Management System \u2014 a connected campus workspace",
+  "description": "NIST University Portal Management \u2014 student, faculty and campus operations",
   "scripts": {
     "art": "node scripts/render-art.mjs",
     "test:ui": "node tests/ui.mjs"

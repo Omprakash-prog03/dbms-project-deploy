@@ -178,9 +178,13 @@ def run_seed():
         c_info = db_pool.execute_query("SELECT dept_id, semester_no FROM course WHERE course_id = %s", (c_id,), fetch="one")
         term = "Fall" if (c_info["semester_no"] % 2 == 1) else "Spring"
 
-        # Pick faculty from that department
+        # Pick faculty from that department. The first two offerings are always
+        # assigned to the demo faculty account so its portal has a class to mark.
         f_pool = db_pool.execute_query("SELECT faculty_id FROM faculty WHERE dept_id = %s", (c_info["dept_id"],), fetch="all")
-        fac_id = random.choice(f_pool)["faculty_id"] if f_pool else faculty_ids[0]
+        if len(offering_ids) < 2:
+            fac_id = faculty_ids[0]
+        else:
+            fac_id = random.choice(f_pool)["faculty_id"] if f_pool else faculty_ids[0]
 
         capacity = random.choice([50, 60, 60, 75])
 

@@ -21,7 +21,7 @@ try {
     const response = await page.goto(base + path);
     assert.equal(response.status(), 200, path);
     assert.ok(
-      (await page.title()).includes("Hogwards Student Management System"),
+      (await page.title()).includes("NIST University Portal Management"),
       `Portal title at ${path}`,
     );
   };
@@ -105,11 +105,14 @@ try {
   assert.ok(await page.locator("#sqlModal").isHidden());
   await page.getByRole("button", { name: "Add student", exact: true }).click();
   assert.ok(await page.locator("#studentModal").isVisible());
+  // Staff choose the student's portal password; it is never generated silently.
+  assert.ok(await page.locator("#studentPassword").isVisible());
   await audit();
   await page.keyboard.press("Escape");
   await page.locator(".edit-student").first().click();
   assert.ok(await page.locator("#dob").inputValue());
   assert.ok(await page.locator("#address").inputValue());
+  assert.ok(await page.locator("#studentPasswordGroup").isHidden());
   await page.keyboard.press("Escape");
   await page
     .getByLabel("Search students", { exact: true })
@@ -120,6 +123,24 @@ try {
   const downloadEvent = page.waitForEvent("download");
   await page.getByRole("link", { name: "Export filtered CSV" }).click();
   const download = await downloadEvent;
+  // Campus and student PDFs download from live records.
+  await visit("/reports");
+  let pdfEvent = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download campus PDF" }).click();
+  let pdf = await pdfEvent;
+  let bytes = await fs.readFile(await pdf.path());
+  assert.equal(bytes.subarray(0, 5).toString(), "%PDF-");
+  assert.ok(bytes.length > 2000, "campus PDF size");
+  assert.equal(pdf.suggestedFilename(), "nist-campus-report.pdf");
+
+  await visit("/students/1");
+  pdfEvent = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download report PDF" }).click();
+  pdf = await pdfEvent;
+  bytes = await fs.readFile(await pdf.path());
+  assert.equal(bytes.subarray(0, 5).toString(), "%PDF-");
+  assert.ok(bytes.length > 2000, "student PDF size");
+  assert.match(pdf.suggestedFilename(), /^nist-student-.*\.pdf$/);
   assert.equal(download.suggestedFilename(), "hogwards_students_export.csv");
   const csv = await fs.readFile(await download.path(), "utf8");
   assert.match(csv, /Aarav/);
@@ -162,6 +183,7 @@ try {
     "/fees",
     "/admissions",
     "/insights",
+    "/reports",
   ]) {
     await visit(path);
     await noOverflow();
@@ -223,6 +245,27 @@ try {
         .count(),
       0,
     );
+    if (role === "faculty") {
+      // Faculty must be able to run roll-call for their own class. This also
+      // guards the shared fetch wrapper that attaches the CSRF token.
+      await visit("/attendance");
+      await page.waitForSelector("#rosterTable");
+      assert.ok(
+        (await page
+          .locator("#rosterTable tbody tr[data-enrollment-id]")
+          .count()) > 0,
+        "faculty should have a class to mark",
+      );
+      await page.getByRole("button", { name: "Mark All Present" }).click();
+      const saveEvent = page.waitForResponse((response) =>
+        response.url().endsWith("/api/attendance/mark"),
+      );
+      await page.getByRole("button", { name: "Save Roll-Call" }).click();
+      const saved = await saveEvent;
+      assert.equal(saved.status(), 200, "faculty roll-call save");
+      assert.equal((await saved.json()).success, true);
+      await page.waitForLoadState("networkidle");
+    }
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await page.waitForURL("**/login");
   }
@@ -316,7 +359,7 @@ try {
   }
   assert.deepEqual(errors, [], "Browser/runtime errors");
   console.log(
-    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, filtered CSV, 13 routes at desktop/mobile, keyboard navigation, accessibility.`,
+    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, faculty roll-call save, filtered CSV, campus/student PDFs, 14 routes at desktop/mobile, keyboard navigation, accessibility.`,
   );
 } finally {
   await context?.close();

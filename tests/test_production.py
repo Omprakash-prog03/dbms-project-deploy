@@ -31,18 +31,18 @@ def test_hogwards_brand_is_on_every_page(admin,path):
     response = admin.get(path)
     assert response.status_code == 200
     title = re.search(rb'<title>(.*?)</title>',response.data).group(1)
-    assert b'Hogwards Student Management System' in title
+    assert b'NIST University Portal Management' in title
     assert b'SIMS' not in title
-    assert b'aria-label="Hogwards Student Management System home"' in response.data
+    assert b'aria-label="NIST University Portal Management home"' in response.data
 
 
 def test_public_branding_and_cookie_free_health():
     client = create_app({'TESTING':True}).test_client()
     for path in ('/login','/not-a-real-page'):
-        assert b'Hogwards Student Management System' in client.get(path).data
+        assert b'NIST University Portal Management' in client.get(path).data
     response = create_app({'TESTING':True}).test_client().get('/healthz')
     assert response.status_code == 200
-    assert response.get_json()['application'] == 'Hogwards Student Management System'
+    assert response.get_json()['application'] == 'NIST University Portal Management'
     assert 'Set-Cookie' not in response.headers
 
 
@@ -153,3 +153,42 @@ def test_private_initializer_and_complete_fresh_installation(tmp_path):
     smoke = subprocess.run([sys.executable,'tests/production_smoke.py'],input=json.dumps({'username':'headmaster','password':password}),env=environment,capture_output=True,text=True,cwd=ROOT)
     assert smoke.returncode == 0, smoke.stdout+smoke.stderr
     assert 'PASS: empty private install' in smoke.stdout
+
+
+def test_console_password_reset_random_and_check(tmp_path):
+    """The printed one-time password must actually work at the web login."""
+    configuration, database = tmp_path/'.env', tmp_path/'reset.db'
+    password = 'Initial-Private-Pass-2026!'
+    setup = subprocess.run(
+        [sys.executable,'-c','import json,sys; from scripts.init_production import initialize; initialize(**json.loads(sys.stdin.read()))'],
+        input=json.dumps({'username':'omprakash','password':password,'config_path':str(configuration),'database_path':str(database)}),
+        capture_output=True,text=True,cwd=ROOT,
+    )
+    assert setup.returncode == 0, setup.stderr
+    environment = {key: value for key, value in os.environ.items()
+                   if key not in {'APP_ENV','SECRET_KEY','DB_ENGINE','SQLITE_PATH','DEMO_MODE','COOKIE_SECURE','EMBEDDED_PREVIEW','TRUSTED_PROXY_HOPS'}}
+    environment['HOGWARDS_ENV_FILE'] = str(configuration)
+
+    reset = subprocess.run([sys.executable,'scripts/reset_password.py','--random'],input='omprakash\n',
+                           capture_output=True,text=True,cwd=ROOT,env=environment)
+    assert reset.returncode == 0, reset.stderr
+    assert str(database) in reset.stdout
+    assert 'Verified against the database: OK' in reset.stdout
+    generated = re.search(r'Generated password: (\S+)', reset.stdout).group(1)
+    assert len(generated) >= 12
+    assert generated not in configuration.read_text()
+
+    check = subprocess.run([sys.executable,'scripts/reset_password.py','--check'],
+                           input=f'omprakash\n{generated}\n',capture_output=True,text=True,cwd=ROOT,env=environment)
+    assert 'MATCH - these credentials work' in check.stdout
+    wrong = subprocess.run([sys.executable,'scripts/reset_password.py','--check'],
+                           input='omprakash\ndefinitely-wrong-password\n',capture_output=True,text=True,cwd=ROOT,env=environment)
+    assert 'NO MATCH' in wrong.stdout
+
+    smoke = subprocess.run([sys.executable,'tests/production_smoke.py'],
+                           input=json.dumps({'username':'omprakash','password':generated}),
+                           capture_output=True,text=True,cwd=ROOT,env=environment)
+    assert smoke.returncode == 0, smoke.stdout + smoke.stderr
+    unknown = subprocess.run([sys.executable,'scripts/reset_password.py','--check'],
+                             input='nobody-here\nwhatever\n',capture_output=True,text=True,cwd=ROOT,env=environment)
+    assert unknown.returncode != 0

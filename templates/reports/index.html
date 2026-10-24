@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+{% block title %}Reports & PDF · {{ portal_name }}{% endblock %}
+{% block page_title %}Campus reports{% endblock %}
+{% block page_subtitle %}Overall figures from live records, ready for review or download.{% endblock %}
+
+{% block content %}
+<section class="sims-card" style="margin-bottom:22px">
+  <div class="panel-heading" style="flex-wrap:wrap;gap:16px;margin-bottom:0">
+    <div><h2>Overall summary</h2><p>Counts update from the database every time this page loads.</p></div>
+    <div class="row-actions">
+      <a class="btn-primary-pill" href="{{ url_for('reports.summary_pdf') }}">{{ icon('arrow-up-right',15) }} Download campus PDF</a>
+      {% if current_user.role in ['admin','faculty'] %}<a class="btn-secondary-pill" href="{{ url_for('dashboard.export_students_csv') }}">Download students CSV</a>{% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="metric-strip" style="margin-bottom:22px">
+  {% for label, value in [('Students', data.stats.total_students), ('Departments', data.stats.total_departments), ('Faculty', data.stats.faculty_members), ('Courses', data.stats.total_courses), ('Offerings', data.stats.total_offerings), ('Enrollments', data.stats.total_enrollments)] %}
+  <div class="sims-card" style="padding:16px"><div class="eyebrow">{{ label|upper }}</div><div style="font-size:26px;font-weight:500;margin-top:4px">{{ '{:,}'.format(value) }}</div></div>
+  {% endfor %}
+</div>
+
+{% if is_admin %}
+<div class="sims-card" style="margin-bottom:22px">
+  <div class="panel-heading"><div><h2>Finance snapshot</h2><p>Administrator-only fee position for the current semester.</p></div><span class="status-chip active">₹{{ '{:,.2f}'.format(data.stats.total_collected) }} collected</span></div>
+  <div class="sims-table-container"><table class="sims-table"><thead><tr><th>Status</th><th>Students</th><th style="text-align:right">Outstanding</th></tr></thead>
+    <tbody>{% for row in data.fee_status %}<tr><td>{{ row.payment_status }}</td><td>{{ row.students }}</td><td style="text-align:right">₹{{ '{:,.2f}'.format(row.outstanding) }}</td></tr>
+    {% else %}<tr><td colspan="3" class="empty-note">No fee structures defined yet.</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endif %}
+
+<div class="overview-lower" style="margin-bottom:22px">
+  <section class="sims-card">
+    <div class="panel-heading"><div><h2>Students by department</h2><p>Active faculty and learner counts per department.</p></div></div>
+    <div class="sims-table-container"><table class="sims-table"><thead><tr><th>Department</th><th>Students</th><th>Faculty</th></tr></thead>
+      <tbody>{% for row in data.by_department %}<tr><td><strong>{{ row.dept_code }}</strong> <span class="subtle">{{ row.dept_name }}</span></td><td>{{ row.students }}</td><td>{{ row.faculty }}</td></tr>
+      {% else %}<tr><td colspan="3" class="empty-note">Add departments to populate this table.</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+  <section class="sims-card">
+    <div class="panel-heading"><div><h2>Records at a glance</h2><p>Statuses and grades across the whole campus.</p></div></div>
+    <div class="sims-table-container"><table class="sims-table"><thead><tr><th>Student status</th><th>Total</th></tr></thead>
+      <tbody>{% for row in data.by_status %}<tr><td>{{ row.status }}</td><td>{{ row.total }}</td></tr>
+      {% else %}<tr><td colspan="2" class="empty-note">No students yet.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="sims-table-container" style="margin-top:18px"><table class="sims-table"><thead><tr><th>Grade</th><th>Results</th></tr></thead>
+      <tbody>{% for row in data.grade_mix %}<tr><td>{{ row.grade or 'Ungraded' }}</td><td>{{ row.total }}</td></tr>
+      {% else %}<tr><td colspan="2" class="empty-note">No exam results recorded.</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+</div>
+
+{% if is_admin %}
+<section class="sims-card" style="margin-bottom:22px">
+  <div class="panel-heading"><div><h2>Database tables</h2><p>Read-only row counts for the {{ tables|length }} tables in this installation ({{ '{:,}'.format(tables_total) }} rows in total).</p></div>
+    <a class="text-link" href="{{ url_for('insights.insights_view') }}">Open SQL insights {{ icon('arrow-up-right',13) }}</a></div>
+  <div class="sims-table-container"><table class="sims-table"><thead><tr><th>Table</th><th>Rows</th><th><span class="sr-only">Preview</span></th></tr></thead>
+    <tbody>{% for table in tables %}<tr><td><code>{{ table.name }}</code></td><td>{{ '{:,}'.format(table.rows) }}</td>
+      <td><a class="text-link" href="{{ url_for('reports.table_csv', table_name=table.name) }}">CSV {{ icon('arrow-up-right',12) }}</a></td></tr>{% endfor %}</tbody></table></div>
+  <p class="subtle" style="margin-top:12px">CSV downloads include the raw columns. Student photos and password hashes are never exported; credentials stay server-side.</p>
+</section>
+{% endif %}
+
+<section class="sims-card">
+  <div class="panel-heading"><div><h2>Individual student reports</h2><p>Open a student profile to download a PDF report card.</p></div><a class="text-link" href="{{ url_for('students.list_view') }}">Go to students {{ icon('arrow-up-right',13) }}</a></div>
+  <p class="subtle">Each report includes enrolment, exam results, attendance, and (for administrators and the student themselves) the fee ledger.</p>
+</section>
+{% endblock %}

@@ -1,4 +1,4 @@
-# Publish Hogwards Student Management System — free, private installation
+# Publish NIST University Portal Management — free, private installation
 
 **Target:** PythonAnywhere Beginner ($0), Flask/WSGI, persistent SQLite, one private administrator, no demo accounts or records.
 
@@ -58,7 +58,7 @@ from wsgi import application
 **D. Open `https://YOURUSERNAME.pythonanywhere.com/healthz`.** It must return:
 
 ```json
-{ "application": "Hogwards Student Management System", "status": "ok" }
+{ "application": "NIST University Portal Management", "status": "ok" }
 ```
 
 Then open `/login` (no demo buttons), sign in, and add your first department. Do **not** run `db/seed.py`; it refuses to run in production mode and the private installation must stay free of sample records.
@@ -110,7 +110,7 @@ Do not start Gunicorn or `python app.py` in a background console on this host. P
 
 Use the HTTPS URL shown by PythonAnywhere, not an Arena preview URL.
 
-- Open `/healthz`: it should return `"status": "ok"` and the Hogwards application name, with no personal records.
+- Open `/healthz`: it should return `"status": "ok"` and the NIST University application name, with no personal records.
 - Open `/login`: there should be **no demo buttons**.
 - Sign in with the private credentials you chose in step 2.
 - Open the dashboard: all school counts should initially be zero.
@@ -136,6 +136,88 @@ The repository tests exercise the fresh-install workflow against a disposable lo
 | Site suddenly stops                                  | Free web apps expire monthly. Renew in the Web tab before the listed date.                                                                                              |
 
 Change the administrator password, or add staff accounts, only through the application. Do not edit `app_user` rows by hand.
+
+## Signing in (and what to do if the password is lost)
+
+The production site has exactly the accounts you created — there are **no** `admin`/`faculty`/`student` demo logins on it.
+
+- **Administrator username:** the one you typed during setup (for example `omprakash`).
+- **Password:** the 12+ character password typed into the hidden prompt during setup. It is never stored in plaintext, printed, or sent anywhere, so it cannot be recovered — only reset.
+
+To reset it, in a Bash console:
+
+```bash
+cd ~/hogwards-student-management-system
+git pull --ff-only origin arena/e027de8b-dbms-project-deploy
+.venv/bin/python scripts/reset_password.py
+```
+
+Type the username (`omprakash`), then the new password twice. Sign in at `https://YOURUSERNAME.pythonanywhere.com/login`. Other users' passwords are unchanged, and the account's role is preserved.
+
+The demo shortcuts on the local/development preview (`admin` / `admin123`, etc.) belong to a **separate local database** and do not work on the deployed site.
+
+## Updating an existing published site (branding, reports, passwords)
+
+Your first installation is on the old branch. Switch the checkout to the current one, keeping `.env` and `instance/hogwards.db` untouched:
+
+```bash
+cd ~/hogwards-student-management-system
+git fetch --depth 1 origin arena/0586f7b8-dbms-project-deploy
+git checkout -B deployed FETCH_HEAD
+.venv/bin/python -m pip install --no-cache-dir -r requirements-runtime.txt
+.venv/bin/python scripts/check_production.py
+```
+
+Then click **Reload** in the Web tab. The portal now reads **NIST University Portal Management**; your administrator account, password, and all records stay as they were.
+
+### Set an exact password in one command
+
+To set a specific password without any hidden prompts (for example to match a password you already use elsewhere):
+
+```bash
+cd ~/hogwards-student-management-system
+.venv/bin/python scripts/reset_password.py --username omprakash --password 'YourNewPassword'
+```
+
+The script prints the database path, a weak-password warning when the value is under 12 characters, and `Verified against the database: OK`. Short passwords (8+ characters) are accepted, but a command-line password stays in the shell session history — change it from the hidden prompt afterwards if other people can see that console.
+
+### Set a known administrator password
+
+Passwords are typed at a hidden prompt (never on the command line or in chat):
+
+```bash
+cd ~/hogwards-student-management-system
+.venv/bin/python scripts/reset_password.py --create-admin
+```
+
+Enter the username and type the new password twice. `--create-admin` creates the account if the username does not exist yet; without it, an unknown username is rejected and nothing changes.
+
+If a hidden prompt keeps producing “Invalid username or password”, skip typing altogether:
+
+```bash
+.venv/bin/python scripts/reset_password.py --random --create-admin
+```
+
+The script prints the database path it is writing to and a one-time password, then verifies it against the stored hash (`Verified against the database: OK`). The database path must be `…/hogwards-student-management-system/instance/hogwards.db`; a different path means the console and the web app are looking at different data.
+
+To test credentials without changing anything:
+
+```bash
+.venv/bin/python scripts/reset_password.py --check
+```
+
+It reports `MATCH - these credentials work` or `NO MATCH - the stored password is different`, and prints no hashes.
+
+### Staff-chosen passwords for students and faculty
+
+- **Faculty:** the add-faculty dialog has a required _Initial password_ field — the administrator types it.
+- **Students:** the add-student dialog has an optional _Portal password_ field. Leave it empty to create the record without portal access, or set one later with the row's reset action.
+- **Admissions:** the approval dialog offers an optional password. Leave it blank and the portal generates a one-time password, shown once.
+- **Students** sign in with their roll number and that password, and only ever see their own profile, results, attendance, fees, and PDF report.
+
+### Reports
+
+**Reports & PDF** (Campus Operations menu) shows live overall figures, a fee snapshot for administrators, and row counts for every database table. **Download campus PDF** produces the overall report; **Download report PDF** on a student profile produces that student's report card. Administrators can also export any table as CSV (password hashes and photos are excluded).
 
 ## Maintenance without deleting records
 

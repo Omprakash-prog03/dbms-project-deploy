@@ -13,7 +13,7 @@ client = application.test_client()
 assert client.get('/healthz', base_url=base).status_code == 200
 assert client.get('/dashboard', base_url=base).status_code == 302
 login = client.get('/login', base_url=base)
-assert b'Hogwards Student Management System' in login.data
+assert b'NIST University Portal Management' in login.data
 assert b'data-demo=' not in login.data
 assert login.headers['X-Frame-Options'] == 'SAMEORIGIN'
 assert "frame-ancestors 'self'" in login.headers['Content-Security-Policy']
@@ -52,10 +52,14 @@ exam = post('/api/exams/create', {'offering_id':offering,'exam_type':'Internal',
 post('/api/results/save', {'exam_id':exam,'enrollment_id':enrollment,'marks_obtained':91})
 post('/api/fees/structure/save', {'dept_id':department,'semester_no':1,'amount':'1000'})
 post('/api/fees/pay', {'student_id':student_id,'semester_no':1,'amount':'100.25','mode':'Cash','receipt_no':'PRODUCTION-SMOKE-ONLY'})
-for path in ('/dashboard','/students',f'/students/{student_id}','/faculty','/departments','/courses','/offerings','/enrollments','/attendance','/results','/fees','/admissions','/insights'):
+for path in ('/dashboard','/students',f'/students/{student_id}','/faculty','/departments','/courses','/offerings','/enrollments','/attendance','/results','/fees','/admissions','/insights','/reports'):
     response = client.get(path, base_url=base)
     assert response.status_code == 200, path
-    assert b'Hogwards Student Management System' in response.data, path
+    assert b'NIST University Portal Management' in response.data, path
+for path, prefix in (('/reports/summary.pdf', b'%PDF-'), ('/students/%s/report.pdf' % student_id, b'%PDF-')):
+    payload = client.get(path, base_url=base)
+    assert payload.status_code == 200 and payload.data.startswith(prefix), path
+assert b'password_hash' not in client.get('/reports/tables/app_user.csv', base_url=base).data
 assert client.get('/api/dashboard/export-students',base_url=base).headers['Content-Disposition'].endswith('hogwards_students_export.csv')
 assert client.post('/logout',data={'csrf_token':token},base_url=base).status_code == 302
 assert client.get('/api/dashboard/stats',base_url=base).status_code == 401

@@ -27,8 +27,13 @@ def get_pending():
 def approve():
     data = request.get_json(silent=True) or request.form
     app_id = int(data.get('application_id'))
-    result = AdmissionsRepository.approve_admission(app_id, reviewer_id=session.get('faculty_id'), date_of_birth=data.get('dob'), address=data.get('address', ''))
-    return jsonify(success=result['status_code']==200, message=result['message'], roll_no=result.get('roll_no'), username=result.get('username'), temporary_password=result.get('temporary_password')), result['status_code']
+    result = AdmissionsRepository.approve_admission(
+        app_id, reviewer_id=session.get('faculty_id'), date_of_birth=data.get('dob'),
+        address=data.get('address', ''), password=data.get('password') or None,
+    )
+    return jsonify(success=result['status_code']==200, message=result['message'], roll_no=result.get('roll_no'),
+                   username=result.get('username'), temporary_password=result.get('temporary_password'),
+                   password_generated=result.get('password_generated')), result['status_code']
 
 @admissions_bp.route('/api/admissions/reject', methods=['POST'])
 @login_required

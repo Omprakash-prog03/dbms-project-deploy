@@ -3,6 +3,7 @@ from routes.auth import login_required, role_required
 from repositories.students import StudentRepository
 from repositories.faculty import FacultyRepository
 from repositories.validation import student_fields
+from repositories.accounts import validate_password
 
 student_bp = Blueprint("students", __name__)
 
@@ -82,8 +83,17 @@ def profile_view(student_id):
 def create_student():
     data = request.get_json(silent=True) or request.form
     try:
-        new_id = StudentRepository.create(**student_fields(data))
-        return jsonify({"success": True, "student_id": new_id, "message": "Student created successfully."})
+        fields = student_fields(data)
+        password = str(data.get("initial_password") or "")
+        if password:
+            # Staff choose the student's password; never generated behind their back.
+            validate_password(password, "Student portal password")
+            new_id, username = StudentRepository.create_with_portal(**fields, password=password)
+            return jsonify({"success": True, "student_id": new_id, "username": username,
+                            "message": f"Student created. Portal login: {username} (password set by you)."})
+        new_id = StudentRepository.create(**fields)
+        return jsonify({"success": True, "student_id": new_id,
+                        "message": "Student created. Set a portal password from the student row to allow sign-in."})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 400
 

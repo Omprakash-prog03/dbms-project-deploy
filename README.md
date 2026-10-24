@@ -1,4 +1,4 @@
-# Hogwards Student Management System
+# NIST University Portal Management
 
 A Flask student information system with a calm, dark interface inspired by the supplied reference: pastel mesh-gradient cards, locally rendered glass sculptures, rounded controls, and a responsive campus workspace.
 
@@ -12,7 +12,7 @@ The selected deployment target is **PythonAnywhere Beginner**, using persistent 
 
 The free tier has one worker, 512 MiB of private storage, restricted resources, and monthly web-app renewal. It is intended here for a small installation, not guaranteed high-traffic uptime. No paid hosting is provisioned. [1](https://www.pythonanywhere.com/pricing/) [12](https://help.pythonanywhere.com/pages/FreeAccountsFeatures/)
 
-The production initializer creates **no shared demo logins and no student records**. The seed script refuses to run in production mode. The administrator starts with Departments, then Faculty/Courses/Offerings, Admissions or Students, and fees. Internal legacy database identifiers remain unchanged to preserve existing data compatibility; displayed branding and exports use Hogwards.
+The production initializer creates **no shared demo logins and no student records**. The seed script refuses to run in production mode. The administrator starts with Departments, then Faculty/Courses/Offerings, Admissions or Students, and fees. Internal legacy database identifiers remain unchanged to preserve existing data compatibility; displayed branding and exports use NIST University.
 
 ## Run a local development/demo instance
 
@@ -54,6 +54,34 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 - Working student create/edit/delete dialogs; populated dates and address fields; useful validation errors; real filtered CSV exports.
 - Responsive mobile navigation, scrollable tables, keyboard-focusable controls, accessible dialogs, focus return, Escape dismissal, reduced-motion support, and status notifications.
 - Locally hosted Inter fonts (including the rupee symbol), icons, and six reproducible glass sculptures. No Chart.js/CDN dependency.
+
+### Reports and PDF exports
+
+- **Reports & PDF** (staff section) shows overall campus figures from live records: students by department, statuses, grade mix, and — for administrators — the fee position and a row count for every database table.
+- **Download campus PDF** produces a paginated summary; each student profile has **Download report PDF** with enrolment, exam results, attendance, and (for administrators and that student) the fee ledger.
+- Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
+- PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
+
+### Who can do what
+
+| Capability                                      | Administrator | Faculty                                                              | Student             |
+| ----------------------------------------------- | ------------- | -------------------------------------------------------------------- | ------------------- |
+| Campus overview, reports, CSV/PDF exports       | Yes (all)     | Own classes, no finance                                              | Own profile and PDF |
+| Departments, courses, offerings, faculty        | Yes           | View                                                                 | View                |
+| Students: add/edit/delete                       | Yes           | Add, and edit **their own** students' records only through enrolment | No                  |
+| Attendance roll-call                            | Yes           | **Yes, for their own offerings**                                     | No                  |
+| Exams, marks/results                            | Yes           | Yes, for their own offerings                                         | Read own results    |
+| Fees and payments                               | Yes           | No                                                                   | Own fee summary     |
+| Password resets, database tables, SQL inspector | Yes           | No                                                                   | No                  |
+
+A faculty account only sees classes where they are the instructor. If the Attendance page says "No class assigned yet", an administrator needs to create a course offering with that faculty member as the instructor.
+
+### Passwords chosen by staff
+
+- Staff set student portal passwords when creating a student (optional) or while approving an admission application. No password is generated unless the field is left blank at approval, in which case a one-time password is shown once.
+- Faculty accounts are created with a password the administrator types in the Faculty dialog.
+- Any administrator can reset a student/faculty password from the row action, or reset the administrator's own via `scripts/reset_password.py` on the server console.
+- Students sign in with their roll number and the password staff set. They can only see their own profile, results, attendance, fees, and report PDF.
 
 ### Correctness and access control
 
@@ -116,6 +144,16 @@ gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 wsgi:application
 
 Use HTTPS and `COOKIE_SECURE=true`, disable `DEMO_MODE`, choose a least-privilege database user, keep a persistent database volume, configure backups, and review authorization for your institution before using real student data. Production mode includes a ten-attempts-per-minute, per-client-IP login limit for the selected single-worker host. Limits reset on worker restart; use a shared rate-limit store if scaling to multiple workers. For an HTTPS embedded preview such as Arena, set `EMBEDDED_PREVIEW=true`: this uses Secure, SameSite=None, partitioned session cookies so sign-in works inside the preview iframe without disabling CSRF. Leave it false for ordinary HTTP development. Changing `SECRET_KEY` invalidates existing sessions. Without an explicitly configured key, the local development fallback is random per process.
 
+### Reset a forgotten password
+
+From the server console, with the virtual environment active:
+
+```bash
+python scripts/reset_password.py
+```
+
+The password is typed twice at a hidden prompt and never passed as an argument. The account's role and other users are untouched. Deployments created with `scripts/init_production.py` start with only the administrator you chose — the demo logins below exist only in the seeded local database.
+
 ### Back up / restore
 
 With the virtual environment active, `python scripts/backup.py` creates a timestamped snapshot of the **configured** database under ignored `backups/`. SQLite uses its online backup API; MySQL requires the `mysqldump` client and never puts the database password in command-line arguments.
@@ -145,6 +183,8 @@ docker compose exec web python scripts/create_admin.py # empty, non-demo install
 The MySQL data volume persists across restarts. The database is not exposed on a public host port. The image includes Gunicorn and runs as a non-root user.
 
 **GitHub Pages cannot run Flask or a database.** The existing `CNAME` file does not deploy this application. Use a Python/container host and point your domain to that service. No external production deployment has been performed by these changes.
+
+A file-by-file comparison with the original `dbms project.zip` — what was kept, what was rewritten, and every logic bug fixed — is in **[docs/WHAT_CHANGED.md](docs/WHAT_CHANGED.md)**.
 
 ## Project layout
 

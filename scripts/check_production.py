@@ -16,6 +16,12 @@ def main():
         user = db_pool.execute_query('SELECT password_hash FROM app_user WHERE username=%s', (username,), fetch='one')
         if user and bcrypt.checkpw(default.encode(), user['password_hash'].encode()):
             raise SystemExit('A shared demo credential is still active. Do not publish this database.')
+    # A private installation must never carry sample student records.
+    seeded = db_pool.execute_query('SELECT COUNT(*) FROM student', fetch='val') or 0
+    demo_emails = db_pool.execute_query("SELECT COUNT(*) FROM student WHERE email LIKE '%%@sims.edu'", fetch='val') or 0
+    if demo_emails:
+        raise SystemExit(f'This database contains {demo_emails} sample records ({seeded} students). '
+                         'Initialize a fresh private database instead of publishing demo data.')
     client = application.test_client()
     response = client.get('/healthz')
     if response.status_code != 200:
