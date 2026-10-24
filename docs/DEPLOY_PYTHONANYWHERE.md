@@ -156,6 +156,42 @@ Type the username (`omprakash`), then the new password twice. Sign in at `https:
 
 The demo shortcuts on the local/development preview (`admin` / `admin123`, etc.) belong to a **separate local database** and do not work on the deployed site.
 
+## Updating an existing published site (branding, reports, passwords)
+
+Your first installation is on the old branch. Switch the checkout to the current one, keeping `.env` and `instance/hogwards.db` untouched:
+
+```bash
+cd ~/hogwards-student-management-system
+git fetch --depth 1 origin arena/0586f7b8-dbms-project-deploy
+git checkout -B deployed FETCH_HEAD
+.venv/bin/python -m pip install --no-cache-dir -r requirements-runtime.txt
+.venv/bin/python scripts/check_production.py
+```
+
+Then click **Reload** in the Web tab. The portal now reads **NIST University Portal Management**; your administrator account, password, and all records stay as they were.
+
+### Set a known administrator password
+
+Passwords are typed at a hidden prompt (never on the command line or in chat):
+
+```bash
+cd ~/hogwards-student-management-system
+.venv/bin/python scripts/reset_password.py --create-admin
+```
+
+Enter the username `omprakash` and type the new password twice. `--create-admin` creates the account if the username does not exist yet; without it, an unknown username is rejected and nothing changes.
+
+### Staff-chosen passwords for students and faculty
+
+- **Faculty:** the add-faculty dialog has a required _Initial password_ field — the administrator types it.
+- **Students:** the add-student dialog has an optional _Portal password_ field. Leave it empty to create the record without portal access, or set one later with the row's reset action.
+- **Admissions:** the approval dialog offers an optional password. Leave it blank and the portal generates a one-time password, shown once.
+- **Students** sign in with their roll number and that password, and only ever see their own profile, results, attendance, fees, and PDF report.
+
+### Reports
+
+**Reports & PDF** (Campus Operations menu) shows live overall figures, a fee snapshot for administrators, and row counts for every database table. **Download campus PDF** produces the overall report; **Download report PDF** on a student profile produces that student's report card. Administrators can also export any table as CSV (password hashes and photos are excluded).
+
 ## Maintenance without deleting records
 
 In the same Bash console:

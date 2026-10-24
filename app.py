@@ -99,7 +99,7 @@ def create_app(test_config=None):
 
     @app.context_processor
     def inject_globals():
-        names = {'dashboard':'Overview', 'students':'Students', 'faculty':'Faculty', 'departments':'Departments', 'courses':'Courses', 'offerings':'Course offerings', 'enrollments':'Enrollments', 'attendance':'Attendance', 'results':'Results', 'fees':'Fees & payments', 'admissions':'Admissions', 'insights':'Database insights'}
+        names = {'dashboard':'Overview', 'students':'Students', 'faculty':'Faculty', 'departments':'Departments', 'courses':'Courses', 'offerings':'Course offerings', 'enrollments':'Enrollments', 'attendance':'Attendance', 'results':'Results', 'fees':'Fees & payments', 'admissions':'Admissions', 'insights':'Database insights', 'reports':'Reports & PDF'}
         pending_count = 0
         if session.get('role') in ('admin', 'faculty'):
             pending_count = db_pool.execute_query("SELECT COUNT(*) FROM admission_application WHERE status='Pending'", fetch='val') or 0
