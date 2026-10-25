@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+{% block title %}Raw data · {{ portal_name }}{% endblock %}
+{% block page_title %}Raw database output{% endblock %}
+{% block page_subtitle %}The real rows, exactly as the database returns them.{% endblock %}
+
+{% block content %}
+<div class="raw-layout">
+  <aside class="sims-card raw-tables" aria-label="Database tables">
+    <div class="panel-heading" style="margin-bottom:10px"><div><h2>Tables</h2><p>{{ tables|length }} physical tables · {{ '{:,}'.format(tables|sum(attribute='rows')) }} rows</p></div></div>
+    <nav class="raw-table-list">
+      {% for item in tables %}
+      <a href="{{ url_for('rawdata.raw_view', table=item.name) }}"
+         class="raw-table-link {{ 'active' if item.name == table else '' }}"
+         {% if item.name == table %}aria-current="page"{% endif %}>
+        <code>{{ item.name }}</code><span>{{ '{:,}'.format(item.rows) }}</span>
+      </a>
+      {% endfor %}
+    </nav>
+  </aside>
+
+  <section class="raw-main">
+    {% if not data %}
+    <div class="sims-card"><p class="empty-note">This installation has no tables yet. Add a department to begin.</p></div>
+    {% else %}
+    <div class="sims-card" style="margin-bottom:18px">
+      <div class="panel-heading" style="flex-wrap:wrap;gap:14px;margin-bottom:14px">
+        <div>
+          <h2><code>{{ data.table }}</code></h2>
+          <p>{{ data.engine }} · {{ '{:,}'.format(data.total) }} rows · showing rows {{ data.offset + 1 if data.shown else 0 }}–{{ data.offset + data.shown }}</p>
+        </div>
+        <div class="row-actions">
+          <a class="btn-secondary-pill" href="{{ url_for('rawdata.raw_csv', table=data.table) }}">Download CSV</a>
+          <a class="btn-primary-pill" href="{{ url_for('rawdata.raw_pdf', table=data.table) }}">Download PDF</a>
+        </div>
+      </div>
+
+      <div class="raw-sql" aria-label="SQL statement executed"><span class="raw-prompt">SQL&gt;</span> {{ data.statement }}</div>
+
+      <div class="raw-output-scroll">
+        <pre class="raw-output" aria-label="Raw rows of {{ data.table }}">{{ data.text }}</pre>
+      </div>
+
+      <div class="table-bottom">
+        <span>{{ data.shown }} of {{ '{:,}'.format(data.total) }} rows{% if data.pages > 1 %} · page {{ data.page }} of {{ data.pages }}{% endif %}</span>
+        <span>Read-only SELECT. Passwords and photos are never selected.{% if data.columns|length > 7 %} Scroll the output sideways for the remaining columns.{% endif %}</span>
+      </div>
+
+      <div class="raw-pager">
+        <form method="get" class="row-actions">
+          <input type="hidden" name="table" value="{{ data.table }}">
+          <label for="perPage" class="subtle">Rows per page</label>
+          <select class="pill-select" id="perPage" name="per_page" onchange="this.form.submit()">
+            {% for size in page_sizes %}<option value="{{ size }}" {% if size == data.per_page %}selected{% endif %}>{{ size }}</option>{% endfor %}
+          </select>
+          <noscript><button class="btn-secondary-pill" type="submit">Apply</button></noscript>
+        </form>
+        <div class="row-actions">
+          {% if data.page > 1 %}<a class="btn-secondary-pill" href="{{ url_for('rawdata.raw_view', table=data.table, page=data.page - 1, per_page=data.per_page) }}">Previous</a>{% endif %}
+          {% if data.page < data.pages %}<a class="btn-secondary-pill" href="{{ url_for('rawdata.raw_view', table=data.table, page=data.page + 1, per_page=data.per_page) }}">Next</a>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="sims-card">
+      <div class="panel-heading" style="margin-bottom:12px"><div><h2>Columns in <code>{{ data.table }}</code></h2><p>Stored types and keys, straight from the schema.</p></div></div>
+      <div class="sims-table-container"><table class="sims-table">
+        <thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Alignment</th><th>Visible</th></tr></thead>
+        <tbody>{% for column in data.columns %}<tr>
+          <td><code>{{ column.name }}</code></td><td>{{ column.type or 'untyped' }}</td>
+          <td>{{ 'PRIMARY KEY' if column.primary else '—' }}</td>
+          <td>{{ 'right (numeric)' if column.numeric else 'left (text)' }}</td>
+          <td>{{ 'yes' }}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      <p class="subtle" style="margin-top:12px">Hidden columns not listed: <code>password_hash</code>, <code>photo_url</code>. They are excluded from the screen, CSV and PDF.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

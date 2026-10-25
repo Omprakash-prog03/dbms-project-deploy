@@ -184,6 +184,8 @@ try {
     "/admissions",
     "/insights",
     "/reports",
+    "/raw-data",
+    "/raw-data?table=student",
   ]) {
     await visit(path);
     await noOverflow();
@@ -359,7 +361,7 @@ try {
   }
   assert.deepEqual(errors, [], "Browser/runtime errors");
   console.log(
-    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, faculty roll-call save, filtered CSV, campus/student PDFs, 14 routes at desktop/mobile, keyboard navigation, accessibility.`,
+    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, faculty roll-call save, filtered CSV, campus/student PDFs, 16 routes at desktop/mobile, keyboard navigation, accessibility.`,
   );
 } finally {
   await context?.close();

@@ -6,14 +6,14 @@ Everything below was measured against the archive, not recalled from memory.
 
 |                      | Original zip                                                                   | Current repository                        |
 | -------------------- | ------------------------------------------------------------------------------ | ----------------------------------------- |
-| Files                | 82 (incl. `.env`, `.pytest_cache/`, an old `backups/*.db`, `sims_embedded.db`) | 127 tracked files                         |
-| Python source        | ~4,700 lines                                                                   | ~6,500 lines                              |
+| Files                | 82 (incl. `.env`, `.pytest_cache/`, an old `backups/*.db`, `sims_embedded.db`) | 131 tracked files                         |
+| Python source        | ~4,700 lines                                                                   | ~7,000 lines                              |
 | Templates / CSS / JS | ~2,600 lines                                                                   | ~6,700 lines                              |
-| Automated tests      | 43 test functions                                                              | 106 Python test functions + browser suite |
-| Routes / endpoints   | 37 route decorators                                                            | 47 route decorators (50 URL rules)        |
+| Automated tests      | 43 test functions                                                              | 119 Python test functions + browser suite |
+| Routes / endpoints   | 37 route decorators                                                            | 52 route decorators (53 URL rules)        |
 | Portal name          | SIMS                                                                           | NIST University Portal Management         |
 
-**Verdict: this is an evolution of the original codebase, not a rewrite.** The schema, the repositories, the route modules, the Jinja page structure and the SQL showcase files are the same code continued forward. Roughly **60 files were modified in place** and **53 files are new** (listed at the end). Two genuinely new subsystems were added: a PDF/CSV reporting layer and a deployment/verification toolchain.
+**Verdict: this is an evolution of the original codebase, not a rewrite.** The schema, the repositories, the route modules, the Jinja page structure and the SQL showcase files are the same code continued forward. Roughly **60 files were modified in place** and **57 files are new** (listed at the end). Two genuinely new subsystems were added: a PDF/CSV reporting layer and a deployment/verification toolchain.
 
 ---
 
@@ -61,11 +61,12 @@ These were verified by reading the original source, not assumed:
 
 - **PDF reporting** (`repositories/pdf.py`): a dependency-free PDF writer producing paginated A4 reports, so the free host needs no native library or extra package.
 - **Reports page** (`/reports`): live campus figures, students by department/status, grade mix, administrator fee snapshot, row counts for every database table, per-table CSV export.
+- **Raw data viewer** (`/raw-data`, administrator only): every physical table rendered the way a database client prints a result — the `SELECT` statement above a monospaced fixed-width grid with a dashed header rule, row numbers, pagination, and column metadata — plus CSV and landscape PDF downloads of the whole table. `password_hash` and `photo_url` are never selected.
 - **Student report card PDF** (`/students/<id>/report.pdf`): enrolment, marks, attendance, and the fee ledger for administrators and the student themselves.
 - **Departments management** — the zip had a read-only departments page; creation/editing with head-of-department assignment is new.
 - **Admission application entry, examination creation, student password choice, faculty password choice** — the empty-install gaps.
 - **Deployment toolchain**: `wsgi.py`, `scripts/init_production.py`, `scripts/check_production.py`, `scripts/reset_password.py`, `scripts/setup_pythonanywhere.sh`, `scripts/browser.mjs`, `requirements-runtime.txt`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/test.yml`.
-- **Verification**: 106 Python tests (up from 43) including concurrency, backup/restore, production bootstrap and CSRF regressions, plus a Playwright suite covering 14 routes, three roles, accessibility and PDFs.
+- **Verification**: 119 Python tests (up from 43) including concurrency, backup/restore, production bootstrap and CSRF regressions, plus a Playwright suite covering 16 routes, three roles, accessibility and PDFs.
 - **Assets**: six generated glass sculptures, local Inter fonts, favicon — no runtime CDN.
 
 ## 5. Removed from the zip
@@ -88,7 +89,8 @@ static/css/login.css              static/fonts/* (3)                static/image
 static/js/admissions.js           static/js/departments.js          static/js/exams.js
 static/js/login.js                static/js/students.js
 templates/admissions/index.html   templates/components/icons.html   templates/error.html
-templates/reports/index.html
+templates/reports/index.html      templates/rawdata/index.html      repositories/rawdata.py
+routes/rawdata.py                 tests/test_rawdata.py
 tests/production_smoke.py         tests/test_backup_restore.py      tests/test_production.py
 tests/test_reports.py             tests/test_workspace.py           tests/ui.mjs
 ```

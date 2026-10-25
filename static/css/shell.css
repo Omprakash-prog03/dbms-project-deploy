@@ -2400,3 +2400,130 @@ select option {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Raw data: Oracle-style monospaced output */
+.raw-layout {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.raw-layout > * {
+  min-width: 0;
+}
+.raw-tables {
+  position: sticky;
+  top: 16px;
+  padding: 16px;
+}
+.raw-table-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+.raw-table-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.raw-table-link code {
+  font-size: 11.5px;
+  color: inherit;
+}
+.raw-table-link span {
+  font-size: 10px;
+  opacity: 0.75;
+}
+.raw-table-link:hover {
+  background: #ffffff0d;
+  color: var(--text-primary);
+}
+.raw-table-link.active {
+  background: #2a2830;
+  color: #f1ecfb;
+}
+.raw-sql {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: #cfc8e4;
+  background: #141518;
+  border: 1px solid var(--border-subtle);
+  border-left: 2px solid #a993d1;
+  border-radius: 10px;
+  padding: 11px 14px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.raw-prompt {
+  color: #8fd4b6;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.raw-output-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #4b4855 #101113;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: #101113;
+}
+.raw-output-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.raw-output-scroll::-webkit-scrollbar-track {
+  background: #16171a;
+  border-radius: 0 0 12px 12px;
+}
+.raw-output-scroll::-webkit-scrollbar-thumb {
+  background: #4b4855;
+  border-radius: 999px;
+}
+.raw-output-scroll:hover::-webkit-scrollbar-thumb {
+  background: #66626f;
+}
+.sims-card .raw-output {
+  max-width: none;
+  overflow: visible;
+}
+.raw-output {
+  display: block;
+  min-width: 100%;
+  width: max-content;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: #e4e1ec;
+  padding: 16px 18px;
+  margin: 0;
+  white-space: pre;
+  tab-size: 4;
+}
+.raw-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+.raw-pager form {
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 1050px) {
+  .raw-layout { grid-template-columns: minmax(0, 1fr); }
+  .raw-tables { position: static; }
+  .raw-table-list { flex-direction: row; flex-wrap: wrap; max-height: none; }
+}

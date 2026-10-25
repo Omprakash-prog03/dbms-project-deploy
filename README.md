@@ -59,6 +59,7 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 
 - **Reports & PDF** (staff section) shows overall campus figures from live records: students by department, statuses, grade mix, and — for administrators — the fee position and a row count for every database table.
 - **Download campus PDF** produces a paginated summary; each student profile has **Download report PDF** with enrolment, exam results, attendance, and (for administrators and that student) the fee ledger.
+- **Raw data** (administrator only) prints any physical table the way a database client does: the `SELECT` statement above a monospaced fixed-width grid with a dashed header rule and row numbers, 10/20/50/100 rows per page, plus CSV and landscape PDF downloads of the entire table (capped at 200 rows in the PDF). Read-only, and `password_hash`/`photo_url` are never selected.
 - Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
 - PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
 
@@ -121,7 +122,7 @@ TEST_BASE_URL=http://localhost:5001 npm run test:ui
 TEST_EMBEDDED=true npm run test:ui
 ```
 
-Browser checks cover all 13 main routes at desktop/mobile widths, three role logins, keyboard navigation, tabs, live search, chart years, SQL inspection, edit dialogs, filtered exports, runtime errors, and WCAG A/AA checks on login, the overview, student directory, and student/admission dialogs, including desktop/mobile layouts. Screenshots are written to ignored `.artifacts/`.
+Browser checks cover all 16 main routes at desktop/mobile widths, three role logins, keyboard navigation, tabs, live search, chart years, SQL inspection, edit dialogs, filtered exports, runtime errors, and WCAG A/AA checks on login, the overview, student directory, and student/admission dialogs, including desktop/mobile layouts. Screenshots are written to ignored `.artifacts/`.
 
 **Test scope:** the automated database suite and preview run on SQLite. The MySQL adapters, routines, and Docker configuration are supplied but were not integration-tested against a live MySQL server in this environment.
 
