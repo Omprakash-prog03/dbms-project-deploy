@@ -6,9 +6,11 @@ library. Text is encoded as Latin-1; unsupported characters become '?'.
 from datetime import date
 
 PAGE_WIDTH, PAGE_HEIGHT = 595, 842
+LANDSCAPE_WIDTH, LANDSCAPE_HEIGHT = 842, 595
 MARGIN_X, TOP, BOTTOM = 50, 800, 64
 CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN_X
 CHAR_WIDTH = 0.5  # Helvetica average advance width, as a fraction of font size
+MARGIN = 50
 
 
 def _escape(text):
@@ -35,9 +37,15 @@ def _money(value):
 
 
 class Report:
-    def __init__(self, title, subtitle=''):
+    def __init__(self, title, subtitle='', landscape=False):
         self.title = title
         self.subtitle = subtitle
+        self.landscape = landscape
+        self.width, self.height = (LANDSCAPE_WIDTH, LANDSCAPE_HEIGHT) if landscape else (PAGE_WIDTH, PAGE_HEIGHT)
+        self.margin = MARGIN
+        self.content_width = self.width - 2 * self.margin
+        self.top = self.height - 42
+        self.bottom = 56 if landscape else BOTTOM
         self.pages = []
         self._new_page()
 
@@ -45,15 +53,15 @@ class Report:
     def _new_page(self):
         self.commands = []
         self.pages.append(self.commands)
-        self.y = TOP
+        self.y = self.top
         self._page_header()
 
     def _page_header(self):
-        self._text(MARGIN_X, TOP, _fit(self.title, CONTENT_WIDTH, 15), 15, bold=True)
+        self._text(self.margin, self.top, _fit(self.title, self.content_width, 15), 15, bold=True)
         if self.subtitle:
-            self._text(MARGIN_X, TOP - 18, _fit(self.subtitle, CONTENT_WIDTH, 9), 9, gray=True)
-        self._rule(TOP - 30)
-        self.y = TOP - 48
+            self._text(self.margin, self.top - 18, _fit(self.subtitle, self.content_width, 9), 9, gray=True)
+        self._rule(self.top - 30)
+        self.y = self.top - 48
 
     def _text(self, x, y, text, size=10, bold=False, gray=False):
         red, green, blue = (0.42, 0.42, 0.47) if gray else (0.12, 0.12, 0.14)
@@ -61,11 +69,11 @@ class Report:
 
     def _rule(self, y, thickness=0.6, light=False):
         color = (0.85, 0.85, 0.88) if light else (0.72, 0.68, 0.88)
-        self.commands.append(('rect', MARGIN_X, y, CONTENT_WIDTH, thickness, *color))
+        self.commands.append(('rect', self.margin, y, self.content_width, thickness, *color))
 
     def _need(self, height):
         """Start a new page if a block of `height` points would cross the margin."""
-        if self.y - height < BOTTOM:
+        if self.y - height < self.bottom:
             self._new_page()
             return True
         return False
@@ -74,12 +82,12 @@ class Report:
         if self._need(64):
             pass
         self.y -= 22
-        self._text(MARGIN_X, self.y, _fit(text, CONTENT_WIDTH, 12), 12, bold=True)
+        self._text(self.margin, self.y, _fit(text, self.content_width, 12), 12, bold=True)
         self._rule(self.y - 6, light=True)
         self.y -= 22
 
     def paragraph(self, text, size=9.5):
-        limit = max(10, int(CONTENT_WIDTH / (size * CHAR_WIDTH)))
+        limit = max(10, int(self.content_width / (size * CHAR_WIDTH)))
         words, line, lines = str(text).split(), '', []
         for word in words:
             candidate = f'{line} {word}'.strip()
@@ -93,26 +101,26 @@ class Report:
         for entry in lines:
             self._need(14)
             self.y -= 13
-            self._text(MARGIN_X, self.y, entry, size, gray=True)
+            self._text(self.margin, self.y, entry, size, gray=True)
         self.y -= 2
 
     def key_values(self, pairs, columns=2, row_height=30):
         pairs = [(str(key), str(value)) for key, value in pairs]
-        column_width = CONTENT_WIDTH / max(1, columns)
+        column_width = self.content_width / max(1, columns)
         for index in range(0, len(pairs), columns):
             self._need(row_height)
             for offset, (label, value) in enumerate(pairs[index:index + columns]):
-                x = MARGIN_X + offset * column_width
+                x = self.margin + offset * column_width
                 self._text(x, self.y, _fit(label.upper(), column_width - 10, 7), 7, gray=True)
                 self._text(x, self.y - 12, _fit(value, column_width - 10, 10), 10, bold=True)
             self.y -= row_height
 
     def _column_layout(self, widths):
         total = sum(widths) or 1
-        return [CONTENT_WIDTH * width / total for width in widths]
+        return [self.content_width * width / total for width in widths]
 
     def _table_row(self, cells, column_widths, size, bold=False, align_right=(), gray=False):
-        x = MARGIN_X
+        x = self.margin
         for index, cell in enumerate(cells):
             text = _fit(cell, column_widths[index] - 8, size)
             if index in align_right:
@@ -140,7 +148,7 @@ class Report:
         if not rows:
             self._need(row_height)
             self.y -= row_height
-            self._text(MARGIN_X, self.y, 'No records yet.', size, gray=True)
+            self._text(self.margin, self.y, 'No records yet.', size, gray=True)
             self.y -= 6
             return
         for row in rows:
@@ -157,7 +165,7 @@ class Report:
     def to_bytes(self):
         # Page numbers are added after pagination, so they cannot affect layout.
         for number, commands in enumerate(self.pages, start=1):
-            commands.append(('text', PAGE_WIDTH - MARGIN_X - 78, 34, 8,
+            commands.append(('text', self.width - self.margin - 78, 26, 8,
                              _escape(f'NIST University | Page {number} of {len(self.pages)}'),
                              False, 0.55, 0.55, 0.60))
 
@@ -177,7 +185,7 @@ class Report:
             page_ids.append(add(
                 ('<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %d %d] '
                  '/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> >> /Contents %d 0 R >>'
-                 % (pages_object_id, PAGE_WIDTH, PAGE_HEIGHT, font_regular, font_bold, content_id)).encode()
+                 % (pages_object_id, self.width, self.height, font_regular, font_bold, content_id)).encode()
             ))
         kids = ' '.join(f'{pid} 0 R' for pid in page_ids)
         pages_id = add(('<< /Type /Pages /Kids [%s] /Count %d >>' % (kids, len(page_ids))).encode())

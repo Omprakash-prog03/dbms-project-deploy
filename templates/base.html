@@ -44,6 +44,7 @@
         {% if current_user.role == 'admin' %}
         <a class="nav-link {% if request.path == '/fees' %}active{% endif %}" href="{{ url_for('fees.fees_view') }}">{{ icon('wallet',18) }}<span>Fees & payments</span></a>
         <a class="nav-link {% if request.path == '/insights' %}active{% endif %}" href="{{ url_for('insights.insights_view') }}">{{ icon('database',18) }}<span>Database insights</span></a>
+        <a class="nav-link {% if request.path.startswith('/raw-data') %}active{% endif %}" href="{{ url_for('rawdata.raw_view') }}" {% if request.path.startswith('/raw-data') %}aria-current="page"{% endif %}>{{ icon('grid',18) }}<span>Raw data</span></a>
         {% endif %}
       </nav>
       <div class="sidebar-bottom">
