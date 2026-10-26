@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+{% block title %}SQL console · {{ portal_name }}{% endblock %}
+{% block page_title %}SQL console{% endblock %}
+{% block page_subtitle %}Run statements against the live database, the way a database client does.{% endblock %}
+
+{% block content %}
+<div class="sql-layout">
+  <section class="sql-main">
+    <div class="sims-card sql-card">
+      <div class="sql-bar">
+        <span class="sql-dot" aria-hidden="true"></span>
+        <span class="sql-connected">connected · {{ engine }} · <code>{{ database }}</code></span>
+        <a class="sql-bar-link" href="{{ url_for('rawdata.raw_view') }}">Raw tables</a>
+        <span class="sql-bar-hint">Ctrl / ⌘ + Enter runs</span>
+      </div>
+
+      <form method="post" id="sqlForm" class="sql-form" action="{{ url_for('rawdata.query_console') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="sql-prompt" for="statement">SQL&gt;</label>
+        <textarea id="statement" name="statement" class="sql-input" rows="6" spellcheck="false"
+                  autocomplete="off" autocapitalize="off" aria-label="SQL statement"
+                  placeholder="SELECT * FROM department;  -- or INSERT / UPDATE / DELETE">{{ statement }}</textarea>
+        <div class="sql-actions">
+          <label class="sql-check">
+            <input type="checkbox" name="allow_full_write" value="1" {% if allow_full_write %}checked{% endif %}>
+            Allow a write without a WHERE clause
+          </label>
+          <div class="row-actions">
+            <button class="btn-secondary-pill" type="reset" id="sqlClear">Clear</button>
+            <button class="btn-primary-pill" type="submit" id="sqlRun">Run statement</button>
+          </div>
+        </div>
+      </form>
+
+      <p class="sql-footnote">Read statements run freely. INSERT, UPDATE and DELETE are committed immediately.
+        DROP, ALTER, CREATE, TRUNCATE and transaction control are refused here so a typo cannot break the portal.</p>
+    </div>
+
+    {% if outcome %}
+    <div class="sims-card sql-result-card">
+      <div class="sql-status {{ 'is-ok' if outcome.ok else 'is-error' }}">
+        <span class="sql-status-icon" aria-hidden="true">{{ '✓' if outcome.ok else '✕' }}</span>
+        <span class="sql-status-text">
+          <strong>{{ outcome.verb|lower if outcome.ok else 'error' }}</strong>
+          {% if outcome.ok %}· {{ outcome.message }}{% else %}· statement not run{% endif %}
+          {% if outcome.elapsed is defined and outcome.elapsed is not none %}· {{ outcome.elapsed }} ms{% endif %}
+        </span>
+        {% if outcome.kind == 'read' and outcome.verb in ('SELECT', 'WITH', 'TABLE', 'VALUES') %}
+        <a class="sql-status-link" href="{{ url_for('rawdata.raw_view') }}">Browse tables</a>
+        {% endif %}
+      </div>
+
+      {% if not outcome.ok %}
+      <div class="sql-error" role="alert">
+        <p>{{ outcome.error }}</p>
+        {% if outcome.needs_confirmation %}
+        <p class="subtle">If that is really intended, tick “Allow a write without a WHERE clause” under the editor and run it again.</p>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="raw-output-scroll" tabindex="0" role="group" aria-label="Statement output — scrollable">
+        <pre class="raw-output" aria-label="Statement output">{{ outcome.text }}</pre>
+      </div>
+      {% if outcome.truncated %}
+      <p class="subtle sql-truncated">{{ outcome.truncated }} more row{{ '' if outcome.truncated == 1 else 's' }} not shown —
+        add a WHERE clause, ORDER BY with LIMIT, or open the table in Raw data.</p>
+      {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if history %}
+    <div class="sims-card sql-history-card">
+      <div class="panel-heading" style="margin-bottom:10px"><div><h2>Statement history</h2><p>This session only. Click one to load it back.</p></div></div>
+      <ul class="sql-history">
+        {% for item in history %}
+        <li>
+          <button type="button" class="sql-history-item {{ 'is-ok' if item.ok else 'is-error' }}" data-sql="{{ item.statement }}">
+            <span class="sql-history-dot" aria-hidden="true"></span>
+            <code>{{ item.statement|replace('\n', ' ') }}</code>
+            <span class="sql-history-summary">{{ item.summary }}</span>
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </section>
+
+  <aside class="sql-side">
+    <div class="sims-card">
+      <div class="panel-heading" style="margin-bottom:10px"><div><h2>Start from an example</h2><p>Fits this schema. Edit before running.</p></div></div>
+      <div class="sql-examples">
+        {% for example in examples %}
+        <button type="button" class="sql-chip" data-sql="{{ example.sql }}">{{ example.label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="sims-card">
+      <div class="panel-heading" style="margin-bottom:10px"><div><h2>Schema</h2><p>{{ schema|length }} tables · {{ '{:,}'.format(schema|sum(attribute='rows')) }} rows</p></div></div>
+      <div class="sql-schema">
+        {% for table in schema %}
+        <details class="sql-schema-table">
+          <summary><code>{{ table.name }}</code><span>{{ '{:,}'.format(table.rows) }}</span></summary>
+          <ul>
+            {% for column in table.columns %}
+            <li><code>{{ column.name }}</code><span>{{ column.type or 'untyped' }}{% if column.primary %} · PK{% endif %}</span></li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endfor %}
+      </div>
+      <p class="subtle" style="margin-top:12px">Credentials and photo columns are hidden in every result.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/sqlconsole.js') }}"></script>
+{% endblock %}
