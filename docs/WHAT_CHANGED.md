@@ -9,8 +9,8 @@ Everything below was measured against the archive, not recalled from memory.
 | Files                | 82 (incl. `.env`, `.pytest_cache/`, an old `backups/*.db`, `sims_embedded.db`) | 131 tracked files (+4 in this change)     |
 | Python source        | ~4,700 lines                                                                   | ~7,300 lines                              |
 | Templates / CSS / JS | ~2,600 lines                                                                   | ~7,450 lines                              |
-| Automated tests      | 43 test functions                                                              | 132 Python test functions + browser suite |
-| Routes / endpoints   | 37 route decorators                                                            | 53 route decorators (54 URL rules)        |
+| Automated tests      | 43 test functions                                                              | 156 Python test functions + browser suite |
+| Routes / endpoints   | 37 route decorators                                                            | 58 route decorators (59 URL rules)        |
 | Portal name          | SIMS                                                                           | NIST University Portal Management         |
 
 **Verdict: this is an evolution of the original codebase, not a rewrite.** The schema, the repositories, the route modules, the Jinja page structure and the SQL showcase files are the same code continued forward. Roughly **60 files were modified in place** and **60 files are new** (listed at the end). Two genuinely new subsystems were added: a PDF/CSV reporting layer and a deployment/verification toolchain.
@@ -61,13 +61,14 @@ These were verified by reading the original source, not assumed:
 
 - **PDF reporting** (`repositories/pdf.py`): a dependency-free PDF writer producing paginated A4 reports, so the free host needs no native library or extra package.
 - **Reports page** (`/reports`): live campus figures, students by department/status, grade mix, administrator fee snapshot, row counts for every database table, per-table CSV export.
+- **Owner controls** (`/admin-access`, owner only): a bcrypt-hashed master key, one-tap lockdown that ends every other administrator session, and one-time six-digit access codes that other administrators must enter alongside their password. Backed by `owner_key.py` for recovery.
 - **Raw data viewer** (`/raw-data`, administrator only): every physical table rendered the way a database client prints a result — the `SELECT` statement above a monospaced fixed-width grid with a dashed header rule, row numbers, pagination, and column metadata — plus CSV and landscape PDF downloads of the whole table. `password_hash` and `photo_url` are never selected.
 - **SQL console** (`/raw-data/query`, administrator only): a genuine SQL prompt over the live database — read and write statements, raw fixed-width output with timing, per-session history, schema reference and one-click examples. Schema changes are refused and credential columns are masked.
 - **Student report card PDF** (`/students/<id>/report.pdf`): enrolment, marks, attendance, and the fee ledger for administrators and the student themselves.
 - **Departments management** — the zip had a read-only departments page; creation/editing with head-of-department assignment is new.
 - **Admission application entry, examination creation, student password choice, faculty password choice** — the empty-install gaps.
 - **Deployment toolchain**: `wsgi.py`, `scripts/init_production.py`, `scripts/check_production.py`, `scripts/reset_password.py`, `scripts/setup_pythonanywhere.sh`, `scripts/browser.mjs`, `requirements-runtime.txt`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/test.yml`.
-- **Verification**: 132 Python tests (up from 43) including concurrency, backup/restore, production bootstrap and CSRF regressions, plus a Playwright suite covering 17 routes, three roles, accessibility and PDFs.
+- **Verification**: 156 Python tests (up from 43) including concurrency, backup/restore, production bootstrap and CSRF regressions, plus a Playwright suite covering 17 routes, three roles, accessibility and PDFs.
 - **Assets**: six generated glass sculptures, local Inter fonts, favicon — no runtime CDN.
 
 ## 5. Removed from the zip

@@ -64,6 +64,15 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 - Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
 - PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
 
+### Owner controls (master key, lockdown, access codes)
+
+- The **owner** is the supreme administrator: the first admin account, or the one named in `OWNER_USERNAME`. Only the owner sees **Admin access** in the sidebar.
+- **Master key** — set one on the Admin access page or with `python scripts/owner_key.py --generate`. It is stored as a bcrypt hash only, so it is printed exactly once; `scripts/owner_key.py --check 'key'` verifies it later.
+- **One-tap lockdown** — enter the master key and every *other* administrator session ends on its next click. The owner's own session survives; the lock is a counter (`epoch`) kept in the database, so it works across restarts and worker processes.
+- **Administrator access codes** — with a master key set, any **other** administrator needs a six-digit code from the owner on top of their password. Their attempt opens a request the owner sees at **Admin access**; the owner issues a one-time code valid for 15 minutes (five wrong tries and it is revoked). Codes are stored as bcrypt hashes and shown once.
+- **Closed by default** — if no master key exists, non-owner admin logins are refused rather than let through. Students and faculty are unaffected.
+- Every lock, code and revocation is written to `audit_log`.
+
 ### Who can do what
 
 | Capability                                      | Administrator | Faculty                                                              | Student             |

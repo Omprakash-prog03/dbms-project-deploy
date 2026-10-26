@@ -239,3 +239,35 @@ Download and retain private backups regularly; free accounts do not provide the 
 `TRUSTED_PROXY_HOPS=1` is for a hosted reverse-proxy environment. Use `0` if running directly without a trusted proxy. Login throttling uses process-local memory and resets on worker restart; use shared rate-limit storage if scaling to multiple workers.
 
 The original internal database identifier `sims_db`, old CSS class names, and the historical ZIP are retained for compatibility. They are not the portal's displayed name and are not used to seed this private installation.
+
+
+## Owner controls: master key and administrator access codes
+
+`instance/hogwards.db` gains two small tables automatically (`owner_guard`,
+`admin_access_request`); there is no migration to run.
+
+1. **Set the master key once.** In a Bash console:
+
+   ```bash
+   cd ~/hogwards-student-management-system
+   source .venv/bin/activate
+   python scripts/owner_key.py --generate
+   ```
+
+   It prints the key once and stores only its hash. Copy it somewhere safe.
+   To use a key you chose instead: `python scripts/owner_key.py --set 'your long key'`.
+   Lost it? Run `--generate` again — the old key stops working immediately.
+
+2. **Name the owner explicitly** (recommended). In `.env`:
+
+   ```
+   OWNER_USERNAME=omprakash
+   ```
+
+   Without it, the first administrator account is treated as the owner.
+
+3. **Sign in as the owner**, open **Admin access** in the sidebar, and use it to
+   end other administrator sessions or to issue their access codes.
+
+Note: if no master key is set, other administrator accounts cannot sign in at
+all (students and faculty are unaffected). Set the key right after deploying.

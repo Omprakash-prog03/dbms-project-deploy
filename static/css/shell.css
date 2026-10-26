@@ -2865,3 +2865,223 @@ select option {
   .sql-prompt { padding-top: 0; }
   .sql-bar-hint { display: none; }
 }
+
+/* Owner controls: master key, lockdown and one-time access codes */
+.owner-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+.owner-layout > * {
+  min-width: 0;
+}
+.owner-main,
+.owner-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.owner-side {
+  position: sticky;
+  top: 16px;
+}
+.owner-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  border: 1px solid #3a3350;
+  background: linear-gradient(135deg, #17161c 0%, #1b1726 100%);
+}
+.owner-hero h2 {
+  margin: 6px 0 8px;
+  font-size: 19px;
+}
+.owner-hero p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+.owner-key-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.owner-key-form label {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.owner-key-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.owner-key-row .form-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.owner-lock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7d5bb5, #a97fd8);
+  color: #fbf8ff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.owner-lock-btn:hover {
+  filter: brightness(1.08);
+}
+.owner-lock-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+.owner-code-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 10px 0 4px;
+}
+.owner-code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 30px;
+  letter-spacing: 0.12em;
+  padding: 10px 16px 10px 20px;
+  border-radius: 12px;
+  background: #0f1113;
+  border: 1px solid #3f4954;
+  color: #b9f0d6;
+}
+.owner-code-small {
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  color: #e6dcff;
+}
+.owner-issued {
+  border: 1px solid #2f5e49;
+  background: #101a15;
+}
+.owner-requests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.owner-request {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: #15161a;
+}
+.owner-request-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.owner-request-head strong {
+  font-size: 13px;
+}
+.owner-request-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.owner-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.owner-chip.is-waiting {
+  background: #3a2f18;
+  color: #f0d29a;
+}
+.owner-chip.is-ready {
+  background: #16302a;
+  color: #9fe3c4;
+}
+.owner-chip.is-stale {
+  background: #33191d;
+  color: #f0b3bb;
+}
+.owner-issue-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.owner-mini {
+  flex: 1 1 170px;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.owner-link-btn {
+  background: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.owner-link-btn:hover {
+  color: #f0b3bb;
+}
+.owner-key-card .form-input + label {
+  margin-top: 6px;
+}
+.owner-steps {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+.owner-steps strong {
+  color: #e4e1ec;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 1100px) {
+  .owner-layout { grid-template-columns: minmax(0, 1fr); }
+  .owner-side { position: static; }
+}
+@media (max-width: 560px) {
+  .owner-code { font-size: 22px; letter-spacing: 0.2em; }
+  .owner-lock-btn { width: 100%; justify-content: center; }
+}

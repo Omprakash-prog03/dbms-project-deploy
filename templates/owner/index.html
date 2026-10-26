@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+{% block title %}Admin access · {{ portal_name }}{% endblock %}
+{% block page_title %}Admin access{% endblock %}
+{% block page_subtitle %}Your master key, one-tap sign-out for every other administrator, and one-time access codes.{% endblock %}
+
+{% block content %}
+<div class="owner-layout">
+  <section class="owner-main">
+
+    {% if issued %}
+    <div class="sims-card owner-issued">
+      <div class="panel-heading" style="margin-bottom:6px">
+        <div><h2>Access code for <code>{{ issued.username }}</code></h2><p>Valid once, for {{ issued.minutes }} minutes. It will not be shown again.</p></div>
+      </div>
+      <div class="owner-code-row">
+        <output class="owner-code" id="issuedCode">{{ issued.code }}</output>
+        <button class="btn-secondary-pill" type="button" data-copy="{{ issued.code }}">Copy code</button>
+      </div>
+      <p class="subtle">Send it to {{ issued.username }}. They enter it on the sign-in screen after their password.</p>
+    </div>
+    {% endif %}
+
+
+    <div class="sims-card owner-hero">
+      <div class="owner-hero-text">
+        <div class="eyebrow">SUPREME CONTROL</div>
+        <h2>Sign every other administrator out</h2>
+        <p>Enter your master key below. Every administrator who is signed in anywhere else is ended immediately,
+           and only your session keeps working. You stay signed in; they must come back through you.</p>
+      </div>
+      <form method="post" action="{{ url_for('owner.lockdown') }}" class="owner-key-form" id="lockdownForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label for="lockdownKey">Master key</label>
+        <div class="owner-key-row">
+          <input class="form-input" id="lockdownKey" name="master_key" type="password" required
+                 autocomplete="off" placeholder="Your master key" {% if not key_set %}disabled{% endif %}>
+          <button class="owner-lock-btn" type="submit" {% if not key_set %}disabled{% endif %}>
+            {{ icon('lock',17) }} Sign out everyone else
+          </button>
+        </div>
+        {% if not key_set %}
+        <p class="subtle">Create a master key first — see the panel on the right.</p>
+        {% else %}
+        <p class="subtle">Current key: <code>{{ key_hint }}</code> · lock #{{ epoch }} · you are the only administrator who survives a lock.</p>
+        {% endif %}
+      </form>
+    </div>
+
+    <div class="sims-card">
+      <div class="panel-heading" style="margin-bottom:12px">
+        <div>
+          <h2>Administrators waiting for a code</h2>
+          <p>{{ pending|length }} waiting · {{ other_admins|length }} other administrator account{{ '' if other_admins|length == 1 else 's' }}{% if other_admins %} ({{ other_admins|join(', ') }}){% endif %}</p>
+        </div>
+      </div>
+
+      {% if not pending %}
+      <p class="empty-note">Nobody is waiting. When another administrator tries to sign in, their request appears here and they cannot get in until you issue a code.</p>
+      {% else %}
+      <ul class="owner-requests">
+        {% for item in pending %}
+        <li class="owner-request">
+          <div class="owner-request-head">
+            <div>
+              <strong>{{ item.username }}</strong>
+              <span class="owner-request-meta">
+                {% if item.status == 'approved' and not item.expired %}
+                  <span class="owner-chip is-ready">code issued</span> waiting to be used
+                {% elif item.expired %}
+                  <span class="owner-chip is-stale">code expired</span> issue a new one
+                {% else %}
+                  <span class="owner-chip is-waiting">waiting</span> {{ item.waiting_minutes }} min
+                {% endif %}
+              </span>
+            </div>
+            <form method="post" action="{{ url_for('owner.revoke') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="request_id" value="{{ item.request_id }}">
+              <button class="owner-link-btn" type="submit">Close request</button>
+            </form>
+          </div>
+          <form method="post" action="{{ url_for('owner.issue') }}" class="owner-issue-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="request_id" value="{{ item.request_id }}">
+            <label class="sr-only" for="key-{{ item.request_id }}">Master key to issue a code for {{ item.username }}</label>
+            <input class="form-input owner-mini" id="key-{{ item.request_id }}" name="master_key" type="password"
+                   autocomplete="off" placeholder="Master key" required {% if not key_set %}disabled{% endif %}>
+            <button class="btn-primary-pill" type="submit" {% if not key_set %}disabled{% endif %}>Issue one-time code</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </section>
+
+  <aside class="owner-side">
+    <div class="sims-card owner-key-card">
+      <div class="panel-heading" style="margin-bottom:10px">
+        <div><h2>Your master key</h2><p>{% if key_set %}Set · {{ key_hint }}{% else %}Not set yet{% endif %}</p></div>
+      </div>
+
+      {% if session.get('issued_key') %}
+      <div class="owner-code-row">
+        <output class="owner-code owner-code-small">{{ session.get('issued_key') }}</output>
+        <button class="btn-secondary-pill" type="button" data-copy="{{ session.get('issued_key') }}">Copy</button>
+      </div>
+      <p class="subtle">Write this down now. Only a hash is stored, so it cannot be shown again. Lost it? Generate a new one from here.</p>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('owner.master_key') }}" class="owner-key-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if key_set %}
+        <label for="currentKey">Current master key</label>
+        <input class="form-input" id="currentKey" name="master_key" type="password" required autocomplete="off">
+        <label for="newKey">New key <span class="subtle">(blank = generate a strong one)</span></label>
+        <input class="form-input" id="newKey" name="new_key" type="text" autocomplete="off"
+               minlength="{{ min_key_length }}" placeholder="Leave blank to generate">
+        <button class="btn-secondary-pill" type="submit">Replace master key</button>
+        {% else %}
+        <label for="newKey">Choose your master key <span class="subtle">(at least {{ min_key_length }} characters)</span></label>
+        <input class="form-input" id="newKey" name="new_key" type="text" autocomplete="off"
+               minlength="{{ min_key_length }}" placeholder="Leave blank to generate">
+        <button class="btn-primary-pill" type="submit">Create master key</button>
+        {% endif %}
+      </form>
+      <p class="subtle" style="margin-top:10px">This key is your PIN. It is required to sign other administrators out, to issue access codes and to replace itself. Store it somewhere safe — for example a password manager.</p>
+    </div>
+
+    <div class="sims-card">
+      <div class="panel-heading" style="margin-bottom:10px"><div><h2>How it works</h2><p>Nothing to configure.</p></div></div>
+      <ol class="owner-steps">
+        <li><strong>You are the owner.</strong> The first administrator account, or the one named in <code>OWNER_USERNAME</code>.</li>
+        <li><strong>Other admins need a code.</strong> Their password alone is not enough — you issue a six-digit code here, valid once for {{ code_minutes }} minutes.</li>
+        <li><strong>One tap signs them out.</strong> A lockdown ends every other administrator session at once; only yours continues.</li>
+        <li><strong>Codes are hashed.</strong> Only you ever see the plaintext code, once.</li>
+      </ol>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/owner.js') }}"></script>
+{% endblock %}

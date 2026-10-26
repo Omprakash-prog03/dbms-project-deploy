@@ -173,6 +173,44 @@ try {
   assert.match(await page.locator(".sql-error").innerText(), /not allowed/);
   assert.equal(await page.locator(".sql-history-item").count() > 0, true);
 
+  // Owner controls: master key, deliberate lockdown, and the owner survives it.
+  // A key may already exist from an earlier run; only create one when absent.
+  await visit("/admin-access");
+  let masterKey = null;
+  if ((await page.locator("#currentKey").count()) === 0) {
+    masterKey = "ui-test-master-key-1";
+    await page.getByLabel("Choose your master key").fill(masterKey);
+    await page.getByRole("button", { name: "Create master key" }).click();
+    await page.waitForLoadState("networkidle");
+    assert.match(
+      await page.locator(".flash-message").first().innerText(),
+      /master key is ready/,
+    );
+  }
+  assert.ok(await page.locator("#lockdownForm").isVisible(), "lockdown form");
+  assert.ok(
+    await page.getByRole("heading", { name: "Sign every other administrator out" }).isVisible(),
+    "lockdown heading",
+  );
+  await audit();
+  if (masterKey) {
+    await page.getByLabel("Master key", { exact: true }).fill(masterKey);
+    const lockButton = page.locator(".owner-lock-btn");
+    await lockButton.click(); // the first click only arms the lock
+    assert.match(await lockButton.innerText(), /again/i, "lockdown asks for confirmation");
+    await lockButton.click();
+    await page.waitForLoadState("networkidle");
+    assert.match(
+      await page.locator(".flash-message").first().innerText(),
+      /Every other administrator session has been ended/,
+    );
+    await visit("/dashboard"); // the owner survives their own lock
+    assert.ok(
+      await page.getByRole("link", { name: "Admin access" }).isVisible(),
+      "owner keeps the Admin access link",
+    );
+  }
+
   // A private, unseeded installation needs these creation screens.
   for (const [path, button, modal, heading] of [
     ["/departments", "Add department", "#departmentModal", "Add a department"],
@@ -214,6 +252,7 @@ try {
     "/raw-data",
     "/raw-data?table=student",
     "/raw-data/query",
+    "/admin-access",
   ]) {
     await visit(path);
     await noOverflow();
@@ -389,7 +428,7 @@ try {
   }
   assert.deepEqual(errors, [], "Browser/runtime errors");
   console.log(
-    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, faculty roll-call save, filtered CSV, campus/student PDFs, raw tables, SQL console, 17 routes at desktop/mobile, keyboard navigation, accessibility.`,
+    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, faculty roll-call save, filtered CSV, campus/student PDFs, raw tables, SQL console, owner controls, 18 routes at desktop/mobile, keyboard navigation, accessibility.`,
   );
 } finally {
   await context?.close();
