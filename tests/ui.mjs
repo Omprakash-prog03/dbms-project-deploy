@@ -173,9 +173,9 @@ try {
   assert.match(await page.locator(".sql-error").innerText(), /not allowed/);
   assert.equal(await page.locator(".sql-history-item").count() > 0, true);
 
-  // Owner controls: master key, deliberate lockdown, and the owner survives it.
-  // A key may already exist from an earlier run; only create one when absent.
-  await visit("/admin-access");
+  // Supreme control: the master key, the live roster, and the owner's own
+  // session surviving a lockdown. A key may exist from an earlier run.
+  await visit("/owner");
   let masterKey = null;
   if ((await page.locator("#currentKey").count()) === 0) {
     masterKey = "ui-test-master-key-1";
@@ -184,30 +184,43 @@ try {
     await page.waitForLoadState("networkidle");
     assert.match(
       await page.locator(".flash-message").first().innerText(),
-      /master key is ready/,
+      /master key is ready/i,
     );
   }
   assert.ok(await page.locator("#lockdownForm").isVisible(), "lockdown form");
   assert.ok(
-    await page.getByRole("heading", { name: "Sign every other administrator out" }).isVisible(),
-    "lockdown heading",
+    await page.getByRole("heading", { name: "Administrators" }).isVisible(),
+    "administrator roster heading",
   );
+  assert.ok(
+    (await page.getByRole("heading", { name: "You are the supreme administrator." }).count()) === 1,
+    "owner banner",
+  );
+  for (const heading of ["Administrator sign-in", "Access codes", "Master key", "Owner activity"]) {
+    assert.ok(
+      (await page.getByRole("heading", { name: heading, exact: true }).count()) === 1,
+      `supreme section: ${heading}`,
+    );
+  }
+  // The old address still works, but as a redirect to the new home.
+  await page.goto(base + "/admin-access");
+  await page.waitForURL(/\/owner$/);
   await audit();
   if (masterKey) {
-    await page.getByLabel("Master key", { exact: true }).fill(masterKey);
-    const lockButton = page.locator(".owner-lock-btn");
+    await page.getByLabel("Master key to sign everyone out").fill(masterKey);
+    const lockButton = page.locator(".supreme-lock");
     await lockButton.click(); // the first click only arms the lock
     assert.match(await lockButton.innerText(), /again/i, "lockdown asks for confirmation");
     await lockButton.click();
     await page.waitForLoadState("networkidle");
     assert.match(
       await page.locator(".flash-message").first().innerText(),
-      /Every other administrator session has been ended/,
+      /Every other administrator has been signed out/i,
     );
     await visit("/dashboard"); // the owner survives their own lock
     assert.ok(
-      await page.getByRole("link", { name: "Admin access" }).isVisible(),
-      "owner keeps the Admin access link",
+      await page.getByRole("link", { name: "Supreme control" }).isVisible(),
+      "owner keeps the Supreme control link",
     );
   }
 

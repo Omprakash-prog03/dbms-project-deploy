@@ -156,19 +156,34 @@ Type the username (`omprakash`), then the new password twice. Sign in at `https:
 
 The demo shortcuts on the local/development preview (`admin` / `admin123`, etc.) belong to a **separate local database** and do not work on the deployed site.
 
-## Updating an existing published site (branding, reports, passwords)
+## Updating an existing published site
 
-Your first installation is on the old branch. Switch the checkout to the current one, keeping `.env` and `instance/hogwards.db` untouched:
+Switch the checkout to the branch you want to run, keeping `.env` and
+`instance/hogwards.db` untouched (both are ignored by git, so they survive the
+switch):
 
 ```bash
 cd ~/hogwards-student-management-system
-git fetch --depth 1 origin arena/0586f7b8-dbms-project-deploy
+git fetch --depth 1 origin arena/40e568c8-dbms-project-deploy   # or: main
 git checkout -B deployed FETCH_HEAD
 .venv/bin/python -m pip install --no-cache-dir -r requirements-runtime.txt
 .venv/bin/python scripts/check_production.py
 ```
 
-Then click **Reload** in the Web tab. The portal now reads **NIST University Portal Management**; your administrator account, password, and all records stay as they were.
+Then click **Reload** in the Web tab. Your administrator account, password, and
+all records stay as they were; the new tables (`owner_guard`,
+`admin_access_request`, `admin_session`) are created automatically on the first
+request after the reload.
+
+### What is new since the first deployment
+
+- The portal reads **NIST University Portal Management**.
+- **Reports & PDF**, **Raw data** and the **SQL console** (`/raw-data/query`).
+- **Supreme control** (owner only, `/owner`): live administrator roster, single
+  and global sign-out, the administrator sign-in switch, per-account blocks,
+  one-time access codes, password resets, removals, and the owner activity trail.
+- The sign-in page always shows the access-code box and explains, before anyone
+  fails, that other administrators need a code from the owner.
 
 ### Set an exact password in one command
 
@@ -243,8 +258,13 @@ The original internal database identifier `sims_db`, old CSS class names, and th
 
 ## Owner controls: master key and administrator access codes
 
-`instance/hogwards.db` gains two small tables automatically (`owner_guard`,
-`admin_access_request`); there is no migration to run.
+`instance/hogwards.db` gains three small tables automatically (`owner_guard`,
+`admin_access_request`, `admin_session`); there is no migration to run. They are
+created on the first request after **Reload**, so nothing can fail for want of a
+migration.
+
+Everything the owner needs lives on one page: **Supreme control** in the sidebar
+(`/owner`). The old `/admin-access` address redirects there.
 
 1. **Set the master key once.** In a Bash console:
 
@@ -266,8 +286,11 @@ The original internal database identifier `sims_db`, old CSS class names, and th
 
    Without it, the first administrator account is treated as the owner.
 
-3. **Sign in as the owner**, open **Admin access** in the sidebar, and use it to
-   end other administrator sessions or to issue their access codes.
+3. **Sign in as the owner**, open **Supreme control** in the sidebar (`/owner`),
+   and use it to see who is signed in, sign one administrator out, close
+   administrator sign-in, block an account, issue their access codes, reset a
+   password or remove an administrator. The old `/admin-access` address redirects
+   to the same page.
 
 Note: if no master key is set, other administrator accounts cannot sign in at
 all (students and faculty are unaffected). Set the key right after deploying.

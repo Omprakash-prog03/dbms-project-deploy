@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+{% block title %}Supreme control · {{ portal_name }}{% endblock %}
+{% block page_title %}Supreme control{% endblock %}
+{% block page_subtitle %}Your private command centre — everyone else's access passes through here.{% endblock %}
+
+{% block content %}
+<div class="supreme">
+
+  <section class="supreme-banner">
+    <div class="supreme-crown" aria-hidden="true">{{ icon('crown', 22) }}</div>
+    <div>
+      <div class="eyebrow">OWNER · {{ current_user.username }}</div>
+      <h2>You are the supreme administrator.</h2>
+      <p>Every other administrator needs a code from you to sign in, and you can end all of their
+         sessions at once — without leaving this page.</p>
+    </div>
+    <div class="supreme-stats">
+      <div><strong>{{ other_count }}</strong><span>other admins</span></div>
+      <div><strong>{{ online_others }}</strong><span>signed in</span></div>
+      <div><strong>{{ pending|length }}</strong><span>waiting for a code</span></div>
+    </div>
+  </section>
+
+  {% if issued %}
+  <section class="sims-card supreme-code-card">
+    <div>
+      <h2>Access code for <code>{{ issued.username }}</code></h2>
+      <p class="subtle">Works once · expires in {{ issued.minutes }} minutes · never shown again.</p>
+    </div>
+    <div class="supreme-code-row">
+      <output class="supreme-code">{{ issued.code }}</output>
+      <button class="btn-secondary-pill" type="button" data-copy="{{ issued.code }}">Copy</button>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if issued_key %}
+  <section class="sims-card supreme-code-card">
+    <div>
+      <h2>Your new master key</h2>
+      <p class="subtle">Write it down now — only a hash is stored, so it cannot be shown again.</p>
+    </div>
+    <div class="supreme-code-row">
+      <output class="supreme-code supreme-code-key">{{ issued_key }}</output>
+      <button class="btn-secondary-pill" type="button" data-copy="{{ issued_key }}">Copy</button>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="supreme-grid">
+
+    <!-- who is signed in -->
+    <section class="sims-card supreme-wide">
+      <div class="panel-heading" style="margin-bottom:12px">
+        <div>
+          <h2>Administrators</h2>
+          <p>Live state · signed in means active in the last {{ online_window }} minutes.</p>
+        </div>
+        <form method="post" action="{{ url_for('owner.lockdown') }}" class="supreme-inline" id="lockdownForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input class="form-input supreme-mini" name="master_key" type="password" required
+                 autocomplete="off" placeholder="Master key" aria-label="Master key to sign everyone out">
+          <button class="supreme-lock" type="submit" {% if not key_set %}disabled{% endif %}>
+            {{ icon('lock', 15) }} Sign out everyone else
+          </button>
+        </form>
+      </div>
+
+      {% if not key_set %}
+      <p class="supreme-warn">{{ icon('key', 15) }} Create your master key in the panel on the right — until then no other administrator can sign in at all.</p>
+      {% endif %}
+
+      <div class="sims-table-container">
+        <table class="sims-table supreme-table">
+          <thead><tr>
+            <th>Account</th><th>State</th><th>Last active</th><th>Sign-ins</th><th>Actions</th>
+          </tr></thead>
+          <tbody>
+            {% for admin in admins %}
+            <tr class="{{ 'is-owner' if admin.is_owner }}">
+              <td>
+                <strong>{{ admin.username }}</strong>
+                {% if admin.is_owner %}<span class="supreme-tag is-owner">you · owner</span>{% endif %}
+                {% if admin.linked %}<span class="supreme-tag">{{ admin.linked }} linked</span>{% endif %}
+              </td>
+              <td>
+                {% if admin.is_owner %}
+                  <span class="supreme-state is-online">signed in</span>
+                {% elif admin.blocked %}
+                  <span class="supreme-state is-blocked">blocked</span>
+                {% elif admin.signed_in %}
+                  <span class="supreme-state is-online">signed in</span>
+                {% else %}
+                  <span class="supreme-state">signed out</span>
+                {% endif %}
+              </td>
+              <td><span class="subtle">{{ admin.last_seen_ago }}</span></td>
+              <td>{{ admin.login_count }}</td>
+              <td>
+                {% if admin.is_owner %}
+                  <span class="subtle">—</span>
+                {% else %}
+                <div class="supreme-actions">
+                  <form method="post" action="{{ url_for('owner.sign_out_admin', username=admin.username) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="supreme-mini-btn" type="submit">Sign out</button>
+                  </form>
+                  <form method="post" action="{{ url_for('owner.block_admin', username=admin.username) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="blocked" value="{{ '0' if admin.blocked else '1' }}">
+                    <button class="supreme-mini-btn {{ 'is-warn' if not admin.blocked }}" type="submit">
+                      {{ 'Unblock' if admin.blocked else 'Block' }}
+                    </button>
+                  </form>
+                  <details class="supreme-more">
+                    <summary aria-label="More actions for {{ admin.username }}">•••</summary>
+                    <div class="supreme-more-body">
+                      <form method="post" action="{{ url_for('owner.reset_admin_password') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="username" value="{{ admin.username }}">
+                        <label for="pw-{{ loop.index }}">New password</label>
+                        <input class="form-input supreme-mini" id="pw-{{ loop.index }}" name="new_password"
+                               type="password" minlength="8" required autocomplete="new-password">
+                        <input class="form-input supreme-mini" name="master_key" type="password"
+                               placeholder="Master key" required autocomplete="off">
+                        <button class="supreme-mini-btn" type="submit">Reset password</button>
+                      </form>
+                      <form method="post" action="{{ url_for('owner.remove_admin', username=admin.username) }}"
+                            data-confirm="Remove administrator rights from {{ admin.username }}?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input class="form-input supreme-mini" name="master_key" type="password"
+                               placeholder="Master key" required autocomplete="off">
+                        <button class="supreme-mini-btn is-danger" type="submit">Remove admin</button>
+                      </form>
+                    </div>
+                  </details>
+                </div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- sign-in switch -->
+    <section class="sims-card supreme-switch {{ 'is-closed' if logins_closed }}">
+      <div class="panel-heading" style="margin-bottom:8px">
+        <div>
+          <h2>Administrator sign-in</h2>
+          <p>{% if logins_closed %}Closed — only you can sign in.{% else %}Open — other admins may request a code.{% endif %}</p>
+        </div>
+        <span class="supreme-switch-state {{ 'is-closed' if logins_closed }}">{{ 'CLOSED' if logins_closed else 'OPEN' }}</span>
+      </div>
+      <p class="subtle">Closing it signs everyone else out and refuses every administrator login, even
+        with a valid code. Your own session is never affected.</p>
+      <form method="post" action="{{ url_for('owner.switch_logins') }}" class="supreme-stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="closed" value="{{ '0' if logins_closed else '1' }}">
+        <input class="form-input supreme-mini" name="master_key" type="password" required
+               autocomplete="off" placeholder="Master key" aria-label="Master key to change administrator sign-in">
+        <button class="supreme-switch-btn {{ 'is-open' if logins_closed }}" type="submit">
+          {{ 'Reopen administrator sign-in' if logins_closed else 'Close administrator sign-in' }}
+        </button>
+      </form>
+    </section>
+
+    <!-- master key -->
+    <section class="sims-card supreme-key">
+      <div class="panel-heading" style="margin-bottom:8px">
+        <div>
+          <h2>Master key</h2>
+          <p>{% if key_set %}Set · <code>{{ key_hint }}</code>{% else %}Not set — sign-in for other admins is closed{% endif %}</p>
+        </div>
+        <span class="supreme-tag">{{ icon('key', 13) }} PIN</span>
+      </div>
+      <p class="subtle">Required to sign others out, issue codes, change passwords and remove admins.
+        Stored as a hash only.</p>
+      <form method="post" action="{{ url_for('owner.master_key') }}" class="supreme-stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if key_set %}
+        <label class="supreme-label" for="currentKey">Current key</label>
+        <input class="form-input supreme-mini" id="currentKey" name="master_key" type="password" required autocomplete="off">
+        <label class="supreme-label" for="newKey">New key <span class="subtle">(blank = generate)</span></label>
+        <input class="form-input supreme-mini" id="newKey" name="new_key" type="text"
+               minlength="{{ min_key_length }}" autocomplete="off" placeholder="Leave blank to generate">
+        <button class="btn-secondary-pill" type="submit">Replace master key</button>
+        {% else %}
+        <label class="supreme-label" for="newKey">Choose your key <span class="subtle">({{ min_key_length }}+ characters)</span></label>
+        <input class="form-input supreme-mini" id="newKey" name="new_key" type="text"
+               minlength="{{ min_key_length }}" autocomplete="off" placeholder="Leave blank to generate">
+        <button class="btn-primary-pill" type="submit" id="createKey">Create master key</button>
+        {% endif %}
+      </form>
+      <p class="subtle" style="margin-top:10px">Lock #{{ epoch }} · a recovery key can also be made from a
+        console with <code>python scripts/owner_key.py --generate</code>.</p>
+    </section>
+    <!-- access codes -->
+    <section class="sims-card supreme-wide">
+      <div class="panel-heading" style="margin-bottom:12px">
+        <div>
+          <h2>Access codes</h2>
+          <p>{{ pending|length }} request{{ '' if pending|length == 1 else 's' }} · one code each, {{ code_minutes }} minutes, single use.</p>
+        </div>
+      </div>
+
+      {% if not pending %}
+      <p class="empty-note">Nobody is waiting. When another administrator signs in, their request lands
+        here and they cannot get in until you issue a code.</p>
+      {% else %}
+      <ul class="supreme-requests">
+        {% for item in pending %}
+        <li>
+          <div class="supreme-request-head">
+            <strong>{{ item.username }}</strong>
+            {% if item.expired %}
+              <span class="supreme-tag is-stale">code expired</span>
+            {% elif item.status == 'approved' %}
+              <span class="supreme-tag is-ready">code issued</span>
+            {% else %}
+              <span class="supreme-tag is-waiting">waiting {{ item.waiting_minutes }} min</span>
+            {% endif %}
+          </div>
+          <div class="supreme-request-actions">
+            <form method="post" action="{{ url_for('owner.issue') }}" class="supreme-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="request_id" value="{{ item.request_id }}">
+              <input class="form-input supreme-mini" name="master_key" type="password" required
+                     autocomplete="off" placeholder="Master key"
+                     aria-label="Master key to issue a code for {{ item.username }}">
+              <button class="btn-primary-pill" type="submit">Issue code</button>
+            </form>
+            <form method="post" action="{{ url_for('owner.revoke') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="request_id" value="{{ item.request_id }}">
+              <button class="supreme-mini-btn" type="submit">Close request</button>
+            </form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+
+  </div>
+
+  <section class="sims-card supreme-trail">
+    <div class="panel-heading" style="margin-bottom:10px">
+      <div><h2>Owner activity</h2><p>Every lock, code and account action, newest first.</p></div>
+    </div>
+    {% if not trail %}
+    <p class="empty-note">Nothing yet. Actions you take here will appear in this list.</p>
+    {% else %}
+    <ol class="supreme-timeline">
+      {% for entry in trail %}
+      <li>
+        <span class="supreme-dot" aria-hidden="true"></span>
+        <div>
+          <strong>{{ entry.action }}</strong>
+          <span class="subtle">{% if entry.detail %}· {{ entry.detail }}{% endif %}</span>
+          <span class="supreme-when">{{ entry.when }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/owner.js') }}"></script>
+{% endblock %}

@@ -36,9 +36,11 @@ def client_for(app, username, role='admin', **extra):
 def second_admin_client(app, username='deputy'):
     """An approved, signed-in administrator who is not the owner."""
     client = app.test_client()
+    from repositories import admin_sessions
     with client.session_transaction() as session:
         session.update(user_id=99, username=username, role='admin', access_approved=True,
-                       owner_epoch=owner.epoch())
+                       owner_epoch=owner.epoch(),
+                       admin_token_version=admin_sessions.version(username))
     return client
 
 
@@ -265,14 +267,14 @@ def test_lockdown_signs_out_every_other_administrator(app):
     assert other.get('/dashboard').status_code == 200
 
     mine = client_for(app, 'admin', access_approved=True)
-    assert mine.get('/admin-access').status_code == 200
+    assert mine.get('/owner').status_code == 200
 
-    locked = mine.post('/admin-access/lockdown', data={'master_key': MASTER})
+    locked = mine.post('/owner/lockdown', data={'master_key': MASTER})
     assert locked.status_code == 302
 
     # The owner keeps working...
     assert mine.get('/dashboard').status_code == 200
-    assert mine.get('/admin-access').status_code == 200
+    assert mine.get('/owner').status_code == 200
     # ...everybody else is out, on their very next request.
     thrown_out = other.get('/dashboard')
     assert thrown_out.status_code == 302
@@ -285,7 +287,7 @@ def test_lockdown_needs_the_master_key(app):
     owner.set_master_key(MASTER)
     before = owner.epoch()
     mine = client_for(app, 'admin', access_approved=True)
-    response = mine.post('/admin-access/lockdown', data={'master_key': 'not-the-key'})
+    response = mine.post('/owner/lockdown', data={'master_key': 'not-the-key'})
     assert response.status_code == 302
     assert owner.epoch() == before
     assert mine.get('/dashboard').status_code == 200
@@ -316,25 +318,25 @@ def test_api_requests_get_a_json_refusal(app):
 # ---------------------------------------------------------------------------
 def test_only_the_owner_can_open_the_page(app):
     owner.set_master_key(MASTER)
-    assert second_admin_client(app, 'deputy').get('/admin-access').status_code == 403
-    assert client_for(app, 'faculty', 'faculty', faculty_id=1).get('/admin-access').status_code == 403
-    assert client_for(app, 'student', 'student', student_id=1).get('/admin-access').status_code == 403
-    assert app.test_client().get('/admin-access').status_code == 302
+    assert second_admin_client(app, 'deputy').get('/owner').status_code == 403
+    assert client_for(app, 'faculty', 'faculty', faculty_id=1).get('/owner').status_code == 403
+    assert client_for(app, 'student', 'student', student_id=1).get('/owner').status_code == 403
+    assert app.test_client().get('/owner').status_code == 302
 
 
 def test_page_shows_key_state_and_requests(app):
     mine = client_for(app, 'admin', access_approved=True)
-    empty = mine.get('/admin-access')
+    empty = mine.get('/owner')
     assert empty.status_code == 200
     assert b'Create master key' in empty.data
 
     owner.set_master_key(MASTER)
     owner.request_access('deputy', user_id=99)
-    page = mine.get('/admin-access')
+    page = mine.get('/owner')
     assert page.status_code == 200
     assert b'Sign out everyone else' in page.data
     assert b'deputy' in page.data
-    assert b'Issue one-time code' in page.data
+    assert b'Issue code' in page.data
     assert MASTER.encode() not in page.data
     assert b'$2b$' not in page.data
 
@@ -343,28 +345,28 @@ def test_owner_issues_a_code_through_the_page(app):
     owner.set_master_key(MASTER)
     request_id = owner.request_access('deputy', user_id=99)
     mine = client_for(app, 'admin', access_approved=True)
-    response = mine.post('/admin-access/issue', data={'master_key': MASTER, 'request_id': request_id})
+    response = mine.post('/owner/issue', data={'master_key': MASTER, 'request_id': request_id})
     assert response.status_code == 302
-    shown = mine.get('/admin-access')
+    shown = mine.get('/owner')
     assert b'Access code for' in shown.data
     assert b'deputy' in shown.data
 
-    wrong = mine.post('/admin-access/issue', data={'master_key': 'nope', 'request_id': request_id})
+    wrong = mine.post('/owner/issue', data={'master_key': 'nope', 'request_id': request_id})
     assert wrong.status_code == 302
 
 
 def test_owner_can_create_and_rotate_the_master_key_through_the_page(app):
     mine = client_for(app, 'admin', access_approved=True)
-    created = mine.post('/admin-access/master-key', data={'new_key': 'first-master-key'})
+    created = mine.post('/owner/master-key', data={'new_key': 'first-master-key'})
     assert created.status_code == 302
     assert owner.verify_master_key('first-master-key')
 
     # Rotation requires the current key.
-    refused = mine.post('/admin-access/master-key', data={'master_key': 'wrong', 'new_key': 'second-master-key'})
+    refused = mine.post('/owner/master-key', data={'master_key': 'wrong', 'new_key': 'second-master-key'})
     assert refused.status_code == 302
     assert owner.verify_master_key('first-master-key')
 
-    rotated = mine.post('/admin-access/master-key', data={'master_key': 'first-master-key',
+    rotated = mine.post('/owner/master-key', data={'master_key': 'first-master-key',
                                                           'new_key': 'second-master-key'})
     assert rotated.status_code == 302
     assert owner.verify_master_key('second-master-key')
@@ -373,6 +375,6 @@ def test_owner_can_create_and_rotate_the_master_key_through_the_page(app):
 
 def test_navigation_link_is_only_for_the_owner(app):
     owner.set_master_key(MASTER)
-    assert b'/admin-access' in client_for(app, 'admin', access_approved=True).get('/dashboard').data
-    assert b'/admin-access' not in second_admin_client(app, 'deputy').get('/dashboard').data
-    assert b'/admin-access' not in client_for(app, 'faculty', 'faculty', faculty_id=1).get('/dashboard').data
+    assert b'/owner' in client_for(app, 'admin', access_approved=True).get('/dashboard').data
+    assert b'/owner' not in second_admin_client(app, 'deputy').get('/dashboard').data
+    assert b'/owner' not in client_for(app, 'faculty', 'faculty', faculty_id=1).get('/dashboard').data

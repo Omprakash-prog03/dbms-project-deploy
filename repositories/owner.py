@@ -20,6 +20,7 @@ import bcrypt
 from flask import g, has_app_context
 
 from config import Config
+from repositories import admin_sessions
 from repositories.db_pool import db_pool
 
 GUARD_TABLE = 'owner_guard'
@@ -93,12 +94,38 @@ def _set(key, value):
             f'INSERT INTO {GUARD_TABLE} (guard_key, guard_value) VALUES (%s, %s)', (key, value))
 
 
+def record(action, who, detail):
+    """Public audit entry, used by Supreme control."""
+    _record(action, who, detail)
+
+
+def trail(limit=12):
+    """The owner's own recent actions, newest first."""
+    ensure_schema()
+    try:
+        rows = db_pool.execute_query(
+            "SELECT action, new_values, changed_by, changed_at FROM audit_log "
+            "WHERE table_name = 'admin_guard' ORDER BY changed_at DESC, log_id DESC LIMIT %s",
+            (limit,), fetch='all') or []
+    except Exception:
+        return []
+    trail_rows = []
+    for row in rows:
+        action, _, detail = (row['new_values'] or '').partition(' | ')
+        trail_rows.append({'action': action or row['action'] or 'owner action',
+                           'detail': detail.strip(),
+                           'who': row['changed_by'] or 'owner',
+                           'when': row['changed_at']})
+    return trail_rows
+
+
 def _record(action, who, detail):
     """Keep a short trail in the existing audit log."""
     try:
         db_pool.execute_dml(
             "INSERT INTO audit_log (table_name, action, record_id, new_values, changed_by) "
-            "VALUES ('admin_guard', 'UPDATE', 0, %s, %s)", (detail, who))
+            "VALUES ('admin_guard', 'UPDATE', 0, %s, %s)",
+            (f'{action} | {detail}', who))
     except Exception:
         pass
 
@@ -198,7 +225,9 @@ def lockdown(by_username):
     _set('epoch_changed_by', by_username)
     if has_app_context():
         g.owner_epoch = new_epoch
-    _record('lockdown', by_username, f'administrator sessions ended (epoch {current} -> {new_epoch})')
+    ended = admin_sessions.sign_out_everyone(by_username)
+    _record('lockdown', by_username,
+            f'administrator sessions ended (epoch {current} -> {new_epoch}); {len(ended)} account(s) signed out')
     return new_epoch
 
 
@@ -248,7 +277,7 @@ def request_access(username, user_id=None, note=''):
     row = db_pool.execute_query(
         f'SELECT request_id FROM {REQUEST_TABLE} WHERE LOWER(username) = LOWER(%s) '
         'ORDER BY request_id DESC LIMIT 1', (username,), fetch='val')
-    _record('access requested', username, 'administrator access requested')
+    _record('access requested', username, 'asked for a one-time code')
     return row
 
 
@@ -321,8 +350,13 @@ def redeem_code(username, code):
     db_pool.execute_dml(
         f'UPDATE {REQUEST_TABLE} SET status = %s, resolved_at = %s, code_hash = NULL '
         'WHERE request_id = %s', ('used', _stamp(_now()), row['request_id']))
-    _record('access granted', username, 'administrator signed in with an access code')
+    _record('access granted', username, 'signed in with an access code')
     return True, 'Access granted.'
+
+
+def requests_for(username):
+    """Every access request for one account, newest first."""
+    return _requests('WHERE LOWER(username) = LOWER(%s)', (username,))
 
 
 def pending_count():
@@ -342,6 +376,29 @@ def revoke(request_id):
 def needs_approval(username, role):
     """Administrators who are not the owner need the owner's approval."""
     return role == 'admin' and not is_owner(username)
+
+
+def login_closed():
+    """The owner's global switch: no administrator may sign in but them."""
+    return bool(int(_get('login_closed', 0) or 0))
+
+
+def close_logins(closed, by_username='owner'):
+    _set('login_closed', 1 if closed else 0)
+    _set('login_closed_at', _stamp(_now()))
+    _record('logins closed' if closed else 'logins opened', by_username,
+            'administrator sign-in switch')
+    return closed
+
+
+def account_blocked(username):
+    return admin_sessions.login_blocked(username)
+
+
+def block_account(username, blocked, by_username='owner'):
+    admin_sessions.block_login(username, blocked)
+    _record('account blocked' if blocked else 'account unblocked', by_username, username)
+    return blocked
 
 
 def other_admins(username):

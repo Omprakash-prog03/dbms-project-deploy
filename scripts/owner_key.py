@@ -48,8 +48,8 @@ def main():
     print(f'    {key}')
     print()
     print('Write it down now — it cannot be shown again.')
-    print('Use it on the portal at  Admin access  to sign other administrators out')
-    print('and to issue their one-time sign-in codes.')
+    print('Use it on the portal at  Supreme control  (sidebar, /owner) to sign other')
+    print('administrators out and to issue their one-time sign-in codes.')
     return 0
 
 

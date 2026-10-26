@@ -64,14 +64,18 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 - Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
 - PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
 
-### Owner controls (master key, lockdown, access codes)
+### Supreme control (the owner's private command centre)
 
-- The **owner** is the supreme administrator: the first admin account, or the one named in `OWNER_USERNAME`. Only the owner sees **Admin access** in the sidebar.
-- **Master key** — set one on the Admin access page or with `python scripts/owner_key.py --generate`. It is stored as a bcrypt hash only, so it is printed exactly once; `scripts/owner_key.py --check 'key'` verifies it later.
-- **One-tap lockdown** — enter the master key and every *other* administrator session ends on its next click. The owner's own session survives; the lock is a counter (`epoch`) kept in the database, so it works across restarts and worker processes.
-- **Administrator access codes** — with a master key set, any **other** administrator needs a six-digit code from the owner on top of their password. Their attempt opens a request the owner sees at **Admin access**; the owner issues a one-time code valid for 15 minutes (five wrong tries and it is revoked). Codes are stored as bcrypt hashes and shown once.
+- The **owner** is the supreme administrator: the first admin account, or the one named in `OWNER_USERNAME`. Only the owner sees **Supreme control** in the sidebar (`/owner`; the old `/admin-access` address redirects there).
+- **One page, everything**: a live roster of every administrator (signed in / signed out / blocked, last activity, sign-in count), a per-account **Sign out**, the global **Sign out everyone else** lock, the **Administrator sign-in** switch, **Access codes**, the **Master key** panel, and an **Owner activity** trail — every action is confirmed with the master key.
+- **Master key** — set one on that page or with `python scripts/owner_key.py --generate`. It is stored as a bcrypt hash only, so it is printed exactly once; `python scripts/owner_key.py --check 'key'` verifies it later. Destructive actions ask for it again (step-up), so a borrowed browser cannot be used to lock people out.
+- **One-tap lockdown** — enter the master key and every *other* administrator session ends on its next click. The owner's own session survives; the lock is a counter (`epoch`) kept in the database, so it works across restarts and worker processes. Each account also carries a token version, which is how a single administrator can be signed out without touching anyone else.
+- **Administrator access codes** — with a master key set, any **other** administrator needs a six-digit code from the owner on top of their password. Their attempt opens a request the owner sees at **Supreme control**; the owner issues a one-time code valid for 15 minutes (five wrong tries and it is revoked). Codes are stored as bcrypt hashes and shown once.
+- **The sign-in page says so up front** — the access-code box is always visible with the note "administrators only", and it explains the rule before anyone fails: owners skip it, students and faculty leave it empty, other administrators need a code from the owner. While an administrator waits, the page polls `/api/auth/access-status` every five seconds and turns green the moment the owner issues the code; closed sign-in, a missing master key and a blocked account are stated on the page instead of failing silently.
+- **Sign-in switch and blocks** — closing **Administrator sign-in** signs every other administrator out and refuses their logins even with a valid code; blocking one account does the same for that account only. The owner is never affected by either.
+- **Password resets and removals** — set a new password for an administrator (their sessions end) or remove the account entirely; both require the master key, and removing the owner is refused.
 - **Closed by default** — if no master key exists, non-owner admin logins are refused rather than let through. Students and faculty are unaffected.
-- Every lock, code and revocation is written to `audit_log`.
+- Every lock, code, block, reset and removal is written to `audit_log` and listed on the page.
 
 ### Who can do what
 
