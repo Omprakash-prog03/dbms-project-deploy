@@ -255,6 +255,144 @@
 
   </div>
 
+  {% if history %}
+  <section class="sims-card supreme-history" id="sign-in-history">
+    <div class="panel-heading" style="margin-bottom:12px">
+      <div>
+        <h2>Sign-in history</h2>
+        <p>Every sign-in and sign-out on the portal — administrators, supreme, faculty and
+           students. Times are {{ history_time_label }}. Entries cannot be edited or deleted;
+           not even from the SQL console.</p>
+      </div>
+      <div class="supreme-history-side">
+        <div class="supreme-history-counts">
+          <span><strong>{{ history_totals.signed_in }}</strong> in</span>
+          <span><strong>{{ history_totals.signed_out }}</strong> out</span>
+          <span><strong>{{ history_totals.today }}</strong> today</span>
+        </div>
+        <div class="supreme-downloads">
+          <a class="supreme-mini-btn" href="{{ url_for('owner.history_csv', **request.args) }}">CSV</a>
+          <a class="supreme-mini-btn" href="{{ url_for('owner.history_pdf', **request.args) }}">PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <form class="supreme-history-filter" method="get" action="{{ url_for('owner.center') }}">
+      <input class="form-input supreme-mini" type="search" name="who" value="{{ history_who }}"
+             placeholder="Username" aria-label="Filter the history by username">
+      <select class="form-input supreme-mini" name="role" aria-label="Filter the history by role">
+        <option value="">Everyone</option>
+        {% for value, label in [('supreme','Supreme'), ('admin','Administrators'), ('faculty','Faculty'), ('student','Students')] %}
+        <option value="{{ value }}" {{ 'selected' if history_role == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select class="form-input supreme-mini" name="event" aria-label="Filter the history by event">
+        <option value="">Sign-ins and sign-outs</option>
+        <option value="signed in" {{ 'selected' if history_event == 'signed in' }}>Sign-ins only</option>
+        <option value="signed out" {{ 'selected' if history_event == 'signed out' }}>Sign-outs only</option>
+      </select>
+      <button class="supreme-mini-btn" type="submit">Filter</button>
+      {% if history_who or history_role or history_event %}
+      <a class="supreme-history-reset" href="{{ url_for('owner.center') }}">Show everything</a>
+      {% endif %}
+    </form>
+
+    <div class="sims-table-container">
+      <table class="sims-table supreme-table supreme-history-table">
+        <thead><tr><th>When</th><th>Who</th><th>Role</th><th>Event</th><th>From</th><th>Note</th></tr></thead>
+        <tbody>
+          {% for entry in history %}
+          <tr>
+            <td class="supreme-when-cell">{{ entry.at }}</td>
+            <td><strong>{{ entry.username }}</strong></td>
+            <td><span class="supreme-tag {{ 'is-owner' if entry.role == 'supreme' }}">{{ entry.role }}</span></td>
+            <td>
+              <span class="supreme-event {{ 'is-in' if entry.event == 'signed in' else 'is-out' }}">
+                {{ entry.event }}
+              </span>
+            </td>
+            <td class="subtle">{{ entry.address or '—' }}</td>
+            <td class="subtle">{{ entry.detail or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="subtle" style="margin-top:10px">Showing the latest {{ history|length }} of
+      {{ history_totals.total }} recorded events.</p>
+  </section>
+  {% endif %}
+
+  {% if activity is not none %}
+  <section class="sims-card supreme-history supreme-activity" id="change-log">
+    <div class="panel-heading" style="margin-bottom:12px">
+      <div>
+        <h2>Change log</h2>
+        <p>What administrators and faculty actually changed, detected automatically on every
+           screen — including the SQL console. Their username first, then the change.
+           Times are {{ activity_time_label }}. Append-only: nothing here can be edited or deleted.</p>
+      </div>
+      <div class="supreme-history-side">
+        <div class="supreme-history-counts">
+          <span><strong>{{ activity_totals.total }}</strong> changes</span>
+          <span><strong>{{ activity_totals.today }}</strong> today</span>
+          <span><strong>{{ activity_totals.people }}</strong> people</span>
+        </div>
+        <div class="supreme-downloads">
+          <a class="supreme-mini-btn" href="{{ url_for('owner.activity_csv', **request.args) }}">CSV</a>
+          <a class="supreme-mini-btn" href="{{ url_for('owner.activity_pdf', **request.args) }}">PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <form class="supreme-history-filter" method="get" action="{{ url_for('owner.center') }}#change-log">
+      <input class="form-input supreme-mini" type="search" name="who" value="{{ activity_who }}"
+             placeholder="Username" aria-label="Filter the change log by username">
+      <select class="form-input supreme-mini" name="role" aria-label="Filter the change log by role">
+        <option value="">Admins and faculty</option>
+        <option value="admin" {{ 'selected' if activity_role == 'admin' }}>Administrators</option>
+        <option value="faculty" {{ 'selected' if activity_role == 'faculty' }}>Faculty</option>
+      </select>
+      <select class="form-input supreme-mini" name="action" aria-label="Filter the change log by action">
+        <option value="">Every action</option>
+        {% for action in ['INSERT', 'UPDATE', 'DELETE'] %}
+        <option value="{{ action }}" {{ 'selected' if activity_action == action }}>{{ action }}</option>
+        {% endfor %}
+      </select>
+      <button class="supreme-mini-btn" type="submit">Filter</button>
+      {% if activity_who or activity_role or activity_action %}
+      <a class="supreme-history-reset" href="{{ url_for('owner.center') }}#change-log">Show everything</a>
+      {% endif %}
+    </form>
+
+    {% if not activity %}
+    <p class="empty-note">Nothing changed yet. Every change an administrator or faculty member saves
+      — from any screen or the SQL console — will appear here by itself.</p>
+    {% else %}
+    <div class="sims-table-container">
+      <table class="sims-table supreme-table supreme-history-table">
+        <thead><tr><th>When</th><th>Who</th><th>Role</th><th>Action</th><th>What</th><th>Details</th><th>From</th></tr></thead>
+        <tbody>
+          {% for entry in activity %}
+          <tr>
+            <td class="supreme-when-cell">{{ entry.at }}</td>
+            <td><strong>{{ entry.username }}</strong></td>
+            <td><span class="supreme-tag {{ 'is-owner' if entry.role == 'admin' }}">{{ entry.role }}</span></td>
+            <td><span class="supreme-event {{ 'is-out' if entry.action == 'DELETE' else 'is-in' }}">{{ entry.action }}</span></td>
+            <td><code class="supreme-object">{{ entry.object }}</code></td>
+            <td class="subtle supreme-detail-cell">{{ entry.detail or '—' }}</td>
+            <td class="subtle">{{ entry.address or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="subtle" style="margin-top:10px">Showing the latest {{ activity|length }} of
+      {{ activity_totals.total }} recorded changes.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
   <section class="sims-card supreme-trail">
     <div class="panel-heading" style="margin-bottom:10px">
       <div><h2>Owner activity</h2><p>Every lock, code and account action, newest first.</p></div>

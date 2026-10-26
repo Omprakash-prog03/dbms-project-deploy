@@ -4,6 +4,7 @@ import bcrypt
 from extensions import limiter
 from repositories.db_pool import db_pool
 from repositories import admin_sessions
+from repositories import login_history
 from repositories import owner as owner_guard
 
 auth_bp = Blueprint("auth", __name__)
@@ -139,6 +140,13 @@ def login_api():
         owner_guard.stamp_session()
 
     destination = url_for("students.profile_view", student_id=user["student_id"]) if user["role"] == "student" else url_for("dashboard.dashboard_view")
+    login_history.record(
+        user["username"],
+        "supreme" if owner_guard.is_owner(user["username"]) else user["role"],
+        login_history.SIGNED_IN,
+        request.remote_addr or "",
+        "at the campus sign-in",
+    )
     return jsonify({"success": True, "redirect": destination, "role": user["role"]})
 
 @auth_bp.route("/api/auth/access-status", methods=["POST"])
@@ -192,6 +200,16 @@ def access_status():
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
+    username = session.get("username")
+    role = session.get("role") or "account"
+    if username:
+        login_history.record(
+            username,
+            "supreme" if owner_guard.is_owner(username) else role,
+            login_history.SIGNED_OUT,
+            request.remote_addr or "",
+            "signed out from the portal",
+        )
     session.clear()
     flash("Successfully signed out.", "info")
     return redirect(url_for("auth.login_view"))

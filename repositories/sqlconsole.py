@@ -89,6 +89,12 @@ def run(statement, allow_full_write=False):
             'SELECT, WITH, INSERT, UPDATE, DELETE (and SHOW/DESCRIBE/EXPLAIN on MySQL).')}
 
     writing = verb in WRITE_VERBS
+    if writing and ('login_history' in lowered or 'staff_activity' in lowered):
+        return {'ok': False, 'statement': sql, 'error': (
+            'The sign-in history and the change log are append-only: they cannot be '
+            'inserted into, changed or deleted, not even here. The portal writes to them '
+            'by itself on every sign-in, sign-out and data change.')}
+
     if writing and 'password_hash' in lowered:
         return {'ok': False, 'statement': sql, 'error': (
             'password_hash must be a bcrypt hash, so it cannot be set from SQL. Create the '

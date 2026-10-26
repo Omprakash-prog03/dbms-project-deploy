@@ -11,6 +11,8 @@ from extensions import limiter
 from werkzeug.middleware.proxy_fix import ProxyFix
 from repositories.db_pool import db_pool, get_last_queries, clear_last_queries
 from repositories import admin_sessions
+from repositories import login_history
+from repositories import staff_activity
 from repositories import owner as owner_guard
 
 
@@ -58,6 +60,8 @@ def create_app(test_config=None):
     try:
         owner_guard.ensure_schema()
         admin_sessions.ensure_schema()
+        login_history.ensure_schema()
+        staff_activity.ensure_schema()
     except Exception:  # a read-only database must not stop the app from booting
         app.logger.warning('Could not prepare the owner tables at startup', exc_info=True)
 
@@ -115,6 +119,11 @@ def create_app(test_config=None):
 
     @app.after_request
     def after_req(response):
+        # Who changed what: one line per successful admin/faculty change.
+        try:
+            staff_activity.capture_request(response)
+        except Exception:
+            pass
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         if app.config['APP_ENV'] == 'production' and not app.config['EMBEDDED_PREVIEW']:

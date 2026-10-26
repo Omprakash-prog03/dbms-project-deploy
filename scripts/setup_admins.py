@@ -2,7 +2,7 @@
 
 The requested accounts:
 
-    omprakash      Adminom123        administrator, no code needed
+    omprakash      OmAdmin123        administrator, no code needed
     swaruppradhan  Adminpradhan123   administrator, one-time code each sign-in
     avashbadatya   Adminavash123     administrator, one-time code each sign-in
     aryandash      Adminaryan123     administrator, one-time code each sign-in
@@ -33,7 +33,7 @@ from repositories.db_pool import db_pool
 SUPREME = {'username': 'om-2026', 'password': 'Superadmin123', 'role': 'admin'}
 
 ADMINS = [
-    {'username': 'omprakash', 'password': 'Adminom123', 'role': 'admin'},
+    {'username': 'omprakash', 'password': 'OmAdmin123', 'role': 'admin'},
     {'username': 'swaruppradhan', 'password': 'Adminpradhan123', 'role': 'admin'},
     {'username': 'avashbadatya', 'password': 'Adminavash123', 'role': 'admin'},
     {'username': 'aryandash', 'password': 'Adminaryan123', 'role': 'admin'},

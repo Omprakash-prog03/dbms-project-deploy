@@ -172,8 +172,10 @@ git checkout -B deployed FETCH_HEAD
 
 Then click **Reload** in the Web tab. Your administrator account, password, and
 all records stay as they were; the new tables (`owner_guard`,
-`admin_access_request`, `admin_session`) are created automatically on the first
-request after the reload.
+`admin_access_request`, `admin_session`, and the two append-only registers
+`login_history` and `staff_activity`) are created automatically on the first
+request after the reload. Nothing has to be migrated or reseeded, and the registers
+start empty — they record from the reload onward, so no fabricated history appears.
 
 ### What is new since the first deployment
 
@@ -184,6 +186,11 @@ request after the reload.
   one-time access codes, password resets, removals, and the owner activity trail.
 - The sign-in page always shows the access-code box and explains, before anyone
   fails, that other administrators need a code from the owner.
+- **Two append-only registers** on the supreme page: the sign-in history (every
+  sign-in and sign-out, all roles, with IST times) and the change log (what each
+  administrator and faculty member changed, detected automatically), each with
+  **CSV** and **PDF** downloads. Triggers in the database make them impossible to
+  edit or delete, and the SQL console refuses to touch them.
 
 ### Set an exact password in one command
 
@@ -281,14 +288,14 @@ That creates:
 | Account | Password | Where | Code needed? |
 | --- | --- | --- | --- |
 | `om-2026` | `Superadmin123` | `/supreme` | — |
-| `omprakash` | `Adminom123` | `/login` | no |
+| `omprakash` | `OmAdmin123` | `/login` | no |
 | `swaruppradhan` | `Adminpradhan123` | `/login` | yes |
 | `avashbadatya` | `Adminavash123` | `/login` | yes |
 | `aryandash` | `Adminaryan123` | `/login` | yes |
 
 Passwords are hashed with bcrypt; nothing is printed back. Re-running the script is
 safe and idempotent — it also puts the passwords above back on accounts that already
-exist, so an existing `omprakash` keeps working with `Adminom123`. Add
+exist, so an existing `omprakash` keeps working with `OmAdmin123`. Add
 `--keep-passwords` if you would rather leave existing passwords alone. Change any of
 these later with `python scripts/reset_password.py --username NAME`.
 

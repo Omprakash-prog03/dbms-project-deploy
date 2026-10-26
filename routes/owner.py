@@ -7,13 +7,17 @@ actions that can remove an administrator entirely.
 import secrets
 
 import bcrypt
-from flask import (Blueprint, abort, flash, redirect, render_template, request, session, url_for)
+from flask import (Blueprint, Response, abort, flash, redirect, render_template, request,
+                   session, url_for)
 
 from config import Config
 from extensions import limiter
 from repositories import admin_sessions
+from repositories import login_history
 from repositories import owner as owner_guard
+from repositories import staff_activity
 from repositories.db_pool import db_pool
+from repositories.pdf import Report
 from routes.auth import login_required
 
 owner_bp = Blueprint('owner', __name__)
@@ -34,6 +38,15 @@ def _key_ok():
 
 def _audit_marker():
     return session.get('username', 'owner')
+
+
+def _role_of(username):
+    """The stored role of an account, for the history line."""
+    role = db_pool.execute_query(
+        'SELECT role FROM app_user WHERE LOWER(username) = LOWER(%s)', (username,), fetch='val')
+    if not role:
+        return 'admin'
+    return 'supreme' if owner_guard.is_owner(username) else str(role)
 
 
 @owner_bp.route('/supreme')
@@ -74,6 +87,8 @@ def supreme_sign_in():
     owner_guard.stamp_session()
     owner_guard.record('supreme signed in', account['username'],
                        f'from {request.remote_addr or "unknown address"}')
+    login_history.record(account['username'], 'supreme', login_history.SIGNED_IN,
+                         request.remote_addr or '', 'at the supreme sign-in page')
     return redirect(url_for('owner.center'))
 
 
@@ -96,6 +111,13 @@ def center():
     issued = session.pop('issued_code', None)
     key = session.pop('issued_key', None)
     live = admin_sessions.summary(session.get('username'))
+    history_who = (request.args.get('who') or '').strip()
+    history_event = (request.args.get('event') or '').strip()
+    history_role = (request.args.get('role') or '').strip()
+    if history_event not in (login_history.SIGNED_IN, login_history.SIGNED_OUT):
+        history_event = ''
+    if history_role not in ('supreme', 'admin', 'faculty', 'student'):
+        history_role = ''
     exempt = []
     for account in live['admins']:
         account['no_code'] = owner_guard.is_otp_exempt(account['username'])
@@ -116,6 +138,20 @@ def center():
         pending=owner_guard.pending_requests(),
         logins_closed=owner_guard.login_closed(),
         trail=owner_guard.trail(limit=12),
+        history=login_history.recent(limit=120, username=history_who,
+                                     role=history_role, event=history_event),
+        activity=staff_activity.recent(limit=120, username=_arg('who'),
+                                       role=_arg('role'), action=_arg('action')),
+        activity_totals=staff_activity.totals(),
+        activity_who=_arg('who'),
+        activity_role=_arg('role'),
+        activity_action=_arg('action'),
+        activity_time_label=staff_activity.time_label(),
+        history_totals=login_history.totals(),
+        history_who=history_who,
+        history_event=history_event,
+        history_role=history_role,
+        history_time_label=login_history.time_label(),
         code_minutes=owner_guard.CODE_MINUTES,
         min_key_length=owner_guard.MIN_MASTER_KEY,
         online_window=admin_sessions.ONLINE_WINDOW_MINUTES,
@@ -139,7 +175,12 @@ def lockdown():
     if not _key_ok():
         flash('That master key is not correct, so nobody was signed out.', 'error')
         return redirect(url_for('owner.center'))
+    ended_now = admin_sessions.live_usernames(session.get('username'))
     new_epoch = owner_guard.lockdown(session.get('username'))
+    for name in ended_now:
+        login_history.record(name, _role_of(name), login_history.SIGNED_OUT,
+                             request.remote_addr or '',
+                             'ended by the supreme administrator (sign out everyone else)')
     session['admin_token_version'] = admin_sessions.version(session.get('username'))
     owner_guard.stamp_session()
     flash(f'Every other administrator has been signed out. You are the only admin signed in '
@@ -156,6 +197,9 @@ def sign_out_admin(username):
         flash('You cannot sign yourself out from here — use Sign out in the sidebar.', 'error')
         return redirect(url_for('owner.center'))
     admin_sessions.sign_out(username)
+    login_history.record(username, _role_of(username), login_history.SIGNED_OUT,
+                         request.remote_addr or '',
+                         f'ended by the supreme administrator ({_audit_marker()})')
     owner_guard.record('administrator signed out', _audit_marker(), username)
     flash(f'{username} was signed out. Their next click returns them to the sign-in page.', 'success')
     return redirect(url_for('owner.center'))
@@ -172,6 +216,10 @@ def switch_logins():
     closed = request.form.get('closed') == '1'
     owner_guard.close_logins(closed, _audit_marker())
     if closed:
+        for name in admin_sessions.live_usernames(session.get('username')):
+            login_history.record(name, _role_of(name), login_history.SIGNED_OUT,
+                                 request.remote_addr or '',
+                                 'administrator sign-in was closed by the supreme administrator')
         admin_sessions.sign_out_everyone(session.get('username'))
     flash('Administrator sign-in is now CLOSED. Only you can sign in.' if closed
           else 'Administrator sign-in is open again.', 'success')
@@ -263,6 +311,9 @@ def reset_admin_password():
     db_pool.execute_dml('UPDATE app_user SET password_hash = %s WHERE user_id = %s',
                         (digest, target['user_id']))
     admin_sessions.sign_out(username)
+    login_history.record(username, _role_of(username), login_history.SIGNED_OUT,
+                         request.remote_addr or '',
+                         'password reset by the supreme administrator')
     owner_guard.record('administrator password reset', _audit_marker(), username)
     flash(f'Password changed for {username} and their sessions were ended.', 'success')
     return redirect(url_for('owner.center'))
@@ -298,6 +349,97 @@ def remove_admin(username):
         db_pool.execute_dml('DELETE FROM app_user WHERE user_id = %s', (account['user_id'],))
         outcome = 'deleted'
     admin_sessions.reset_account(username)
+    login_history.record(username, 'admin', login_history.SIGNED_OUT,
+                         request.remote_addr or '',
+                         f'account removed by the supreme administrator ({outcome})')
     owner_guard.record('administrator removed', _audit_marker(), f'{username} ({outcome})')
     flash(f'{username} is no longer an administrator ({outcome}).', 'success')
     return redirect(url_for('owner.center'))
+
+
+# ---------------------------------------------------------------------------
+# downloads: the two registers, as CSV and PDF
+# ---------------------------------------------------------------------------
+HISTORY_HEADERS = ['When', 'Who', 'Role', 'Event', 'From', 'Note']
+ACTIVITY_HEADERS = ['When', 'Who', 'Role', 'Action', 'What', 'Details', 'Page', 'From']
+
+
+def _history_rows():
+    return [[row['at'], row['username'], row['role'], row['event'],
+             row['address'], row['detail']]
+            for row in login_history.recent(limit=5000, username=_arg('who'),
+                                            role=_arg('role'), event=_arg('event'))]
+
+
+def _activity_rows():
+    return staff_activity.as_rows(limit=5000, username=_arg('who'),
+                                  role=_arg('role'), action=_arg('action'))
+
+
+def _arg(name):
+    return (request.args.get(name) or '').strip()
+
+
+def _csv_response(filename, headers, rows):
+    import csv
+    import io
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    for row in rows:
+        writer.writerow([_csv_safe(cell) for cell in row])
+    return Response(output.getvalue(), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename={filename}'})
+
+
+def _csv_safe(value):
+    text = '' if value is None else str(value)
+    return "'" + text if text.lstrip().startswith(('=', '+', '-', '@', '\t', '\r')) else text
+
+
+def _pdf_bytes(title, subtitle, headers, rows, widths):
+    report = Report(title, subtitle, landscape=True)
+    report.table(headers, rows, widths=widths)
+    report.paragraph('Written automatically by the portal. Entries are append-only: they '
+                     'cannot be edited or deleted, not even from the SQL console.')
+    return report.to_bytes()
+
+
+@owner_bp.route('/owner/history.csv')
+@login_required
+def history_csv():
+    _require_owner()
+    return _csv_response('nist_sign_in_history.csv', HISTORY_HEADERS, _history_rows())
+
+
+@owner_bp.route('/owner/history.pdf')
+@login_required
+def history_pdf():
+    _require_owner()
+    totals = login_history.totals()
+    payload = _pdf_bytes(f'{Config.PORTAL_NAME} - Sign-in history',
+                         f'{totals["total"]:,} events | shown in {login_history.time_label()}',
+                         HISTORY_HEADERS, _history_rows(), widths=[2.1, 1.5, 0.9, 1.1, 1.3, 3.1])
+    return Response(payload, mimetype='application/pdf', headers={
+        'Content-Disposition': 'attachment; filename=nist_sign_in_history.pdf'})
+
+
+@owner_bp.route('/owner/activity.csv')
+@login_required
+def activity_csv():
+    _require_owner()
+    return _csv_response('nist_change_log.csv', ACTIVITY_HEADERS, _activity_rows())
+
+
+@owner_bp.route('/owner/activity.pdf')
+@login_required
+def activity_pdf():
+    _require_owner()
+    totals = staff_activity.totals()
+    payload = _pdf_bytes(f'{Config.PORTAL_NAME} - Change log',
+                         f'{totals["total"]:,} changes by administrators and faculty | '
+                         f'shown in {staff_activity.time_label()}',
+                         ACTIVITY_HEADERS, _activity_rows(),
+                         widths=[1.9, 1.3, 0.7, 0.8, 1.5, 3.0, 1.6, 1.1])
+    return Response(payload, mimetype='application/pdf', headers={
+        'Content-Disposition': 'attachment; filename=nist_change_log.pdf'})

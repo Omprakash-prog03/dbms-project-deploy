@@ -99,7 +99,7 @@ python scripts/setup_admins.py --apply --keep-passwords
 
 Passwords are stored as bcrypt hashes and never printed back. Running it twice is
 safe and idempotent: it re-applies the passwords above to existing accounts (so a
-pre-existing `omprakash` ends up on `Adminom123`), `--keep-passwords` opts out, and a
+pre-existing `omprakash` ends up on `OmAdmin123`), `--keep-passwords` opts out, and a
 stale `OWNER_USERNAME` in `.env` is corrected to the supreme account.
 
 #### The supreme dashboard (`/owner`)
@@ -117,6 +117,29 @@ stale `OWNER_USERNAME` in `.env` is corrected to the supreme account.
   again; leave it unset and the supreme password alone unlocks the page. The key is
   stored as a bcrypt hash, shown once, and `scripts/owner_key.py` can recover it.
 - **Owner activity**: every lock, code, block, reset and removal, newest first.
+- **Sign-in history**: every sign-in and sign-out on the portal — administrators,
+  the supreme account, faculty and students — with the time in IST, the address and
+  a note when the supreme administrator ended the session. Filter by username, role
+  or event, and download the whole register as **CSV** or **PDF**.
+- **Change log**: what administrators and faculty actually changed, recorded
+  automatically on every screen (including the SQL console): username first, then the
+  action, the table and the fields that were sent. Filter by username, role or action,
+  and download it as **CSV** or **PDF**.
+
+#### The two registers cannot be edited
+
+`login_history` and `staff_activity` are append-only, and that is enforced three
+times over, not promised in prose:
+
+1. no application path updates or deletes a row;
+2. database triggers abort any `UPDATE` or `DELETE` (SQLite `RAISE(ABORT)`, MySQL
+   `SIGNAL`), so even a client outside the portal cannot rewrite history;
+3. the SQL console refuses every statement that writes to either table, and the
+   raw-data viewer shows them read-only.
+
+Both tables are created automatically on first start, so updating a live site needs
+no migration. The change log covers **administrators and faculty only**, as asked;
+the sign-in history covers every role.
 
 ### Who can do what
 
@@ -129,6 +152,7 @@ stale `OWNER_USERNAME` in `.env` is corrected to the supreme account.
 | Exams, marks/results                            | Yes           | Yes, for their own offerings                                         | Read own results    |
 | Fees and payments                               | Yes           | No                                                                   | Own fee summary     |
 | Password resets, database tables, SQL inspector | Yes           | No                                                                   | No                  |
+| Sign-in history and change log                  | No (supreme only) | No                                                               | No                  |
 
 A faculty account only sees classes where they are the instructor. If the Attendance page says "No class assigned yet", an administrator needs to create a course offering with that faculty member as the instructor.
 

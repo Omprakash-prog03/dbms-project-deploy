@@ -71,8 +71,32 @@ These were verified by reading the original source, not assumed:
 - **Departments management** — the zip had a read-only departments page; creation/editing with head-of-department assignment is new.
 - **Admission application entry, examination creation, student password choice, faculty password choice** — the empty-install gaps.
 - **Deployment toolchain**: `wsgi.py`, `scripts/init_production.py`, `scripts/check_production.py`, `scripts/reset_password.py`, `scripts/setup_pythonanywhere.sh`, `scripts/browser.mjs`, `requirements-runtime.txt`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/test.yml`.
-- **Verification**: 156 Python tests (up from 43) including concurrency, backup/restore, production bootstrap and CSRF regressions, plus a Playwright suite covering 17 routes, three roles, accessibility and PDFs.
+- **Verification**: 311 Python tests (up from 43) including concurrency, backup/restore, production bootstrap and CSRF regressions, plus a Playwright suite covering 17 routes, three roles, accessibility and PDFs.
 - **Assets**: six generated glass sculptures, local Inter fonts, favicon — no runtime CDN.
+
+### 4a. The two append-only registers (latest addition)
+
+The portal now keeps two tables that nobody — not an administrator, not the SQL
+console, not the application itself — can edit or delete. Both are created on
+first start (`ensure_schema()`), so no migration step is needed on a live site.
+
+| Register                  | What it stores                                                                                        | Who is recorded                        | Downloads                  |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------- | -------------------------- |
+| `login_history`           | Every `signed in` / `signed out` event with the time (UTC on disk, IST on screen), address and a note | Administrators, supreme, faculty, students | `/owner/history.csv`, `/owner/history.pdf` |
+| `staff_activity`          | Every change an administrator or faculty member saves: username, role, action, screen/table and the fields sent | Administrators and faculty only        | `/owner/activity.csv`, `/owner/activity.pdf` |
+
+- **Automatic, not opt-in.** A Flask `after_request` hook reads the authenticated
+  role and records one line per successful state-changing request, so a new screen
+  is covered the day it is added. The SQL console records the statement itself;
+  reads and refused statements are not changes and are skipped.
+- **Three layers of immutability.** No application path updates or deletes a row;
+  database triggers (`trg_login_history_no_update/no_delete`,
+  `trg_staff_activity_no_update/no_delete`) abort any `UPDATE`/`DELETE` in SQLite
+  and MySQL; and the SQL console refuses any statement that writes to either table.
+  The raw-data viewer shows them read-only.
+- **On the supreme dashboard** (`/owner`) the two sections list the latest 120
+  entries each, filterable by username, role and event/action, with the totals, and
+  the CSV/PDF buttons export the whole register.
 
 ## 5. Removed from the zip
 
@@ -99,6 +123,11 @@ routes/rawdata.py                 tests/test_rawdata.py            repositories/
 tests/test_sqlconsole.py          templates/rawdata/query.html     static/js/sqlconsole.js
 tests/production_smoke.py         tests/test_backup_restore.py      tests/test_production.py
 tests/test_reports.py             tests/test_workspace.py           tests/ui.mjs
+repositories/login_history.py   repositories/staff_activity.py
+tests/test_login_history.py     tests/test_staff_activity.py
+scripts/setup_admins.py         scripts/owner_key.py
+templates/owner/center.html     static/js/owner.js
+templates/supreme-login.html    static/css/supreme-login.css
 ```
 
 ## 7. Things still not done

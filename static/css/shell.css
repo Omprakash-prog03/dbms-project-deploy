@@ -3498,3 +3498,132 @@ select option {
   .supreme-lock { width: 100%; justify-content: center; }
   .supreme-stats div { flex: 1 1 0; min-width: 0; }
 }
+
+/* Sign-in history: the append-only register on the supreme dashboard. */
+.supreme-history-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.supreme-downloads {
+  display: flex;
+  gap: 6px;
+}
+.supreme-downloads .supreme-mini-btn {
+  text-decoration: none;
+}
+.supreme-history-table td:nth-child(2),
+.supreme-when-cell {
+  white-space: nowrap;
+}
+.supreme-object {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(154, 116, 214, 0.12);
+  color: #d3bde9;
+  font-size: 11px;
+}
+.supreme-history-counts {
+  display: flex;
+  gap: 14px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.supreme-history-counts strong {
+  display: block;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.supreme-history-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.supreme-history-filter .form-input {
+  flex: 0 1 170px;
+  width: 170px;
+}
+.supreme-history-filter select.form-input {
+  flex: 0 1 190px;
+  width: 190px;
+}
+.supreme-history-reset {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.supreme-history-reset:hover {
+  color: var(--text-primary);
+}
+.supreme-history-table td {
+  font-size: 12px;
+  vertical-align: top;
+}
+.supreme-when-cell {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary, #d6d5dc);
+}
+.supreme-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.supreme-event::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.supreme-event.is-in {
+  color: #a9e3c2;
+  background: rgba(46, 110, 79, 0.24);
+}
+.supreme-event.is-out {
+  color: #d7c4ea;
+  background: rgba(96, 74, 122, 0.26);
+}
+@media (max-width: 640px) {
+  /* Narrow screens: the two registers stay readable, and still say what changed. */
+  .supreme-history .panel-heading { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .supreme-history-side { align-items: flex-start; width: 100%; }
+  .supreme-history-counts { flex-wrap: wrap; gap: 12px; }
+  .supreme-history-filter .form-input,
+  .supreme-history-filter select.form-input { flex: 1 1 140px; width: auto; }
+  .supreme-history-table td,
+  .supreme-history-table th { padding-left: 8px; padding-right: 8px; }
+  /* The registers scroll sideways rather than pushing the page wide. */
+  .sims-table-container:has(.supreme-history-table) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .supreme-history-table th:nth-child(5), .supreme-history-table td:nth-child(5),
+  .supreme-history-table th:nth-child(6), .supreme-history-table td:nth-child(6) { display: none; }
+  /* The change log keeps action + what; role, details and address fold away. */
+  .supreme-activity .supreme-history-table th:nth-child(1),
+  .supreme-activity .supreme-history-table td:nth-child(1),
+  .supreme-activity .supreme-history-table th:nth-child(3),
+  .supreme-activity .supreme-history-table td:nth-child(3),
+  .supreme-activity .supreme-history-table td:nth-child(6),
+  .supreme-activity .supreme-history-table th:nth-child(7),
+  .supreme-activity .supreme-history-table td:nth-child(7) { display: none; }
+  .supreme-activity .supreme-history-table th:nth-child(4),
+  .supreme-activity .supreme-history-table td:nth-child(4),
+  .supreme-activity .supreme-history-table th:nth-child(5),
+  .supreme-activity .supreme-history-table td:nth-child(5) { display: table-cell; }
+}

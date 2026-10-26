@@ -115,6 +115,22 @@ def sign_out(username):
     return new_version
 
 
+def live_usernames(except_username=None):
+    """Administrators active within the online window, optionally excluding one."""
+    ensure_schema()
+    cutoff = _now() - timedelta(minutes=ONLINE_WINDOW_MINUTES)
+    rows = db_pool.execute_query(f'SELECT username, last_seen FROM {TABLE}', fetch='all') or []
+    names = []
+    for row in rows:
+        seen = _parse(row['last_seen'])
+        if not seen or seen < cutoff:
+            continue
+        if except_username and str(row['username']).lower() == str(except_username).lower():
+            continue
+        names.append(row['username'])
+    return names
+
+
 def sign_out_everyone(except_username):
     """Invalidate every administrator session except the given account."""
     ensure_schema()

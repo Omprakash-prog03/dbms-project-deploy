@@ -1,5 +1,5 @@
 """Administrator-only raw table browser and exports."""
-from flask import Blueprint, Response, abort, render_template, request, session
+from flask import Blueprint, Response, abort, g, render_template, request, session
 from config import Config
 from repositories.db_pool import db_pool
 from routes.auth import login_required, role_required
@@ -41,6 +41,9 @@ def query_console():
         allow_full_write = request.form.get('allow_full_write') == '1'
         outcome = sqlconsole.run(statement, allow_full_write=allow_full_write)
         sqlconsole.remember(session, outcome)
+        # Only a statement that actually changed data belongs in the change log.
+        if not (outcome.get('ok') and outcome.get('verb') in ('INSERT', 'UPDATE', 'DELETE')):
+            g.activity_skip = True
     return render_template(
         'rawdata/query.html',
         outcome=outcome,
