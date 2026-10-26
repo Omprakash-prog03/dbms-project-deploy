@@ -470,3 +470,46 @@
     height: 39px;
   }
 }
+
+/* Administrators signing in with an owner-issued access code */
+.access-code-group .form-input {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0.32em;
+  font-size: 16px;
+}
+.access-code-group .form-input::placeholder {
+  letter-spacing: 0.02em;
+  font-family: inherit;
+}
+.login-hint {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted, #a8a2b6);
+}
+.form-group.is-locked .password-field {
+  opacity: 0.55;
+}
+
+/* Notices from the owner guard on the sign-in screen */
+.login-flash {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 16px;
+}
+.login-flash p {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #1a1622;
+  border: 1px solid #382f4b;
+  color: #ded5f2;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.login-flash p.is-error {
+  background: #241316;
+  border-color: #53262c;
+  color: #f3c3c9;
+}

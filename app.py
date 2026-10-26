@@ -4,12 +4,13 @@ import hmac
 import threading
 from collections import OrderedDict
 from datetime import date, datetime
-from flask import Flask, jsonify, request, session, abort, render_template
+from flask import Flask, jsonify, request, session, abort, render_template, redirect, url_for, flash
 from werkzeug.exceptions import HTTPException
 from config import Config
 from extensions import limiter
 from werkzeug.middleware.proxy_fix import ProxyFix
 from repositories.db_pool import db_pool, get_last_queries, clear_last_queries
+from repositories import owner as owner_guard
 
 
 def create_app(test_config=None):
@@ -47,7 +48,8 @@ def create_app(test_config=None):
     from routes.insights import insights_bp
     from routes.reports import reports_bp
     from routes.rawdata import rawdata_bp
-    for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp, reports_bp, rawdata_bp):
+    from routes.owner import owner_bp
+    for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp, reports_bp, rawdata_bp, owner_bp):
         app.register_blueprint(blueprint)
 
     # Bounded, per-session query traces. Never a process-global feed of other users' SQL.
@@ -75,6 +77,25 @@ def create_app(test_config=None):
                     return jsonify(success=False, message='Your session expired. Refresh the page and try again.'), 400
                 abort(400, description='Refresh the page and try again.')
 
+        # Owner guard. A lockdown ends every administrator session except the
+        # owner's; a non-owner administrator only stays signed in while both the
+        # owner's current epoch and their access approval still hold.
+        if session.get('role') == 'admin' and request.endpoint not in ('auth.login_view', 'static'):
+            username = session.get('username', '')
+            if owner_guard.is_owner(username):
+                if not owner_guard.session_is_current():
+                    owner_guard.stamp_session()
+            elif not session.get('access_approved') or not owner_guard.session_is_current():
+                ended_by_owner = owner_guard.session_is_current()
+                session.clear()
+                message = ('The owner ended your administrator session. Ask them for a new access code.'
+                           if ended_by_owner else
+                           'This administrator session is no longer valid. Sign in again with an access code.')
+                if request.path.startswith('/api/') or request.is_json:
+                    return jsonify(success=False, code='owner_signed_out', message=message), 401
+                flash(message, 'info')
+                return redirect(url_for('auth.login_view'))
+
     @app.after_request
     def after_req(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -100,7 +121,8 @@ def create_app(test_config=None):
 
     @app.context_processor
     def inject_globals():
-        names = {'dashboard':'Overview', 'students':'Students', 'faculty':'Faculty', 'departments':'Departments', 'courses':'Courses', 'offerings':'Course offerings', 'enrollments':'Enrollments', 'attendance':'Attendance', 'results':'Results', 'fees':'Fees & payments', 'admissions':'Admissions', 'insights':'Database insights', 'reports':'Reports & PDF', 'raw-data':'Raw data'}
+        is_owner = session.get('role') == 'admin' and owner_guard.is_owner(session.get('username'))
+        names = {'dashboard':'Overview', 'students':'Students', 'faculty':'Faculty', 'departments':'Departments', 'courses':'Courses', 'offerings':'Course offerings', 'enrollments':'Enrollments', 'attendance':'Attendance', 'results':'Results', 'fees':'Fees & payments', 'admissions':'Admissions', 'insights':'Database insights', 'reports':'Reports & PDF', 'raw-data':'Raw data', 'admin-access':'Admin access'}
         pending_count = 0
         if session.get('role') in ('admin', 'faculty'):
             pending_count = db_pool.execute_query("SELECT COUNT(*) FROM admission_application WHERE status='Pending'", fetch='val') or 0
@@ -110,6 +132,9 @@ def create_app(test_config=None):
             'csrf_token':session.get('csrf_token',''), 'today':date.today(),
             'pending_count':pending_count, 'page_name':names.get(request.path.strip('/').split('/')[0], 'Workspace'),
             'demo_mode':app.config['DEMO_MODE'],
+            'is_owner': is_owner,
+            'owner_name': owner_guard.owner_username() if is_owner else '',
+            'owner_pending': owner_guard.pending_count() if is_owner else 0,
         }
 
     @app.template_filter('initials')

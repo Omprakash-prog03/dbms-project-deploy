@@ -51,8 +51,12 @@ window.apiRequest = async function (url, options = {}) {
   } catch {
     throw new Error("Something went wrong. Please refresh and try again.");
   }
-  if (!response.ok || data.success === false)
-    throw new Error(data.message || "This action could not be completed.");
+  if (!response.ok || data.success === false) {
+    const error = new Error(data.message || "This action could not be completed.");
+    error.code = data.code;
+    error.status = response.status;
+    throw error;
+  }
   return data;
 };
 window.escapeHtml = (value) =>

@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 import bcrypt
 from extensions import limiter
 from repositories.db_pool import db_pool
+from repositories import owner as owner_guard
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -77,6 +78,31 @@ def login_api():
         status = db_pool.execute_query("SELECT status FROM faculty WHERE faculty_id = %s", (user["faculty_id"],), fetch="val")
         if status != "Active":
             return jsonify(success=False, message="This account is inactive. Please contact the university office."), 403
+    # Administrators who are not the owner must hold a code the owner issued.
+    access_code = str(data.get('access_code') or '').strip()
+    if owner_guard.needs_approval(user['username'], user['role']):
+        if not owner_guard.master_key_set():
+            return jsonify({
+                'success': False, 'code': 'owner_blocked',
+                'message': ('The owner has not set a master key yet, so administrator access is '
+                            'closed. Ask the owner to open Admin access and create one.'),
+            }), 403
+        if not access_code:
+            request_id = owner_guard.request_access(user['username'], user['user_id'])
+            return jsonify({
+                'success': False, 'code': 'approval_required', 'request_id': request_id,
+                'message': ('Administrator access needs a code from the owner. Your request is '
+                            'waiting — ask the owner for the six-digit code, then enter it here.'),
+            }), 403
+        ok, why = owner_guard.redeem_code(user['username'], access_code)
+        if not ok:
+            owner_guard.request_access(user['username'], user['user_id'])
+            if 'not correct' in why or 'attempt' in why:
+                message = why
+            else:
+                message = f'{why} A fresh request is now waiting for the owner.'
+            return jsonify({'success': False, 'code': 'approval_required', 'message': message}), 403
+
     # Rotate the session and CSRF token when privileges change.
     import secrets
     session.clear()
@@ -87,6 +113,9 @@ def login_api():
     session["role"] = user["role"]
     session["student_id"] = user.get("student_id")
     session["faculty_id"] = user.get("faculty_id")
+    if user["role"] == "admin":
+        session["access_approved"] = True
+        owner_guard.stamp_session()
 
     destination = url_for("students.profile_view", student_id=user["student_id"]) if user["role"] == "student" else url_for("dashboard.dashboard_view")
     return jsonify({"success": True, "redirect": destination, "role": user["role"]})

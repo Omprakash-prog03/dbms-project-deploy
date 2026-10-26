@@ -17,6 +17,9 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY') or (None if APP_ENV == 'production' else secrets.token_hex(32))
     RATELIMIT_ENABLED = APP_ENV == 'production'
     TRUSTED_PROXY_HOPS = int(os.getenv('TRUSTED_PROXY_HOPS', '0'))
+    # The supreme administrator. Leave blank to treat the first admin account as
+    # the owner; set it explicitly (OWNER_USERNAME=omprakash) to be certain.
+    OWNER_USERNAME = os.getenv('OWNER_USERNAME', '').strip().lower()
     DB_ENGINE = os.getenv('DB_ENGINE', 'auto').lower()
     SQLITE_PATH = str((BASE_DIR / os.getenv('SQLITE_PATH', 'sims_embedded.db')).resolve())
     DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
