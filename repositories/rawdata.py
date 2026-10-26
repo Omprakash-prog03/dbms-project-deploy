@@ -34,18 +34,18 @@ def table_names():
     return [row['name'] for row in rows if _SAFE_TABLE.match(row['name'])]
 
 
+def row_count(name):
+    return db_pool.execute_query(f'SELECT COUNT(*) FROM {_quote(name)}', fetch='val') or 0
+
+
 def tables():
     """Every physical table with its row count, for the table picker."""
-    listing = []
-    for name in table_names():
-        count = db_pool.execute_query(f'SELECT COUNT(*) FROM {_quote(name)}', fetch='val') or 0
-        listing.append({'name': name, 'rows': count})
-    return listing
+    return [{'name': name, 'rows': row_count(name)} for name in table_names()]
 
 
-def columns(table):
+def columns(table, known=None):
     """Visible columns plus which ones are numeric (for right alignment)."""
-    if table not in table_names():
+    if table not in (known if known is not None else table_names()):
         raise ValueError('Unknown table.')
     if db_pool.is_mysql:
         rows = db_pool.execute_query(
@@ -163,11 +163,12 @@ def display_cells(page_data):
     return output
 
 
-def render_text(page_data):
-    """Oracle/SQL*Plus style text block: header, dashed rule, aligned rows."""
-    widths = page_data['widths']
-    numeric = [column['numeric'] for column in page_data['columns']]
+def grid_text(headers, numeric, widths, rows, numbers=None, empty_message='No rows in this table yet.'):
+    """Oracle/SQL*Plus style block: header, dashed rule, aligned rows.
 
+    Shared by the raw table viewer and the SQL console so both print results
+    the same way.
+    """
     def line(values, right=False):
         cells = []
         for position, value in enumerate(values):
@@ -176,14 +177,27 @@ def render_text(page_data):
             cells.append(text.rjust(width) if (right or numeric[position]) else text.ljust(width))
         return '  '.join(cells).rstrip()
 
-    if not page_data['rows']:
-        return 'No rows in this table yet.'
-    lines = [line([column['name'].upper() for column in page_data['columns']]),
+    if not rows:
+        return empty_message
+    lines = [line([str(header).upper() for header in headers]),
              line(['-' * width for width in widths]),
              '']
-    for row in display_cells(page_data):
-        lines.append(f"{str(row['number']).rjust(4)}  " + line([cell['text'] for cell in row['cells']]))
+    for index, values in enumerate(rows):
+        number = numbers[index] if numbers else index + 1
+        lines.append(f'{str(number).rjust(4)}  ' + line(values))
     return '\n'.join(lines)
+
+
+def render_text(page_data):
+    """The current page of a raw table, ready for a <pre> block."""
+    shown = display_cells(page_data)
+    return grid_text(
+        [column['name'] for column in page_data['columns']],
+        [column['numeric'] for column in page_data['columns']],
+        page_data['widths'],
+        [[cell['text'] for cell in row['cells']] for row in shown],
+        [row['number'] for row in shown],
+    )
 
 
 def table_csv(table):

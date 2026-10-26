@@ -146,6 +146,33 @@ try {
   assert.match(csv, /Aarav/);
   assert.equal(csv.trim().split("\n").length, 2);
 
+  // Raw data viewer and the SQL console both print Oracle-style output.
+  await visit("/raw-data?table=student");
+  assert.ok((await page.locator("pre.raw-output").innerText()).includes("STUDENT_ID"));
+  for (const [label, expected] of [
+    ["Download CSV", "text/csv"],
+    ["Download PDF", "application/pdf"],
+  ]) {
+    const event = page.waitForEvent("download");
+    await page.getByRole("link", { name: label }).click();
+    const file = await event;
+    assert.ok(
+      file.suggestedFilename().endsWith(expected === "text/csv" ? ".csv" : ".pdf"),
+      label,
+    );
+  }
+
+  await visit("/raw-data/query");
+  await page.getByLabel("SQL statement").fill("SELECT dept_code FROM department;");
+  await page.getByRole("button", { name: "Run statement" }).click();
+  await page.waitForSelector(".sql-status.is-ok");
+  assert.match(await page.locator("pre.raw-output").innerText(), /DEPT_CODE/);
+  await page.getByLabel("SQL statement").fill("DROP TABLE student;");
+  await page.getByRole("button", { name: "Run statement" }).click();
+  await page.waitForSelector(".sql-error");
+  assert.match(await page.locator(".sql-error").innerText(), /not allowed/);
+  assert.equal(await page.locator(".sql-history-item").count() > 0, true);
+
   // A private, unseeded installation needs these creation screens.
   for (const [path, button, modal, heading] of [
     ["/departments", "Add department", "#departmentModal", "Add a department"],
@@ -186,6 +213,7 @@ try {
     "/reports",
     "/raw-data",
     "/raw-data?table=student",
+    "/raw-data/query",
   ]) {
     await visit(path);
     await noOverflow();
@@ -361,7 +389,7 @@ try {
   }
   assert.deepEqual(errors, [], "Browser/runtime errors");
   console.log(
-    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, faculty roll-call save, filtered CSV, campus/student PDFs, 16 routes at desktop/mobile, keyboard navigation, accessibility.`,
+    `${process.env.TEST_EMBEDDED === "true" ? "PASS: HTTPS cross-site iframe login/logout. " : ""}PASS: login/logout (3 roles), dashboard filters, chart year, notifications, search, SQL inspector, student dialogs, faculty roll-call save, filtered CSV, campus/student PDFs, raw tables, SQL console, 17 routes at desktop/mobile, keyboard navigation, accessibility.`,
   );
 } finally {
   await context?.close();

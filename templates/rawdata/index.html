@@ -30,6 +30,7 @@
           <p>{{ data.engine }} · {{ '{:,}'.format(data.total) }} rows · showing rows {{ data.offset + 1 if data.shown else 0 }}–{{ data.offset + data.shown }}</p>
         </div>
         <div class="row-actions">
+          <a class="btn-secondary-pill" href="{{ url_for('rawdata.query_console') }}">SQL console</a>
           <a class="btn-secondary-pill" href="{{ url_for('rawdata.raw_csv', table=data.table) }}">Download CSV</a>
           <a class="btn-primary-pill" href="{{ url_for('rawdata.raw_pdf', table=data.table) }}">Download PDF</a>
         </div>
@@ -37,7 +38,7 @@
 
       <div class="raw-sql" aria-label="SQL statement executed"><span class="raw-prompt">SQL&gt;</span> {{ data.statement }}</div>
 
-      <div class="raw-output-scroll">
+      <div class="raw-output-scroll" tabindex="0" role="group" aria-label="Raw rows of {{ data.table }} — scrollable">
         <pre class="raw-output" aria-label="Raw rows of {{ data.table }}">{{ data.text }}</pre>
       </div>
 
