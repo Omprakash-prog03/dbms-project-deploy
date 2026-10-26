@@ -211,6 +211,13 @@ def is_online(username):
 
 
 def reset_account(username):
-    """Forget a deleted account's session row."""
+    """End an account's sessions without resetting its version.
+
+    Moving the version on (rather than deleting the row) matters: a cookie that
+    was issued at version 1 must never become valid again just because the row
+    disappeared.
+    """
     ensure_schema()
-    db_pool.execute_dml(f'DELETE FROM {TABLE} WHERE LOWER(username) = LOWER(%s)', (username,))
+    row = _row(username)
+    version = int(row['token_version'] or 1) + 1 if row else 2
+    _upsert(username, token_version=version, last_seen=None, signed_in_at=None)

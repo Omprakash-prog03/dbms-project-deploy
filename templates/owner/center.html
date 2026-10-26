@@ -10,10 +10,12 @@
   <section class="supreme-banner">
     <div class="supreme-crown" aria-hidden="true">{{ icon('crown', 22) }}</div>
     <div>
-      <div class="eyebrow">OWNER · {{ current_user.username }}</div>
+      <div class="eyebrow">SUPREME · {{ current_user.username }} · signed in at /supreme</div>
       <h2>You are the supreme administrator.</h2>
-      <p>Every other administrator needs a code from you to sign in, and you can end all of their
-         sessions at once — without leaving this page.</p>
+      <p>Every other administrator needs a one-time code from you before they can sign in.
+         {% if no_code_names %}<strong>{{ no_code_names }}</strong> {{ 'are' if ',' in no_code_names else 'is' }} exempt — password only.{% endif %}
+         You can end any session, close the door entirely, or
+         remove an account, all from here.</p>
     </div>
     <div class="supreme-stats">
       <div><strong>{{ other_count }}</strong><span>other admins</span></div>
@@ -59,8 +61,10 @@
         </div>
         <form method="post" action="{{ url_for('owner.lockdown') }}" class="supreme-inline" id="lockdownForm">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <input class="form-input supreme-mini" name="master_key" type="password" required
-                 autocomplete="off" placeholder="Master key" aria-label="Master key to sign everyone out">
+          <input class="form-input supreme-mini" name="master_key" type="password"
+                 {% if key_set %}required{% endif %}
+                 autocomplete="off" placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+                 aria-label="Master key to sign everyone out">
           <button class="supreme-lock" type="submit" {% if not key_set %}disabled{% endif %}>
             {{ icon('lock', 15) }} Sign out everyone else
           </button>
@@ -68,7 +72,7 @@
       </div>
 
       {% if not key_set %}
-      <p class="supreme-warn">{{ icon('key', 15) }} Create your master key in the panel on the right — until then no other administrator can sign in at all.</p>
+      <p class="supreme-warn">{{ icon('key', 15) }} No master key yet — your supreme password is the only lock. Create one below so every action here asks for it again.</p>
       {% endif %}
 
       <div class="sims-table-container">
@@ -81,7 +85,8 @@
             <tr class="{{ 'is-owner' if admin.is_owner }}">
               <td>
                 <strong>{{ admin.username }}</strong>
-                {% if admin.is_owner %}<span class="supreme-tag is-owner">you · owner</span>{% endif %}
+                {% if admin.is_owner %}<span class="supreme-tag is-owner">you · supreme</span>{% endif %}
+                {% if admin.no_code and not admin.is_owner %}<span class="supreme-tag is-exempt">no code needed</span>{% endif %}
                 {% if admin.linked %}<span class="supreme-tag">{{ admin.linked }} linked</span>{% endif %}
               </td>
               <td>
@@ -106,16 +111,16 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button class="supreme-mini-btn" type="submit">Sign out</button>
                   </form>
-                  <form method="post" action="{{ url_for('owner.block_admin', username=admin.username) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="blocked" value="{{ '0' if admin.blocked else '1' }}">
-                    <button class="supreme-mini-btn {{ 'is-warn' if not admin.blocked }}" type="submit">
-                      {{ 'Unblock' if admin.blocked else 'Block' }}
-                    </button>
-                  </form>
                   <details class="supreme-more">
                     <summary aria-label="More actions for {{ admin.username }}">•••</summary>
                     <div class="supreme-more-body">
+                      <form method="post" action="{{ url_for('owner.block_admin', username=admin.username) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="blocked" value="{{ '0' if admin.blocked else '1' }}">
+                        <button class="supreme-mini-btn {{ 'is-warn' if not admin.blocked }}" type="submit">
+                          {{ 'Unblock sign-in' if admin.blocked else 'Block sign-in' }}
+                        </button>
+                      </form>
                       <form method="post" action="{{ url_for('owner.reset_admin_password') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="username" value="{{ admin.username }}">
@@ -123,14 +128,15 @@
                         <input class="form-input supreme-mini" id="pw-{{ loop.index }}" name="new_password"
                                type="password" minlength="8" required autocomplete="new-password">
                         <input class="form-input supreme-mini" name="master_key" type="password"
-                               placeholder="Master key" required autocomplete="off">
+                               {% if key_set %}required{% endif %} placeholder="Master key" autocomplete="off">
                         <button class="supreme-mini-btn" type="submit">Reset password</button>
                       </form>
                       <form method="post" action="{{ url_for('owner.remove_admin', username=admin.username) }}"
-                            data-confirm="Remove administrator rights from {{ admin.username }}?">
+                            data-confirm="Remove {{ admin.username }} from the portal? They will be signed out and their account deleted.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <input class="form-input supreme-mini" name="master_key" type="password"
-                               placeholder="Master key" required autocomplete="off">
+                        <label for="rm-{{ loop.index }}">Remove this administrator</label>
+                        <input class="form-input supreme-mini" id="rm-{{ loop.index }}" name="master_key" type="password"
+                               {% if key_set %}required{% endif %} placeholder="Master key" autocomplete="off">
                         <button class="supreme-mini-btn is-danger" type="submit">Remove admin</button>
                       </form>
                     </div>
@@ -159,8 +165,10 @@
       <form method="post" action="{{ url_for('owner.switch_logins') }}" class="supreme-stack">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="closed" value="{{ '0' if logins_closed else '1' }}">
-        <input class="form-input supreme-mini" name="master_key" type="password" required
-               autocomplete="off" placeholder="Master key" aria-label="Master key to change administrator sign-in">
+        <input class="form-input supreme-mini" name="master_key" type="password"
+               {% if key_set %}required{% endif %} autocomplete="off"
+               placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+               aria-label="Master key to change administrator sign-in">
         <button class="supreme-switch-btn {{ 'is-open' if logins_closed }}" type="submit">
           {{ 'Reopen administrator sign-in' if logins_closed else 'Close administrator sign-in' }}
         </button>
@@ -176,8 +184,8 @@
         </div>
         <span class="supreme-tag">{{ icon('key', 13) }} PIN</span>
       </div>
-      <p class="subtle">Required to sign others out, issue codes, change passwords and remove admins.
-        Stored as a hash only.</p>
+      <p class="subtle">Optional extra lock: once set, every action on this page asks for it again.
+        Stored as a hash only, never shown.</p>
       <form method="post" action="{{ url_for('owner.master_key') }}" class="supreme-stack">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         {% if key_set %}
@@ -227,8 +235,9 @@
             <form method="post" action="{{ url_for('owner.issue') }}" class="supreme-inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="request_id" value="{{ item.request_id }}">
-              <input class="form-input supreme-mini" name="master_key" type="password" required
-                     autocomplete="off" placeholder="Master key"
+              <input class="form-input supreme-mini" name="master_key" type="password"
+                     {% if key_set %}required{% endif %} autocomplete="off"
+                     placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
                      aria-label="Master key to issue a code for {{ item.username }}">
               <button class="btn-primary-pill" type="submit">Issue code</button>
             </form>

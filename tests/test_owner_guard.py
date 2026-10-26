@@ -56,9 +56,22 @@ def test_first_administrator_is_the_owner():
 
 
 def test_owner_can_be_configured_explicitly(monkeypatch):
-    monkeypatch.setattr(Config, 'OWNER_USERNAME', 'omprakash')
-    assert owner.owner_username() == 'omprakash'
-    assert owner.is_owner('admin') is False
+    # A configured name only takes the supreme seat when that account exists.
+    db_pool.execute_dml(
+        "INSERT INTO app_user (username, password_hash, role) VALUES ('omprakash', 'unused', 'admin')")
+    try:
+        monkeypatch.setattr(Config, 'OWNER_USERNAME', 'omprakash')
+        assert owner.owner_username() == 'omprakash'
+        assert owner.is_owner('omprakash') is True
+        assert owner.is_owner('admin') is False
+    finally:
+        db_pool.execute_dml("DELETE FROM app_user WHERE username = 'omprakash'")
+
+
+def test_a_missing_config_name_falls_back_to_the_first_administrator(monkeypatch):
+    monkeypatch.setattr(Config, 'OWNER_USERNAME', 'nobody-at-all')
+    assert owner.owner_username() == 'admin'
+    assert owner.is_owner('admin') is True
 
 
 # ---------------------------------------------------------------------------
@@ -163,11 +176,13 @@ def test_revoked_request_disappears():
 # ---------------------------------------------------------------------------
 # login gate
 # ---------------------------------------------------------------------------
-def test_owner_logs_in_without_a_code(app):
+def test_the_owner_signs_in_on_the_supreme_page_not_the_campus_one(app):
     owner.set_master_key(MASTER)
     response = app.test_client().post('/api/auth/login', json={'username': 'admin', 'password': 'admin123'})
-    assert response.status_code == 200, response.get_json()
-    assert response.get_json()['success'] is True
+    assert response.status_code == 403
+    assert response.get_json()['code'] == 'use_supreme_page'
+    assert response.get_json()['redirect'].endswith('/supreme')
+    assert response.get_json()['success'] is False
 
 
 def test_other_administrator_is_blocked_until_a_code_is_issued(app):
@@ -185,7 +200,7 @@ def test_other_administrator_is_blocked_until_a_code_is_issued(app):
         assert blocked.status_code == 403
         payload = blocked.get_json()
         assert payload['code'] == 'approval_required'
-        assert 'owner' in payload['message'].lower()
+        assert 'supreme' in payload['message'].lower()
 
         # The owner sees the request and issues a code.
         pending = owner.pending_requests()
@@ -214,19 +229,23 @@ def test_other_administrator_is_blocked_until_a_code_is_issued(app):
         db_pool.execute_dml("DELETE FROM app_user WHERE user_id = %s", (user_id,))
 
 
-def test_administrator_login_is_closed_when_no_master_key_exists(app):
+def test_master_key_is_not_needed_for_an_administrator_to_ask_for_a_code(app):
+    """The key is optional step-up protection, never a closed door."""
     import bcrypt
+    assert not owner.master_key_set()
     digest = bcrypt.hashpw(b'deputy-pass-1', bcrypt.gensalt()).decode()
     db_pool.execute_dml(
         "INSERT INTO app_user (username, password_hash, role) VALUES (%s, %s, 'admin')",
         ('deputy', digest))
     user_id = db_pool.execute_query("SELECT user_id FROM app_user WHERE username = 'deputy'", fetch='val')
     try:
-        blocked = app.test_client().post('/api/auth/login', json={
+        waiting = app.test_client().post('/api/auth/login', json={
             'username': 'deputy', 'password': 'deputy-pass-1'})
-        assert blocked.status_code == 403
-        assert blocked.get_json()['code'] == 'owner_blocked'
+        assert waiting.status_code == 403
+        assert waiting.get_json()['code'] == 'approval_required'
+        assert [item['username'] for item in owner.pending_requests()] == ['deputy']
     finally:
+        db_pool.execute_dml("DELETE FROM admin_access_request WHERE LOWER(username) = 'deputy'")
         db_pool.execute_dml("DELETE FROM app_user WHERE user_id = %s", (user_id,))
 
 

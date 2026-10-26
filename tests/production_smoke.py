@@ -21,8 +21,17 @@ assert 'max-age=' in login.headers['Strict-Transport-Security']
 with client.session_transaction(base_url=base) as session:
     token = session['csrf_token']
 assert client.post('/api/auth/login', json=credentials, base_url=base).status_code == 400
-response = client.post('/api/auth/login', json=credentials, headers={'X-CSRF-Token':token}, base_url=base)
-assert response.status_code == 200, response.get_json()
+# The first administrator is the supreme account: their door is /supreme.
+assert client.post('/api/auth/login', json=credentials, headers={'X-CSRF-Token':token},
+                   base_url=base).get_json()['code'] == 'use_supreme_page'
+supreme_page = client.get('/supreme', base_url=base)
+assert b'Supreme access' in supreme_page.data
+with client.session_transaction(base_url=base) as session:
+    token = session['csrf_token']
+response = client.post('/supreme/login', data={**credentials, 'csrf_token': token}, base_url=base)
+assert response.status_code == 302, response.data[:300]
+assert response.headers['Location'].endswith('/owner')
+assert b'You are the supreme administrator' in client.get('/owner', base_url=base).data
 with client.session_transaction(base_url=base) as session:
     token = session['csrf_token']
 assert b'Set up your first department' in client.get('/dashboard', base_url=base).data

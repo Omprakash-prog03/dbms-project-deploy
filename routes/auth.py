@@ -38,6 +38,8 @@ def role_required(*allowed_roles):
 @auth_bp.route("/login", methods=["GET"])
 def login_view():
     if "user_id" in session:
+        if session.get("role") == "admin" and owner_guard.is_owner(session.get("username")):
+            return redirect(url_for("owner.center"))
         return redirect(url_for("dashboard.dashboard_view"))
     return render_template("login.html")
 
@@ -79,42 +81,44 @@ def login_api():
         status = db_pool.execute_query("SELECT status FROM faculty WHERE faculty_id = %s", (user["faculty_id"],), fetch="val")
         if status != "Active":
             return jsonify(success=False, message="This account is inactive. Please contact the university office."), 403
-    # Administrators who are not the owner must hold a code the owner issued,
-    # and the owner's switches must both be open.
+    if owner_guard.is_owner(user["username"]):
+        # The supreme administrator signs in on their own page, never here.
+        return jsonify({
+            "success": False, "code": "use_supreme_page",
+            "redirect": url_for("owner.supreme_login"),
+            "message": ("The supreme administrator signs in on the supreme page. "
+                        "Taking you there now."),
+        }), 403
+
+    # Every other administrator needs a one-time code the supreme admin issues.
     access_code = str(data.get('access_code') or '').strip()
     if owner_guard.needs_approval(user['username'], user['role']):
         if owner_guard.login_closed():
             return jsonify({
                 'success': False, 'code': 'owner_blocked',
-                'message': ('The owner has closed administrator sign-in. Ask the owner to open '
-                            'Supreme control and allow administrators again.'),
+                'message': ('The supreme administrator has closed administrator sign-in. Ask them to '
+                            'open the supreme dashboard and allow administrators again.'),
             }), 403
         if owner_guard.account_blocked(user['username']):
             return jsonify({
                 'success': False, 'code': 'owner_blocked',
-                'message': ('This administrator account is blocked by the owner and cannot sign '
-                            'in, even with a code.'),
-            }), 403
-        if not owner_guard.master_key_set():
-            return jsonify({
-                'success': False, 'code': 'owner_blocked',
-                'message': ('The owner has not created a master key yet, so administrator sign-in '
-                            'is closed. Ask the owner to open Supreme control and create one.'),
+                'message': ('This administrator account is blocked by the supreme administrator and '
+                            'cannot sign in, even with a code.'),
             }), 403
         request_id = owner_guard.request_access(user['username'], user['user_id'])
         if not access_code:
             return jsonify({
                 'success': False, 'code': 'approval_required', 'request_id': request_id,
-                'message': ('Administrator access needs a one-time code from the owner. Your '
-                            'request has been sent — when the owner issues the code, type it in '
-                            'the access code box and sign in again.'),
+                'message': ('Administrator access needs a one-time code from the supreme '
+                            'administrator. Your request has been sent — when the code is issued, '
+                            'type it in the access code box and sign in again.'),
             }), 403
         ok, why = owner_guard.redeem_code(user['username'], access_code)
         if not ok:
             if 'not correct' in why or 'attempt' in why:
                 message = why
             else:
-                message = f'{why} A fresh request is now waiting for the owner.'
+                message = f'{why} A fresh request is now waiting for the supreme administrator.'
             return jsonify({'success': False, 'code': 'approval_required',
                             'request_id': request_id, 'message': message}), 403
 
@@ -147,7 +151,7 @@ def access_status():
         return jsonify(success=False, message="Enter your username first."), 400
     if owner_guard.is_owner(username):
         return jsonify(success=True, state="owner",
-                       message="The owner signs in without a code.")
+                       message="The supreme administrator signs in on the supreme page.")
     # Only administrators pass the owner's gate; everyone else must never see
     # administrator messages on their own sign-in page.
     account = db_pool.execute_query(
@@ -158,15 +162,15 @@ def access_status():
     if account["role"] != "admin":
         return jsonify(success=True, state="not-admin",
                        message="Students and faculty sign in with just their password.")
+    if owner_guard.is_otp_exempt(username):
+        return jsonify(success=True, state="not-required",
+                       message="This administrator signs in with a password only — no code needed.")
     if owner_guard.login_closed():
         return jsonify(success=True, state="closed",
                        message="Administrator sign-in is closed by the owner.")
     if owner_guard.account_blocked(username):
         return jsonify(success=True, state="blocked",
                        message="This account is blocked by the owner.")
-    if not owner_guard.master_key_set():
-        return jsonify(success=True, state="no-key",
-                       message="The owner has not created a master key yet.")
     rows = owner_guard.requests_for(username)
     if not rows:
         return jsonify(success=True, state="none",

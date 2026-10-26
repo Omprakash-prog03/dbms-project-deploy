@@ -592,3 +592,14 @@
 @media (prefers-reduced-motion: reduce) {
   .access-status-dot { animation: none; }
 }
+
+/* The supreme administrator has their own door; point at it, quietly. */
+.login-supreme-link {
+  color: #cbb6e8;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(203, 182, 232, 0.35);
+}
+.login-supreme-link:hover {
+  color: #e6d6ff;
+  border-bottom-color: rgba(230, 214, 255, 0.6);
+}

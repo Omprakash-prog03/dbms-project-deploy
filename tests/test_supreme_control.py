@@ -72,8 +72,8 @@ def test_code_field_is_always_on_the_sign_in_page(app):
 
 def test_login_page_explains_the_rule(app):
     page = app.test_client().get('/login').get_data(as_text=True)
-    assert 'Owners skip this' in page
-    assert 'one-time code issued by the owner' in page
+    assert 'supreme administrator gives them' in page
+    assert 'Supreme administrator' in page
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +86,7 @@ def status(app, username):
 def test_status_endpoint_reports_each_state(app):
     make_admin('deputy')
     assert status(app, 'admin').get_json()['state'] == 'owner'
-    assert status(app, 'deputy').get_json()['state'] == 'no-key'
+    assert status(app, 'deputy').get_json()['state'] == 'none'
 
     owner.set_master_key(MASTER)
     assert status(app, 'deputy').get_json()['state'] == 'none'

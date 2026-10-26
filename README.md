@@ -64,18 +64,59 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 - Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
 - PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
 
-### Supreme control (the owner's private command centre)
+### Two doors: the campus sign-in and the supreme dashboard
 
-- The **owner** is the supreme administrator: the first admin account, or the one named in `OWNER_USERNAME`. Only the owner sees **Supreme control** in the sidebar (`/owner`; the old `/admin-access` address redirects there).
-- **One page, everything**: a live roster of every administrator (signed in / signed out / blocked, last activity, sign-in count), a per-account **Sign out**, the global **Sign out everyone else** lock, the **Administrator sign-in** switch, **Access codes**, the **Master key** panel, and an **Owner activity** trail — every action is confirmed with the master key.
-- **Master key** — set one on that page or with `python scripts/owner_key.py --generate`. It is stored as a bcrypt hash only, so it is printed exactly once; `python scripts/owner_key.py --check 'key'` verifies it later. Destructive actions ask for it again (step-up), so a borrowed browser cannot be used to lock people out.
-- **One-tap lockdown** — enter the master key and every *other* administrator session ends on its next click. The owner's own session survives; the lock is a counter (`epoch`) kept in the database, so it works across restarts and worker processes. Each account also carries a token version, which is how a single administrator can be signed out without touching anyone else.
-- **Administrator access codes** — with a master key set, any **other** administrator needs a six-digit code from the owner on top of their password. Their attempt opens a request the owner sees at **Supreme control**; the owner issues a one-time code valid for 15 minutes (five wrong tries and it is revoked). Codes are stored as bcrypt hashes and shown once.
-- **The sign-in page says so up front** — the access-code box is always visible with the note "administrators only", and it explains the rule before anyone fails: owners skip it, students and faculty leave it empty, other administrators need a code from the owner. While an administrator waits, the page polls `/api/auth/access-status` every five seconds and turns green the moment the owner issues the code; closed sign-in, a missing master key and a blocked account are stated on the page instead of failing silently.
-- **Sign-in switch and blocks** — closing **Administrator sign-in** signs every other administrator out and refuses their logins even with a valid code; blocking one account does the same for that account only. The owner is never affected by either.
-- **Password resets and removals** — set a new password for an administrator (their sessions end) or remove the account entirely; both require the master key, and removing the owner is refused.
-- **Closed by default** — if no master key exists, non-owner admin logins are refused rather than let through. Students and faculty are unaffected.
-- Every lock, code, block, reset and removal is written to `audit_log` and listed on the page.
+There are **two sign-in pages**, and they are not interchangeable.
+
+**`/login` — staff, students and faculty.** The password is enough for students and
+faculty. Every administrator — except the ones named in `OTP_EXEMPT_ADMINS` — must
+also type a **one-time code** that the supreme administrator issues, every single
+time they sign in. The access-code box is always on the page, labelled
+"administrators only", and it explains the rule before anyone fails; while an
+administrator waits, the page polls `/api/auth/access-status` every five seconds and
+turns green the moment the code is issued.
+
+**`/supreme` — the supreme administrator alone.** A separate page with its own
+username and password (`om-2026` by default, created by
+`scripts/setup_admins.py`). The supreme account is refused on `/login` and sent
+here, and this page refuses every other account. Everything below lives behind it.
+
+#### Who the accounts are
+
+| Account | Where they sign in | Code needed? |
+| --- | --- | --- |
+| `om-2026` (supreme) | `/supreme` | — (their own password) |
+| `omprakash` | `/login` | no, exempt by `OTP_EXEMPT_ADMINS` |
+| `swaruppradhan`, `avashbadatya`, `aryandash` | `/login` | yes, a fresh code every sign-in |
+
+`scripts/setup_admins.py` creates exactly these accounts:
+
+```bash
+python scripts/setup_admins.py                 # dry run: show what would happen
+python scripts/setup_admins.py --apply         # create or update the accounts
+python scripts/setup_admins.py --apply --keep-passwords
+```
+
+Passwords are stored as bcrypt hashes and never printed back. Running it twice is
+safe and idempotent: it re-applies the passwords above to existing accounts (so a
+pre-existing `omprakash` ends up on `Adminom123`), `--keep-passwords` opts out, and a
+stale `OWNER_USERNAME` in `.env` is corrected to the supreme account.
+
+#### The supreme dashboard (`/owner`)
+
+- **Live roster**: every administrator with signed in / signed out / blocked, last
+  activity and sign-in count. **Sign out** ends one administrator's session on their
+  next click; **Sign out everyone else** ends all of them and never the supreme
+  session itself. **Remove admin** deletes the account, so they cannot return.
+- **Access codes**: every waiting request, one code each (six digits, 15 minutes,
+  single use, five wrong tries and it is revoked), plus **Close request**.
+- **Administrator sign-in switch**: closing it refuses every other administrator even
+  with a valid code, and signs the signed-in ones out.
+- **Per-account block**: refuses one administrator's logins while leaving the rest.
+- **Master key (optional step-up)**: set one and every action on the page asks for it
+  again; leave it unset and the supreme password alone unlocks the page. The key is
+  stored as a bcrypt hash, shown once, and `scripts/owner_key.py` can recover it.
+- **Owner activity**: every lock, code, block, reset and removal, newest first.
 
 ### Who can do what
 

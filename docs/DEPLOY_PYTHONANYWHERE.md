@@ -256,41 +256,67 @@ Download and retain private backups regularly; free accounts do not provide the 
 The original internal database identifier `sims_db`, old CSS class names, and the historical ZIP are retained for compatibility. They are not the portal's displayed name and are not used to seed this private installation.
 
 
-## Owner controls: master key and administrator access codes
+## The supreme administrator and the administrator codes
 
 `instance/hogwards.db` gains three small tables automatically (`owner_guard`,
-`admin_access_request`, `admin_session`); there is no migration to run. They are
-created on the first request after **Reload**, so nothing can fail for want of a
-migration.
+`admin_access_request`, `admin_session`); there is no migration to run.
 
-Everything the owner needs lives on one page: **Supreme control** in the sidebar
-(`/owner`). The old `/admin-access` address redirects there.
+**Two doors.** Everyone on campus signs in at `/login`. The supreme administrator
+signs in at **`/supreme`** with their own username and password — that page refuses
+every other account, and `/login` sends the supreme account here if they try it.
 
-1. **Set the master key once.** In a Bash console:
+### 1. Create the accounts (once)
 
-   ```bash
-   cd ~/hogwards-student-management-system
-   source .venv/bin/activate
-   python scripts/owner_key.py --generate
-   ```
+In a Bash console:
 
-   It prints the key once and stores only its hash. Copy it somewhere safe.
-   To use a key you chose instead: `python scripts/owner_key.py --set 'your long key'`.
-   Lost it? Run `--generate` again — the old key stops working immediately.
+```bash
+cd ~/hogwards-student-management-system
+source .venv/bin/activate
+python scripts/setup_admins.py            # dry run — shows what would be created
+python scripts/setup_admins.py --apply    # writes the accounts
+```
 
-2. **Name the owner explicitly** (recommended). In `.env`:
+That creates:
 
-   ```
-   OWNER_USERNAME=omprakash
-   ```
+| Account | Password | Where | Code needed? |
+| --- | --- | --- | --- |
+| `om-2026` | `Superadmin123` | `/supreme` | — |
+| `omprakash` | `Adminom123` | `/login` | no |
+| `swaruppradhan` | `Adminpradhan123` | `/login` | yes |
+| `avashbadatya` | `Adminavash123` | `/login` | yes |
+| `aryandash` | `Adminaryan123` | `/login` | yes |
 
-   Without it, the first administrator account is treated as the owner.
+Passwords are hashed with bcrypt; nothing is printed back. Re-running the script is
+safe and idempotent — it also puts the passwords above back on accounts that already
+exist, so an existing `omprakash` keeps working with `Adminom123`. Add
+`--keep-passwords` if you would rather leave existing passwords alone. Change any of
+these later with `python scripts/reset_password.py --username NAME`.
 
-3. **Sign in as the owner**, open **Supreme control** in the sidebar (`/owner`),
-   and use it to see who is signed in, sign one administrator out, close
-   administrator sign-in, block an account, issue their access codes, reset a
-   password or remove an administrator. The old `/admin-access` address redirects
-   to the same page.
+### 2. `.env`
 
-Note: if no master key is set, other administrator accounts cannot sign in at
-all (students and faculty are unaffected). Set the key right after deploying.
+```
+OWNER_USERNAME=om-2026
+OTP_EXEMPT_ADMINS=omprakash
+```
+
+`OWNER_USERNAME` is the supreme account (the setup script corrects a stale value for
+you). `OTP_EXEMPT_ADMINS` lists administrators who sign in with a password only —
+everyone else listed as an admin must also type a code.
+
+### 3. Reload and use it
+
+Click **Reload** in the Web tab, then:
+
+1. Open **`/supreme`** and sign in as `om-2026`.
+2. When another administrator signs in with their password, their request appears
+   under **Access codes** on the dashboard. Press **Issue code** and read them the
+   six digits — it works once, for 15 minutes.
+3. **Sign out** ends that administrator's session immediately; **Remove admin**
+   deletes the account; **Close administrator sign-in** refuses all of them at once.
+
+The **master key** is optional. Set one and every action on the dashboard asks for it
+again; until you do, the supreme password alone is enough. Recover or replace it from
+a console with `python scripts/owner_key.py --generate`.
+
+Note: students and faculty are unaffected by any of this — they sign in with their
+password only, at `/login`.

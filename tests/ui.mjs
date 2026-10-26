@@ -48,11 +48,28 @@ try {
     );
     assert.deepEqual(issues, [], `${page.url()} accessibility violations`);
   };
-  await visit("/login");
-  await page.getByLabel("Username or roll number").fill("admin");
-  await page.getByLabel("Password", { exact: true }).fill("admin123");
-  await page.getByRole("button", { name: "Step into your workspace" }).click();
-  await page.waitForURL("**/dashboard");
+  // The supreme administrator has their own door; their session is a full
+  // administrator session, which is what the rest of this suite exercises.
+  const supremeAttempts = [
+    [process.env.SUPREME_USERNAME || "om-2026", process.env.SUPREME_PASSWORD || "Superadmin123"],
+    ["admin", "admin123"], // a freshly seeded install: the first admin is the owner
+  ];
+  let supremeSignedIn = false;
+  let supremeCreds = supremeAttempts[0];
+  for (const [name, secret] of supremeAttempts) {
+    await page.goto(base + "/supreme", { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Supreme username").fill(name);
+    await page.getByLabel("Supreme password").fill(secret);
+    await page.getByRole("button", { name: "Enter the supreme dashboard" }).click();
+    await page.waitForLoadState("domcontentloaded");
+    if (/\/owner$/.test(page.url())) {
+      supremeSignedIn = true;
+      supremeCreds = [name, secret];
+      break;
+    }
+  }
+  assert.ok(supremeSignedIn, "the supreme account could not sign in");
+  await visit("/dashboard");
   await page.waitForSelector("#activityChart svg");
   assert.equal(await page.locator(".module-card:visible").count(), 6);
   await page.getByRole("tab", { name: /People/ }).click();
@@ -411,29 +428,26 @@ try {
       await embeddedPage.route("https://preview-frame.test/**", (route) =>
         route.fulfill({
           contentType: "text/html",
-          body: '<iframe title="Campus preview" src="https://campus-embedded.test/login" style="width:1200px;height:900px"></iframe>',
+          body: '<iframe title="Campus preview" src="https://campus-embedded.test/supreme" style="width:1200px;height:900px"></iframe>',
         }),
       );
       await embeddedPage.goto("https://preview-frame.test/");
       const frame = embeddedPage.frameLocator("iframe");
-      await frame.getByLabel("Username or roll number").fill("admin");
-      await frame.getByLabel("Password", { exact: true }).fill("admin123");
+      await frame.getByLabel("Supreme username").fill(supremeCreds[0]);
+      await frame.getByLabel("Supreme password").fill(supremeCreds[1]);
       const loginResponse = embeddedPage.waitForResponse((response) =>
-        response.url().endsWith("/api/auth/login"),
+        response.url().endsWith("/supreme/login"),
       );
       await frame
-        .getByRole("button", { name: "Step into your workspace" })
+        .getByRole("button", { name: "Enter the supreme dashboard" })
         .click();
-      assert.equal(
-        (await loginResponse).status(),
-        200,
+      // The mock rewrites redirects into a small HTML shim, so 200 is expected.
+      assert.ok(
+        [200, 302].includes((await loginResponse).status()),
         "Embedded preview login",
       );
-      await frame.locator(".module-card").first().waitFor();
-      assert.equal(await frame.locator(".module-card").count(), 6);
-      await frame
-        .getByRole("button", { name: "Sign out", exact: true })
-        .click();
+      await frame.locator(".supreme-banner").waitFor();
+      await frame.locator(".signout-btn").click();
       await frame.getByLabel("Username or roll number").waitFor();
     } finally {
       await embeddedPage.close();

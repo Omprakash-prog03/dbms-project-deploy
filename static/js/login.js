@@ -128,7 +128,10 @@ loginForm.addEventListener("submit", async (event) => {
   } catch (error) {
     resetButton();
     // Anything about the owner's gate belongs beside the code box, not above it.
-    if (error.code === "approval_required") {
+    if (error.code === "use_supreme_page") {
+      setStatus("blocked", error.message || "The supreme administrator signs in on the supreme page.");
+      setTimeout(() => location.assign(error.redirect || "/supreme"), 1500);
+    } else if (error.code === "approval_required") {
       const wrongCode = /not correct|attempt/i.test(error.message || "");
       setStatus(wrongCode ? "warn" : "waiting", error.message);
       if (accessHint && wrongCode) {

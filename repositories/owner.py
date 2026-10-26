@@ -147,13 +147,28 @@ def owner_username():
     return _memo('owner_username', _resolve_owner)
 
 
+def _admin_exists(username):
+    if not username:
+        return False
+    return bool(db_pool.execute_query(
+        "SELECT user_id FROM app_user WHERE LOWER(username) = LOWER(%s) AND role = 'admin'",
+        (username,), fetch='one'))
+
+
 def _resolve_owner():
-    configured = str(getattr(Config, 'OWNER_USERNAME', '') or _get('owner_username') or '').strip()
-    if not configured:
-        configured = db_pool.execute_query(
-            "SELECT username FROM app_user WHERE role = 'admin' ORDER BY user_id LIMIT 1",
-            fetch='val') or ''
-    return str(configured).strip().lower()
+    """The supreme account, the stored owner, or the first administrator.
+
+    A configured name only counts when that administrator actually exists, so a
+    typo in ``OWNER_USERNAME`` can never leave a portal with no owner at all.
+    """
+    for candidate in (getattr(Config, 'OWNER_USERNAME', ''), _get('owner_username')):
+        name = str(candidate or '').strip()
+        if name and _admin_exists(name):
+            return name.lower()
+    fallback = db_pool.execute_query(
+        "SELECT username FROM app_user WHERE role = 'admin' ORDER BY user_id LIMIT 1",
+        fetch='val') or ''
+    return str(fallback).strip().lower()
 
 
 def is_owner(username):
@@ -373,9 +388,21 @@ def revoke(request_id):
     _record('access revoked', 'owner', f'request {request_id} revoked')
 
 
+def otp_exempt_usernames():
+    """Administrators who sign in with a password only."""
+    raw = str(getattr(Config, 'OTP_EXEMPT_ADMINS', '') or '')
+    return {part.strip().lower() for part in raw.replace(';', ',').split(',') if part.strip()}
+
+
+def is_otp_exempt(username):
+    """The supreme administrator, and any admin explicitly exempted."""
+    name = str(username or '').strip().lower()
+    return bool(name) and (is_owner(name) or name in otp_exempt_usernames())
+
+
 def needs_approval(username, role):
-    """Administrators who are not the owner need the owner's approval."""
-    return role == 'admin' and not is_owner(username)
+    """Every other administrator needs a one-time code from the supreme admin."""
+    return role == 'admin' and not is_otp_exempt(username)
 
 
 def login_closed():

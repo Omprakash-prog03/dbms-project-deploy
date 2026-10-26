@@ -4,6 +4,8 @@ Everything here is owner-only: the master key, the global sign-in switch,
 every administrator's live session, one-time access codes, and the account
 actions that can remove an administrator entirely.
 """
+import secrets
+
 import bcrypt
 from flask import (Blueprint, abort, flash, redirect, render_template, request, session, url_for)
 
@@ -23,6 +25,10 @@ def _require_owner():
 
 
 def _key_ok():
+    """Step-up check. The master key is optional: when none is set, the
+    supreme sign-in is the only lock, and actions are allowed."""
+    if not owner_guard.master_key_set():
+        return True
     return owner_guard.verify_master_key(request.form.get('master_key', ''))
 
 
@@ -30,14 +36,71 @@ def _audit_marker():
     return session.get('username', 'owner')
 
 
+@owner_bp.route('/supreme')
+def supreme_login():
+    """The supreme administrator's own door — separate from the campus sign-in."""
+    if session.get('role') == 'admin' and owner_guard.is_owner(session.get('username')):
+        return redirect(url_for('owner.center'))
+    return render_template('supreme_login.html',
+                           supreme_name=owner_guard.owner_username())
+
+
+@owner_bp.route('/supreme/login', methods=['POST'])
+@limiter.limit('10 per minute')
+def supreme_sign_in():
+    """Password-only sign-in for the supreme account, and nobody else."""
+    username = (request.form.get('username') or '').strip()
+    password = request.form.get('password') or ''
+    account = db_pool.execute_query(
+        "SELECT user_id, username, password_hash, role FROM app_user "
+        "WHERE LOWER(username) = LOWER(%s) AND role = 'admin'", (username,), fetch='one')
+    if (not account or not owner_guard.is_owner(account['username'])
+            or not _password_ok(account['password_hash'], password)):
+        owner_guard.record('supreme sign-in refused', username or 'unknown',
+                           f'from {request.remote_addr or "unknown address"}')
+        flash('Only the supreme administrator can sign in here.', 'error')
+        return redirect(url_for('owner.supreme_login'))
+
+    session.clear()
+    session['csrf_token'] = secrets.token_urlsafe(32)
+    session.permanent = True
+    session['user_id'] = account['user_id']
+    session['username'] = account['username']
+    session['role'] = 'admin'
+    session['access_approved'] = True
+    session['supreme'] = True
+    session['admin_token_version'] = admin_sessions.register(
+        account['username'], request.remote_addr or '')
+    owner_guard.stamp_session()
+    owner_guard.record('supreme signed in', account['username'],
+                       f'from {request.remote_addr or "unknown address"}')
+    return redirect(url_for('owner.center'))
+
+
+def _password_ok(stored, password):
+    if not password or not stored:
+        return False
+    raw = stored.encode('utf-8') if isinstance(stored, str) else stored
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), raw)
+    except (ValueError, TypeError):
+        return False
+
+
 @owner_bp.route('/owner')
-@login_required
 def center():
     """The supreme space."""
+    if 'user_id' not in session:
+        return redirect(url_for('owner.supreme_login'))
     _require_owner()
     issued = session.pop('issued_code', None)
     key = session.pop('issued_key', None)
     live = admin_sessions.summary(session.get('username'))
+    exempt = []
+    for account in live['admins']:
+        account['no_code'] = owner_guard.is_otp_exempt(account['username'])
+        if account['no_code'] and not account['is_owner']:
+            exempt.append(account['username'])
     return render_template(
         'owner/center.html',
         key_set=owner_guard.master_key_set(),
@@ -46,6 +109,7 @@ def center():
         issued=issued,
         issued_key=key,
         admins=live['admins'],
+        no_code_names=', '.join(exempt),
         other_count=live['other_count'],
         online_others=live['online_others'],
         blocked_count=live['blocked_count'],

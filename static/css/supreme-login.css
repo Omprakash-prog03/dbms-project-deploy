@@ -1,0 +1,311 @@
+/* Supreme access — the owner's own door. Same type system as the campus
+   sign-in, a deliberately different room: plum, gold, and a crown. */
+
+.supreme-page {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 620px at 12% -10%, rgba(126, 88, 178, 0.28), transparent 62%),
+    radial-gradient(900px 600px at 92% 108%, rgba(196, 155, 88, 0.16), transparent 62%),
+    #0c0a0f;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+}
+
+.supreme-login {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  min-height: 100vh;
+}
+
+/* ------------------------------------------------------------------ story */
+.supreme-login-story {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 44px 52px;
+  background:
+    radial-gradient(620px 420px at 18% 8%, rgba(154, 116, 214, 0.32), transparent 66%),
+    linear-gradient(160deg, #1a1424 0%, #171021 46%, #120e19 100%);
+  border-right: 1px solid rgba(196, 155, 88, 0.16);
+  overflow: hidden;
+}
+.supreme-login-story::after {
+  content: "";
+  position: absolute;
+  inset: auto -120px -160px auto;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(206, 168, 104, 0.18), transparent 66%);
+  pointer-events: none;
+}
+.supreme-login-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #f3ecff;
+  text-decoration: none;
+}
+.supreme-login-crown {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  color: #f0d9a8;
+  background: linear-gradient(135deg, rgba(206, 168, 104, 0.22), rgba(126, 88, 178, 0.3));
+  border: 1px solid rgba(214, 178, 116, 0.34);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+}
+.supreme-login-copy {
+  margin-top: auto;
+  max-width: 30ch;
+}
+.supreme-login-copy h1 {
+  margin: 10px 0 14px;
+  font-size: clamp(38px, 4.4vw, 58px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+  color: #f7f2ff;
+}
+.supreme-login-copy h1 em {
+  font-style: italic;
+  color: #e6c48c;
+}
+.supreme-login-copy p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: #cbbfd9;
+}
+.supreme-login-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  max-width: 40ch;
+}
+.supreme-login-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #bcb0cb;
+}
+.supreme-login-list svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #d9b878;
+}
+.supreme-login-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8b7f9a;
+}
+
+/* ------------------------------------------------------------------ panel */
+.supreme-login-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 34px;
+}
+.supreme-login-inner {
+  width: min(420px, 100%);
+}
+.supreme-login-secure {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #d9c6ee;
+  background: rgba(126, 88, 178, 0.16);
+  border: 1px solid rgba(154, 116, 214, 0.28);
+}
+.supreme-login-inner h2 {
+  margin: 20px 0 8px;
+  font-size: clamp(28px, 2.6vw, 34px);
+  letter-spacing: -0.025em;
+  font-weight: 500;
+}
+.supreme-login-sub {
+  margin: 0 0 22px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+.supreme-login-inner .form-group {
+  margin-bottom: 14px;
+}
+.supreme-login-inner label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.supreme-login-inner .form-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 11px;
+  background: rgba(20, 16, 26, 0.9);
+  border: 1px solid rgba(154, 116, 214, 0.24);
+  color: #f4effa;
+  font-size: 13.5px;
+}
+.supreme-login-inner .form-input:focus {
+  outline: none;
+  border-color: rgba(214, 178, 116, 0.62);
+  box-shadow: 0 0 0 3px rgba(206, 168, 104, 0.14);
+}
+.supreme-login-inner .password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.supreme-login-inner .password-field .form-input {
+  padding-right: 44px;
+}
+.supreme-login-inner #supremeTogglePassword {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.supreme-login-inner #supremeTogglePassword:hover {
+  color: #eadcff;
+  background: rgba(154, 116, 214, 0.16);
+}
+.supreme-login-submit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin-top: 18px;
+  padding: 13px 18px;
+  border: 1px solid rgba(214, 178, 116, 0.4);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7d5bb5, #a97ed8 55%, #c9a066);
+  color: #1a1024;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+.supreme-login-submit:hover {
+  filter: brightness(1.06);
+}
+.supreme-login-submit:active {
+  transform: translateY(1px);
+}
+.supreme-login-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: rgba(24, 19, 31, 0.86);
+  border: 1px solid rgba(154, 116, 214, 0.18);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: #bcb0cb;
+}
+.supreme-login-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #b79be0;
+}
+.supreme-login-note a {
+  color: #e6c48c;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.supreme-login-meta {
+  margin: 14px 0 0;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: #7f7489;
+}
+.supreme-login-meta code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(154, 116, 214, 0.14);
+  color: #d3bde9;
+  font-size: 10.5px;
+}
+.supreme-login-flash {
+  margin: 0 0 16px;
+  padding: 10px 13px;
+  border-radius: 11px;
+  border: 1px solid #53262c;
+  background: #221316;
+}
+.supreme-login-flash p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #f3c3c9;
+}
+.supreme-login-flash p.is-success {
+  color: #bce8ce;
+}
+
+/* ------------------------------------------------------------- responsive */
+@media (max-width: 900px) {
+  .supreme-login {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .supreme-login-story {
+    padding: 28px 24px 24px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(196, 155, 88, 0.16);
+    gap: 18px;
+  }
+  .supreme-login-copy {
+    margin-top: 0;
+    max-width: none;
+  }
+  .supreme-login-copy h1 {
+    font-size: 34px;
+  }
+  .supreme-login-list {
+    display: none;
+  }
+  .supreme-login-footer {
+    display: none;
+  }
+  .supreme-login-crown {
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
+  }
+  .supreme-login-panel {
+    padding: 26px 20px 40px;
+  }
+}

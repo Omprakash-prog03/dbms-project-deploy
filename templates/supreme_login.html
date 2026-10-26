@@ -1,0 +1,78 @@
+{% from 'components/icons.html' import icon, brand %}
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d0b10"><meta name="csrf-token" content="{{ csrf_token }}"><title>Supreme access · {{ portal_name }}</title><meta name="application-name" content="{{ portal_name }}"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="{{ url_for('static',filename='images/favicon.svg') }}"><link rel="stylesheet" href="{{ url_for('static',filename='css/tokens.css') }}"><link rel="stylesheet" href="{{ url_for('static',filename='css/shell.css') }}"><link rel="stylesheet" href="{{ url_for('static',filename='css/supreme-login.css') }}"></head>
+<body class="supreme-page">
+<main class="supreme-login">
+  <section class="supreme-login-story" aria-label="The supreme administrator">
+    <a class="supreme-login-brand" href="{{ url_for('owner.supreme_login') }}">{{ brand() }}</a>
+    <div class="supreme-login-crown" aria-hidden="true">{{ icon('crown', 30) }}</div>
+    <div class="supreme-login-copy">
+      <div class="eyebrow">ONE DOOR · ONE PERSON</div>
+      <h1>Supreme <em>access.</em></h1>
+      <p>This page belongs to the supreme administrator alone. Everyone else signs in on the
+         campus page — and every administrator needs a code you issue here.</p>
+    </div>
+    <ul class="supreme-login-list">
+      <li>{{ icon('key', 15) }} Issue the one-time codes administrators type to get in</li>
+      <li>{{ icon('people', 15) }} See who is signed in right now, and end their session</li>
+      <li>{{ icon('lock', 15) }} Close administrator sign-in, block or remove an account</li>
+    </ul>
+    <div class="supreme-login-footer"><span>{{ portal_short_name }}</span><span>{{ today.year }}</span></div>
+  </section>
+
+  <section class="supreme-login-panel" aria-labelledby="supreme-title">
+    <div class="supreme-login-inner">
+      <span class="supreme-login-secure">{{ icon('shield', 14) }} Private sign-in</span>
+      <h2 id="supreme-title">Supreme administrator</h2>
+      <p class="supreme-login-sub">Enter the supreme username and password. Administrators,
+        students and faculty cannot use this page.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="supreme-login-flash" role="alert">
+        {% for category, message in messages %}<p class="is-{{ category }}">{{ message }}</p>{% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <form method="post" action="{{ url_for('owner.supreme_sign_in') }}" id="supremeForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+          <label for="supremeUsername">Supreme username</label>
+          <input class="form-input" id="supremeUsername" name="username" autocomplete="username"
+                 placeholder="e.g. om-2026" required maxlength="100" autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="form-group">
+          <label for="supremePassword">Supreme password</label>
+          <div class="password-field">
+            <input class="form-input" id="supremePassword" name="password" type="password"
+                   autocomplete="current-password" placeholder="Enter the supreme password" required>
+            <button type="button" id="supremeTogglePassword" aria-label="Show password" aria-pressed="false">{{ icon('eye', 18) }}</button>
+          </div>
+        </div>
+        <button class="supreme-login-submit" type="submit">
+          <span>Enter the supreme dashboard</span>{{ icon('arrow-right', 18) }}
+        </button>
+      </form>
+
+      <p class="supreme-login-note">{{ icon('shield', 14) }}<span>Not the supreme administrator?
+        <a href="{{ url_for('auth.login_view') }}">Use the campus sign-in</a> — that is where
+        administrators enter the code you issue.</span></p>
+      <p class="supreme-login-meta">Signed in as <code>{{ supreme_name }}</code> · every attempt here is recorded.</p>
+    </div>
+  </section>
+</main>
+<script>
+(() => {
+  const toggle = document.getElementById("supremeTogglePassword");
+  const field = document.getElementById("supremePassword");
+  if (!toggle || !field) return;
+  toggle.addEventListener("click", () => {
+    const showing = field.type === "text";
+    field.type = showing ? "password" : "text";
+    toggle.setAttribute("aria-pressed", String(!showing));
+    toggle.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+    field.focus();
+  });
+})();
+</script>
+</body></html>
