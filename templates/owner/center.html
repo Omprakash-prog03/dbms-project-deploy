@@ -12,8 +12,11 @@
     <div>
       <div class="eyebrow">SUPREME · {{ current_user.username }} · signed in at /supreme</div>
       <h2>You are the supreme administrator.</h2>
-      <p>Every other administrator needs a one-time code from you before they can sign in.
-         {% if no_code_names %}<strong>{{ no_code_names }}</strong> {{ 'are' if ',' in no_code_names else 'is' }} exempt — password only.{% endif %}
+      <p>{% if code_required %}Administrators must type a code after their password —
+         the rotating number below, or a one-time code you issue.
+         {% if no_code_names %}<strong>{{ no_code_names }}</strong> {{ 'are' if ',' in no_code_names else 'is' }} exempt.{% endif %}
+         {% else %}Administrators sign in with their username and password, as normal.
+         Switch a code on below if you ever want one checked as well.{% endif %}
          You can end any session, close the door entirely, or
          remove an account, all from here.</p>
     </div>
@@ -86,7 +89,7 @@
               <td>
                 <strong>{{ admin.username }}</strong>
                 {% if admin.is_owner %}<span class="supreme-tag is-owner">you · supreme</span>{% endif %}
-                {% if admin.no_code and not admin.is_owner %}<span class="supreme-tag is-exempt">no code needed</span>{% endif %}
+                {% if code_required and admin.no_code and not admin.is_owner %}<span class="supreme-tag is-exempt">no code needed</span>{% endif %}
                 {% if admin.linked %}<span class="supreme-tag">{{ admin.linked }} linked</span>{% endif %}
               </td>
               <td>
@@ -156,12 +159,12 @@
       <div class="panel-heading" style="margin-bottom:8px">
         <div>
           <h2>Administrator sign-in</h2>
-          <p>{% if logins_closed %}Closed — only you can sign in.{% else %}Open — other admins may request a code.{% endif %}</p>
+          <p>{% if logins_closed %}Closed — only you can sign in.{% elif code_required %}Open — other admins may request a code.{% else %}Open — other admins sign in with their password.{% endif %}</p>
         </div>
         <span class="supreme-switch-state {{ 'is-closed' if logins_closed }}">{{ 'CLOSED' if logins_closed else 'OPEN' }}</span>
       </div>
-      <p class="subtle">Closing it signs everyone else out and refuses every administrator login, even
-        with a valid code. Your own session is never affected.</p>
+      <p class="subtle">Closing it signs everyone else out and refuses every administrator sign-in,
+        however they would have signed in. Your own session is never affected.</p>
       <form method="post" action="{{ url_for('owner.switch_logins') }}" class="supreme-stack">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="closed" value="{{ '0' if logins_closed else '1' }}">
@@ -180,7 +183,7 @@
       <div class="panel-heading" style="margin-bottom:8px">
         <div>
           <h2>Master key</h2>
-          <p>{% if key_set %}Set · <code>{{ key_hint }}</code>{% else %}Not set — sign-in for other admins is closed{% endif %}</p>
+          <p>{% if key_set %}Set · <code>{{ key_hint }}</code>{% else %}Not set — actions here ask for your supreme password only{% endif %}</p>
         </div>
         <span class="supreme-tag">{{ icon('key', 13) }} PIN</span>
       </div>
@@ -191,12 +194,12 @@
         {% if key_set %}
         <label class="supreme-label" for="currentKey">Current key</label>
         <input class="form-input supreme-mini" id="currentKey" name="master_key" type="password" required autocomplete="off">
-        <label class="supreme-label" for="newKey">New key <span class="subtle">(blank = generate)</span></label>
+        <label class="supreme-label" for="newKey">New master key <span class="subtle">(blank = generate)</span></label>
         <input class="form-input supreme-mini" id="newKey" name="new_key" type="text"
                minlength="{{ min_key_length }}" autocomplete="off" placeholder="Leave blank to generate">
         <button class="btn-secondary-pill" type="submit">Replace master key</button>
         {% else %}
-        <label class="supreme-label" for="newKey">Choose your key <span class="subtle">({{ min_key_length }}+ characters)</span></label>
+        <label class="supreme-label" for="newKey">Choose your master key <span class="subtle">({{ min_key_length }}+ characters)</span></label>
         <input class="form-input supreme-mini" id="newKey" name="new_key" type="text"
                minlength="{{ min_key_length }}" autocomplete="off" placeholder="Leave blank to generate">
         <button class="btn-primary-pill" type="submit" id="createKey">Create master key</button>
@@ -204,6 +207,80 @@
       </form>
       <p class="subtle" style="margin-top:10px">Lock #{{ epoch }} · a recovery key can also be made from a
         console with <code>python scripts/owner_key.py --generate</code>.</p>
+    </section>
+
+    <!-- administrator sign-in: password only, or password + a rotating number -->
+    <section class="sims-card supreme-wide supreme-rotating" id="rotating-code">
+      <div class="panel-heading" style="margin-bottom:12px">
+        <div>
+          <h2>Administrator sign-in code</h2>
+          <p>{% if code_required %}Administrators must type a code after their password.{% else %}Administrators sign in with their username and password only.{% endif %}
+             The six-digit number below changes by itself every {{ rotating_minutes }} minutes.</p>
+        </div>
+        <span class="supreme-tag {{ 'is-ready' if code_required else 'is-stale' }}">
+          {{ icon('key', 13) }} {{ 'Codes required' if code_required else 'Password only' }}
+        </span>
+      </div>
+
+      <div class="supreme-rotating-body">
+        <div class="supreme-rotating-code {{ '' if code_required else 'is-idle' }}">
+          <output class="supreme-code supreme-rotating-digits" id="rotatingCode"
+                  aria-live="polite" aria-label="Current rotating access code">{{ rotating.code }}</output>
+          <p class="supreme-rotating-meta">
+            <span id="rotatingTimer" data-seconds="{{ rotating.seconds_left }}"
+                  data-minutes="{{ rotating_minutes }}">changes in {{ '%d:%02d'|format(rotating.seconds_left // 60, rotating.seconds_left % 60) }}</span>
+            <span>next number at <span id="rotatingNext">{{ rotating.next_change_label }}</span></span>
+          </p>
+          <div class="supreme-rotating-actions">
+            <button class="supreme-mini-btn" type="button" id="rotatingCopy"
+                    data-copy="{{ rotating.code }}">Copy number</button>
+            <span class="subtle" id="rotatingCopied" hidden>Copied.</span>
+          </div>
+          {% if not code_required %}
+          <p class="subtle supreme-rotating-idle">Not needed right now — nobody is asked for it.</p>
+          {% endif %}
+        </div>
+
+        <div class="supreme-rotating-note">
+          <p><strong>{% if code_required %}Codes are on.{% else %}Codes are off.{% endif %}</strong>
+             {% if code_required %}
+             An administrator types their username and password at <code>/login</code>, then this
+             number or a one-time code of their own.
+             {% else %}
+             Everybody signs in the normal way: username and password. Switch codes on if you want
+             this number checked as well.
+             {% endif %}</p>
+          <p class="subtle">The previous number is accepted for a moment after it changes, so nobody
+             is locked out mid-typing. Every sign-in, with or without a code, is written to the
+             sign-in history below.</p>
+          <div class="supreme-rotating-actions">
+            <form method="post" action="{{ url_for('owner.switch_code_required') }}" class="supreme-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="required" value="{{ 0 if code_required else 1 }}">
+              <input class="form-input supreme-mini" name="master_key" type="password"
+                     {% if key_set %}required{% endif %} autocomplete="off"
+                     placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+                     aria-label="Master key to change the sign-in code rule">
+              <button class="supreme-mini-btn" type="submit" id="codeRequiredSwitch">
+                {{ 'Switch codes off (password only)' if code_required else 'Require a code at sign-in' }}
+              </button>
+            </form>
+            {% if code_required %}
+            <form method="post" action="{{ url_for('owner.switch_rotating_code') }}" class="supreme-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="enabled" value="{{ 0 if rotating.enabled else 1 }}">
+              <input class="form-input supreme-mini" name="master_key" type="password"
+                     {% if key_set %}required{% endif %} autocomplete="off"
+                     placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+                     aria-label="Master key to switch the rotating number">
+              <button class="supreme-mini-btn" type="submit">
+                {{ 'Stop accepting the rotating number' if rotating.enabled else 'Accept the rotating number' }}
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </section>
     <!-- access codes -->
     <section class="sims-card supreme-wide">

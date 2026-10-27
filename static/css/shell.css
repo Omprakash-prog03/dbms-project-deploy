@@ -3499,6 +3499,85 @@ select option {
   .supreme-stats div { flex: 1 1 0; min-width: 0; }
 }
 
+
+/* Rotating code: the number every administrator can use at sign-in. */
+.supreme-rotating {
+  border: 1px solid #33584a;
+  background: linear-gradient(180deg, rgba(33, 74, 58, 0.35), #101a15);
+}
+.supreme-rotating-body {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.supreme-rotating-code {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #0c0f0d;
+  border: 1px solid #2f5e49;
+}
+.supreme-rotating-digits {
+  font-size: 40px;
+  letter-spacing: 0.16em;
+  color: #c8f5de;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  transition: color 180ms ease;
+}
+.supreme-rotating-digits.is-fresh {
+  animation: rotating-pop 700ms ease;
+}
+@keyframes rotating-pop {
+  0% { color: #f3ffe9; transform: scale(1.03); }
+  100% { color: #c8f5de; transform: scale(1); }
+}
+.supreme-rotating-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.supreme-rotating-code.is-idle .supreme-rotating-digits {
+  color: #6f7d75;
+}
+.supreme-rotating-idle {
+  margin: 2px 0 0;
+  font-size: 11px;
+}
+.supreme-rotating-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.supreme-rotating-note p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary, #cfcdd8);
+}
+.supreme-rotating-note code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: #ffffff10;
+}
+.supreme-rotating-note form {
+  margin-top: 10px;
+}
+@media (max-width: 900px) {
+  .supreme-rotating-body { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .supreme-rotating-digits { font-size: 32px; }
+}
+
 /* Sign-in history: the append-only register on the supreme dashboard. */
 .supreme-history-side {
   display: flex;

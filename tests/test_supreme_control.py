@@ -58,22 +58,41 @@ def admin_client(app, username='deputy'):
 
 
 # ---------------------------------------------------------------------------
-# the sign-in page must show the code box, always
+# the sign-in page: username and password, and a code box only if you ask for one
 # ---------------------------------------------------------------------------
-def test_code_field_is_always_on_the_sign_in_page(app):
+def test_the_sign_in_page_is_username_and_password_by_default(app):
+    page = app.test_client().get('/login').get_data(as_text=True)
+    assert 'id="username"' in page and 'id="password"' in page
+    assert 'id="accessCode"' not in page, 'a normal sign-in needs no code box'
+    assert 'Access code' not in page
+
+
+def test_the_code_box_appears_when_codes_are_required(app):
+    owner.set_code_required(True)
     page = app.test_client().get('/login').get_data(as_text=True)
     assert 'id="accessCode"' in page
     assert 'Access code' in page
-    # No progressive hiding any more.
-    assert 'accessCodeGroup" hidden' not in page
-    assert 'access-code-group" hidden' not in page
     assert 'administrators only' in page
 
 
-def test_login_page_explains_the_rule(app):
-    page = app.test_client().get('/login').get_data(as_text=True)
-    assert 'supreme administrator gives them' in page
-    assert 'Supreme administrator' in page
+def test_the_switch_on_the_supreme_page_turns_the_rule_on_and_off(app):
+    owner.set_master_key(MASTER)
+    mine = owner_client(app)
+    assert 'Password only' in mine.get('/owner').get_data(as_text=True)
+
+    mine.post('/owner/code-required/switch', data={'master_key': MASTER, 'required': '1'})
+    assert owner.code_required() is True
+    assert 'Codes required' in mine.get('/owner').get_data(as_text=True)
+
+    mine.post('/owner/code-required/switch', data={'master_key': MASTER, 'required': '0'})
+    assert owner.code_required() is False
+
+
+def test_the_switch_needs_the_master_key(app):
+    owner.set_master_key(MASTER)
+    mine = owner_client(app)
+    mine.post('/owner/code-required/switch', data={'master_key': 'wrong', 'required': '1'})
+    assert owner.code_required() is False
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +105,9 @@ def status(app, username):
 def test_status_endpoint_reports_each_state(app):
     make_admin('deputy')
     assert status(app, 'admin').get_json()['state'] == 'owner'
+    # Codes are off by default, so a plain administrator needs nothing.
+    assert status(app, 'deputy').get_json()['state'] == 'not-required'
+    owner.set_code_required(True)
     assert status(app, 'deputy').get_json()['state'] == 'none'
 
     owner.set_master_key(MASTER)
@@ -116,6 +138,7 @@ def test_status_endpoint_needs_a_username(app):
 # live session registry
 # ---------------------------------------------------------------------------
 def test_signing_in_registers_a_live_session(app):
+    owner.set_code_required(True)
     owner.set_master_key(MASTER)
     make_admin('deputy')
     request_id = owner.request_access('deputy', user_id=99)
@@ -177,6 +200,7 @@ def test_owner_cannot_sign_themselves_out_from_the_table(app):
 # the global switch
 # ---------------------------------------------------------------------------
 def test_closing_logins_blocks_other_admins_and_signs_them_out(app):
+    owner.set_code_required(True)
     owner.set_master_key(MASTER)
     make_admin('deputy')
     mine = owner_client(app)
@@ -210,6 +234,7 @@ def test_switch_requires_the_master_key(app):
 # blocking one account
 # ---------------------------------------------------------------------------
 def test_blocking_an_account_stops_it_requesting_or_signing_in(app):
+    owner.set_code_required(True)
     owner.set_master_key(MASTER)
     make_admin('deputy')
     request_id = owner.request_access('deputy', user_id=99)
@@ -238,6 +263,7 @@ def test_the_owner_cannot_be_blocked(app):
 # password reset and removal
 # ---------------------------------------------------------------------------
 def test_owner_resets_an_administrator_password(app):
+    owner.set_code_required(True)
     owner.set_master_key(MASTER)
     make_admin('deputy')
     mine = owner_client(app)
@@ -371,6 +397,7 @@ def test_status_endpoint_only_speaks_to_administrators(app):
             assert data['state'] == 'not-admin'
             assert 'owner' not in data['message']
         assert status(app, 'nobody-here').get_json()['state'] == 'unknown'
+        owner.set_code_required(True)
         assert status(app, 'deputy').get_json()['state'] == 'closed'
         assert status(app, 'admin').get_json()['state'] == 'owner'
     finally:

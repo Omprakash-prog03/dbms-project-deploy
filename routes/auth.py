@@ -42,7 +42,7 @@ def login_view():
         if session.get("role") == "admin" and owner_guard.is_owner(session.get("username")):
             return redirect(url_for("owner.center"))
         return redirect(url_for("dashboard.dashboard_view"))
-    return render_template("login.html")
+    return render_template("login.html", code_required=owner_guard.code_required())
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
 @limiter.limit("10 per minute")
@@ -91,8 +91,10 @@ def login_api():
                         "Taking you there now."),
         }), 403
 
-    # Every other administrator needs a one-time code the supreme admin issues.
+    # Every other administrator needs a code: the rotating number on the supreme
+    # page, or a one-time code the supreme administrator issues.
     access_code = str(data.get('access_code') or '').strip()
+    used_rotating = False
     if owner_guard.needs_approval(user['username'], user['role']):
         if owner_guard.login_closed():
             return jsonify({
@@ -108,13 +110,24 @@ def login_api():
             }), 403
         request_id = owner_guard.request_access(user['username'], user['user_id'])
         if not access_code:
+            waiting = ('Administrator access needs a code. The supreme administrator keeps a '
+                       'six-digit number that changes every '
+                       f'{owner_guard.rotating_minutes()} minutes — ask them for it, or ask for a '
+                       'one-time code of your own.')
             return jsonify({
                 'success': False, 'code': 'approval_required', 'request_id': request_id,
-                'message': ('Administrator access needs a one-time code from the supreme '
-                            'administrator. Your request has been sent — when the code is issued, '
-                            'type it in the access code box and sign in again.'),
+                'message': f'{waiting} Your request has been sent. Type the code in the access '
+                           'code box and sign in again.',
             }), 403
-        ok, why = owner_guard.redeem_code(user['username'], access_code)
+        # The rotating number on the supreme page works for any administrator and
+        # needs no request round trip. Personal one-time codes still work exactly
+        # as before, so nothing that used to sign in stops working.
+        used_rotating = owner_guard.verify_rotating_code(access_code)
+        if used_rotating:
+            owner_guard.close_request(request_id, f'signed in with the rotating code ({user["username"]})')
+            ok, why = True, 'Access granted with the rotating code.'
+        else:
+            ok, why = owner_guard.redeem_code(user['username'], access_code)
         if not ok:
             if 'not correct' in why or 'attempt' in why:
                 message = why
@@ -145,7 +158,7 @@ def login_api():
         "supreme" if owner_guard.is_owner(user["username"]) else user["role"],
         login_history.SIGNED_IN,
         request.remote_addr or "",
-        "at the campus sign-in",
+        "at the campus sign-in" + (" with the rotating supreme code" if used_rotating else ""),
     )
     return jsonify({"success": True, "redirect": destination, "role": user["role"]})
 
@@ -170,6 +183,9 @@ def access_status():
     if account["role"] != "admin":
         return jsonify(success=True, state="not-admin",
                        message="Students and faculty sign in with just their password.")
+    if not owner_guard.code_required():
+        return jsonify(success=True, state="not-required",
+                       message="Sign in with your username and password — no code needed today.")
     if owner_guard.is_otp_exempt(username):
         return jsonify(success=True, state="not-required",
                        message="This administrator signs in with a password only — no code needed.")

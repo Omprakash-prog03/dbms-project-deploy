@@ -7,8 +7,8 @@ actions that can remove an administrator entirely.
 import secrets
 
 import bcrypt
-from flask import (Blueprint, Response, abort, flash, redirect, render_template, request,
-                   session, url_for)
+from flask import (Blueprint, Response, abort, flash, jsonify, redirect, render_template,
+                   request, session, url_for)
 
 from config import Config
 from extensions import limiter
@@ -153,6 +153,9 @@ def center():
         history_role=history_role,
         history_time_label=login_history.time_label(),
         code_minutes=owner_guard.CODE_MINUTES,
+        rotating=owner_guard.rotating_snapshot(),
+        rotating_minutes=owner_guard.rotating_minutes(),
+        code_required=owner_guard.code_required(),
         min_key_length=owner_guard.MIN_MASTER_KEY,
         online_window=admin_sessions.ONLINE_WINDOW_MINUTES,
         portal=Config.PORTAL_NAME,
@@ -275,6 +278,48 @@ def issue():
     session['issued_code'] = result
     flash(f'Access code issued for {result["username"]}. It works once and expires in '
           f'{result["minutes"]} minutes.', 'success')
+    return redirect(url_for('owner.center'))
+
+
+@owner_bp.route('/owner/rotating-code')
+@login_required
+def rotating_code():
+    """The live six-digit number, for the countdown on the supreme page."""
+    _require_owner()
+    return jsonify(owner_guard.rotating_snapshot())
+
+
+@owner_bp.route('/owner/code-required/switch', methods=['POST'])
+@login_required
+@limiter.limit('20 per minute')
+def switch_code_required():
+    """Ask administrators for a code at sign-in, or go back to password only."""
+    _require_owner()
+    if not _key_ok():
+        flash('Enter your master key to change the sign-in rule.', 'error')
+        return redirect(url_for('owner.center'))
+    required = request.form.get('required') == '1'
+    owner_guard.set_code_required(required, _audit_marker())
+    flash('Administrators now sign in with a code as well as their password.'
+          if required else
+          'Administrators sign in with their username and password only. The rotating '
+          'number stays on this page in case you want it back.', 'success')
+    return redirect(url_for('owner.center'))
+
+
+@owner_bp.route('/owner/rotating-code/switch', methods=['POST'])
+@login_required
+@limiter.limit('20 per minute')
+def switch_rotating_code():
+    """Turn the rotating number on or off for administrator sign-in."""
+    _require_owner()
+    if not _key_ok():
+        flash('Enter your master key to change the rotating code.', 'error')
+        return redirect(url_for('owner.center'))
+    enabled = request.form.get('enabled') == '1'
+    owner_guard.set_rotating_enabled(enabled, _audit_marker())
+    flash(f'The rotating code is now {"ON — administrators can use it to sign in" if enabled else "OFF — only one-time codes work"}.',
+          'success')
     return redirect(url_for('owner.center'))
 
 

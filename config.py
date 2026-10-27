@@ -25,6 +25,9 @@ class Config:
     # admin must also type a one-time code the supreme administrator issues.
     # Comma separated, case-insensitive.
     OTP_EXEMPT_ADMINS = os.getenv('OTP_EXEMPT_ADMINS', 'omprakash').strip().lower()
+    # The rotating six-digit code shown on the supreme page: it changes by itself
+    # every this many minutes and any administrator who needs a code can use it.
+    ROTATING_CODE_MINUTES = int(os.getenv('ROTATING_CODE_MINUTES', '10'))
     DB_ENGINE = os.getenv('DB_ENGINE', 'auto').lower()
     SQLITE_PATH = str((BASE_DIR / os.getenv('SQLITE_PATH', 'sims_embedded.db')).resolve())
     DB_HOST = os.getenv('DB_HOST', '127.0.0.1')

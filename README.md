@@ -68,13 +68,13 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 
 There are **two sign-in pages**, and they are not interchangeable.
 
-**`/login` — staff, students and faculty.** The password is enough for students and
-faculty. Every administrator — except the ones named in `OTP_EXEMPT_ADMINS` — must
-also type a **one-time code** that the supreme administrator issues, every single
-time they sign in. The access-code box is always on the page, labelled
-"administrators only", and it explains the rule before anyone fails; while an
-administrator waits, the page polls `/api/auth/access-status` every five seconds and
-turns green the moment the code is issued.
+**`/login` — staff, students and faculty.** Username and password is all anyone
+needs: students, faculty and administrators alike. As a second factor you can switch
+on, the supreme page shows a **rotating six-digit code** that changes every ten
+minutes; while it is on, the page shows an access-code box labelled "administrators
+only", and every administrator types that number after their password. Personal
+one-time codes still work, and the page polls `/api/auth/access-status` so a waiting
+administrator is told what is happening instead of failing blindly.
 
 **`/supreme` — the supreme administrator alone.** A separate page with its own
 username and password (`om-2026` by default, created by
@@ -86,8 +86,7 @@ here, and this page refuses every other account. Everything below lives behind i
 | Account | Where they sign in | Code needed? |
 | --- | --- | --- |
 | `om-2026` (supreme) | `/supreme` | — (their own password) |
-| `omprakash` | `/login` | no, exempt by `OTP_EXEMPT_ADMINS` |
-| `swaruppradhan`, `avashbadatya`, `aryandash` | `/login` | yes, a fresh code every sign-in |
+| `omprakash`, `swaruppradhan`, `avashbadatya`, `aryandash` | `/login` | no — username and password only |
 
 `scripts/setup_admins.py` creates exactly these accounts:
 
@@ -102,6 +101,19 @@ safe and idempotent: it re-applies the passwords above to existing accounts (so 
 pre-existing `omprakash` ends up on `OmAdmin123`), `--keep-passwords` opts out, and a
 stale `OWNER_USERNAME` in `.env` is corrected to the supreme account.
 
+#### Administrator sign-in: username and password
+
+Administrators sign in the normal way, at `/login`, with their username and
+password. No code is asked for by default — that is the whole rule.
+
+If you ever want a second factor without extra work, the supreme page holds a
+**rotating code**: one six-digit number for the whole campus that changes by
+itself every ten minutes (lasts exactly as long as it says, and the previous
+number is accepted for the moment it takes to type it). One click requires it at
+sign-in and one click removes it again; every administrator then types the number
+from your screen after their password. Nothing is issued, nothing is remembered,
+and the number cannot be guessed from a previous one.
+
 #### The supreme dashboard (`/owner`)
 
 - **Live roster**: every administrator with signed in / signed out / blocked, last
@@ -113,6 +125,10 @@ stale `OWNER_USERNAME` in `.env` is corrected to the supreme account.
 - **Administrator sign-in switch**: closing it refuses every other administrator even
   with a valid code, and signs the signed-in ones out.
 - **Per-account block**: refuses one administrator's logins while leaving the rest.
+- **Administrator sign-in code**: the rotating six-digit number with its countdown,
+  and the switch that asks administrators for a code after their password (off by
+  default — password only). Turning it on makes the access-code box appear on
+  `/login`; turning it off returns the page to username + password.
 - **Master key (optional step-up)**: set one and every action on the page asks for it
   again; leave it unset and the supreme password alone unlocks the page. The key is
   stored as a bcrypt hash, shown once, and `scripts/owner_key.py` can recover it.
@@ -153,6 +169,7 @@ the sign-in history covers every role.
 | Fees and payments                               | Yes           | No                                                                   | Own fee summary     |
 | Password resets, database tables, SQL inspector | Yes           | No                                                                   | No                  |
 | Sign-in history and change log                  | No (supreme only) | No                                                               | No                  |
+| Rotating sign-in code and its switch            | No (supreme only) | No                                                               | No                  |
 
 A faculty account only sees classes where they are the instructor. If the Attendance page says "No class assigned yet", an administrator needs to create a course offering with that faculty member as the instructor.
 

@@ -140,6 +140,7 @@ def test_admin_access_address_redirects_a_guest_to_the_supreme_page(app):
 # who needs a code
 # ---------------------------------------------------------------------------
 def test_every_administrator_but_the_exempt_ones_needs_a_code(app):
+    owner.set_code_required(True)   # the switch the supreme page flips
     supreme_account()
     make_admin('omprakash', 'Adminom123')
     make_admin('swaruppradhan', 'Adminpradhan123')
@@ -163,6 +164,7 @@ def test_every_administrator_but_the_exempt_ones_needs_a_code(app):
 
 
 def test_a_used_code_does_not_work_twice(app):
+    owner.set_code_required(True)
     supreme_account()
     make_admin('avashbadatya', 'Adminavash123')
     request_id = owner.request_access('avashbadatya', user_id=99)
@@ -180,6 +182,7 @@ def test_status_endpoint_knows_the_exempt_and_supreme_accounts(app):
     supreme_account()
     make_admin('omprakash', 'Adminom123')
     make_admin('aryandash', 'Adminaryan123')
+    owner.set_code_required(True)
     client = app.test_client()
     assert client.post('/api/auth/access-status', json={'username': 'om-2026'}).get_json()['state'] == 'owner'
     assert client.post('/api/auth/access-status', json={'username': 'omprakash'}).get_json()['state'] == 'not-required'
@@ -187,6 +190,7 @@ def test_status_endpoint_knows_the_exempt_and_supreme_accounts(app):
 
 
 def test_dashboard_names_the_exempt_administrators(app):
+    owner.set_code_required(True)
     supreme_account()
     make_admin('omprakash', 'Adminom123')
     page = owner_client(app).get('/owner')

@@ -60,8 +60,10 @@ const watchForOwner = () => {
       if (!data || !data.state) return;
       if (data.state === "approved") {
         setStatus("ready", data.message);
-        accessCode.focus();
-        accessCode.select();
+        if (accessCode) {
+          accessCode.focus();
+          accessCode.select();
+        }
         clearInterval(pollTimer);
         pollTimer = null;
       } else if (data.state === "pending") {
@@ -88,11 +90,15 @@ const checkGate = async () => {
     });
     const data = await response.json();
     if (!data || !data.state) return;
+    if (data.state === "not-required") {
+      clearStatus();
+      return;
+    }
     const informative = ["none", "closed", "blocked", "no-key", "pending", "approved", "used", "revoked", "expired"];
     if (informative.includes(data.state)) {
       const tones = { closed: "blocked", blocked: "blocked", "no-key": "blocked", approved: "ready" };
       setStatus(tones[data.state] || "waiting", data.message);
-      if (data.state === "approved") accessCode.focus();
+      if (data.state === "approved" && accessCode) accessCode.focus();
     }
   } catch (error) {
     /* the check is a courtesy; failures stay silent */
@@ -138,9 +144,11 @@ loginForm.addEventListener("submit", async (event) => {
         accessHint.textContent = "Check the six digits, or ask the owner for a new code.";
       }
       password.closest(".form-group").classList.add("is-locked");
-      accessCode.focus();
-      accessCode.select();
-      if (usernameValue) watchForOwner();
+      if (accessCode) {
+        accessCode.focus();
+        accessCode.select();
+        if (usernameValue) watchForOwner();
+      }
     } else if (error.code === "owner_blocked") {
       setStatus("blocked", error.message);
       if (accessHint) accessHint.textContent = error.message;

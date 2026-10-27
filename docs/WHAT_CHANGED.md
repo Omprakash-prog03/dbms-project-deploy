@@ -64,7 +64,7 @@ These were verified by reading the original source, not assumed:
 - **Two sign-in doors**: `/login` for students, faculty and administrators (every administrator except the exempt ones also needs a one-time code), and `/supreme` for the supreme administrator's own username and password. The supreme account is refused on `/login` and redirected to `/supreme`; `/supreme` refuses everyone else.
 - **Supreme control** (`/owner`, owner only; `/admin-access` redirects): one private page holding a live administrator roster (signed in / signed out / blocked, last activity, sign-in count), per-account sign-out, the global lock, an administrator sign-in switch, one-time six-digit access codes, blocks, password resets, removals and the owner's own activity trail. A bcrypt-hashed master key guards every action and is re-checked on destructive forms; `owner_key.py` is the console fallback.
 - **Live session registry** (`admin_session`): each administrator sign-in carries a token version, so one account can be ejected without touching the others, while the lock is still an `epoch` counter that survives restarts.
-- **The sign-in page explains the rule before anyone fails**: the access-code box is always visible with an "administrators only" note, the page polls `/api/auth/access-status` every five seconds while an administrator waits, and closed sign-in / no master key / blocked account are stated on the page rather than failing silently. Students and faculty are never shown administrator messages.
+- **The sign-in page explains the rule before anyone fails**: sign-in is username and password by default, the access-code box appears only while codes are switched on (with an "administrators only" note), the page polls `/api/auth/access-status` every five seconds while an administrator waits, and closed sign-in / blocked account are stated on the page rather than failing silently. Students and faculty are never shown administrator messages.
 - **Raw data viewer** (`/raw-data`, administrator only): every physical table rendered the way a database client prints a result — the `SELECT` statement above a monospaced fixed-width grid with a dashed header rule, row numbers, pagination, and column metadata — plus CSV and landscape PDF downloads of the whole table. `password_hash` and `photo_url` are never selected.
 - **SQL console** (`/raw-data/query`, administrator only): a genuine SQL prompt over the live database — read and write statements, raw fixed-width output with timing, per-session history, schema reference and one-click examples. Schema changes are refused and credential columns are masked.
 - **Student report card PDF** (`/students/<id>/report.pdf`): enrolment, marks, attendance, and the fee ledger for administrators and the student themselves.
@@ -94,6 +94,13 @@ first start (`ensure_schema()`), so no migration step is needed on a live site.
   `trg_staff_activity_no_update/no_delete`) abort any `UPDATE`/`DELETE` in SQLite
   and MySQL; and the SQL console refuses any statement that writes to either table.
   The raw-data viewer shows them read-only.
+- **The rotating code.** The supreme page shows one six-digit number for the whole
+  campus, derived from a per-installation secret and the ten-minute clock, so it is
+  never stored and never repeats: `/owner/rotating-code` serves it, the page counts
+  down and refreshes itself when it rolls over. Sign-in is **username and password
+  only** by default; the supreme administrator can require the number with one click
+  (`/owner/code-required/switch`) and remove the requirement with another. Personal
+  one-time codes still work while the requirement is on.
 - **On the supreme dashboard** (`/owner`) the two sections list the latest 120
   entries each, filterable by username, role and event/action, with the totals, and
   the CSV/PDF buttons export the whole register.

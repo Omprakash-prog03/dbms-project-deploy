@@ -2,10 +2,10 @@
 
 The requested accounts:
 
-    omprakash      OmAdmin123        administrator, no code needed
-    swaruppradhan  Adminpradhan123   administrator, one-time code each sign-in
-    avashbadatya   Adminavash123     administrator, one-time code each sign-in
-    aryandash      Adminaryan123     administrator, one-time code each sign-in
+    omprakash      OmAdmin123        administrator
+    swaruppradhan  Adminpradhan123   administrator
+    avashbadatya   Adminavash123     administrator
+    aryandash      Adminaryan123     administrator
     om-2026        Superadmin123     supreme administrator (signs in at /supreme)
 
 Existing accounts get the password listed here (that is the point of the
@@ -119,8 +119,7 @@ def main():
         outcomes.append(write_account(account, reset, args.apply))
 
     print()
-    print('No code needed:', ', '.join(a['username'] for a in ADMINS if a['username'] == 'omprakash'))
-    print('Code each sign-in:', ', '.join(a['username'] for a in ADMINS if a['username'] != 'omprakash'))
+    print('Administrators sign in with username + password:', ', '.join(a['username'] for a in ADMINS))
     if not args.apply:
         print('Nothing was written. Re-run with --apply.')
     else:

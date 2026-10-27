@@ -184,8 +184,9 @@ start empty — they record from the reload onward, so no fabricated history app
 - **Supreme control** (owner only, `/owner`): live administrator roster, single
   and global sign-out, the administrator sign-in switch, per-account blocks,
   one-time access codes, password resets, removals, and the owner activity trail.
-- The sign-in page always shows the access-code box and explains, before anyone
-  fails, that other administrators need a code from the owner.
+- Administrator sign-in is back to **username and password**. The supreme page also
+  shows a rotating six-digit number, new every ten minutes, and one switch that
+  requires it at sign-in if you ever want that.
 - **Two append-only registers** on the supreme page: the sign-in history (every
   sign-in and sign-out, all roles, with IST times) and the change log (what each
   administrator and faculty member changed, detected automatically), each with
@@ -289,9 +290,14 @@ That creates:
 | --- | --- | --- | --- |
 | `om-2026` | `Superadmin123` | `/supreme` | — |
 | `omprakash` | `OmAdmin123` | `/login` | no |
-| `swaruppradhan` | `Adminpradhan123` | `/login` | yes |
-| `avashbadatya` | `Adminavash123` | `/login` | yes |
-| `aryandash` | `Adminaryan123` | `/login` | yes |
+| `swaruppradhan` | `Adminpradhan123` | `/login` | no |
+| `avashbadatya` | `Adminavash123` | `/login` | no |
+| `aryandash` | `Adminaryan123` | `/login` | no |
+
+Everyone signs in with just their username and password. The supreme page also
+shows a **rotating six-digit number** (new every ten minutes); if you ever want
+administrators to type it as a second factor, press *Require a code at sign-in*
+there, and *Switch codes off (password only)* to go back.
 
 Passwords are hashed with bcrypt; nothing is printed back. Re-running the script is
 safe and idempotent — it also puts the passwords above back on accounts that already

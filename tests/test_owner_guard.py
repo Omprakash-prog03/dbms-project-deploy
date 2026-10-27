@@ -187,6 +187,7 @@ def test_the_owner_signs_in_on_the_supreme_page_not_the_campus_one(app):
 
 def test_other_administrator_is_blocked_until_a_code_is_issued(app):
     owner.set_master_key(MASTER)
+    owner.set_code_required(True)   # the supreme administrator asked for codes
     # A second admin account, created the same way the portal creates one.
     import bcrypt
     digest = bcrypt.hashpw(b'deputy-pass-1', bcrypt.gensalt()).decode()
@@ -232,6 +233,7 @@ def test_other_administrator_is_blocked_until_a_code_is_issued(app):
 def test_master_key_is_not_needed_for_an_administrator_to_ask_for_a_code(app):
     """The key is optional step-up protection, never a closed door."""
     import bcrypt
+    owner.set_code_required(True)
     assert not owner.master_key_set()
     digest = bcrypt.hashpw(b'deputy-pass-1', bcrypt.gensalt()).decode()
     db_pool.execute_dml(
@@ -250,9 +252,10 @@ def test_master_key_is_not_needed_for_an_administrator_to_ask_for_a_code(app):
 
 
 def test_students_and_faculty_never_need_a_code(app):
-    """The gate applies to administrators only."""
+    """The gate applies to administrators only, even when it is switched on."""
     import bcrypt
     owner.set_master_key(MASTER)
+    owner.set_code_required(True)
     digest = bcrypt.hashpw(b'gate-check-pass', bcrypt.gensalt()).decode()
     student_id = db_pool.execute_query(
         "SELECT student_id FROM student WHERE status = 'Active' LIMIT 1", fetch='val')
