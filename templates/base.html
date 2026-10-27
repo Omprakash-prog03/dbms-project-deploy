@@ -44,6 +44,7 @@
         {% if current_user.role == 'admin' %}
         <a class="nav-link {% if request.path == '/fees' %}active{% endif %}" href="{{ url_for('fees.fees_view') }}">{{ icon('wallet',18) }}<span>Fees & payments</span></a>
         <a class="nav-link {% if request.path == '/insights' %}active{% endif %}" href="{{ url_for('insights.insights_view') }}">{{ icon('database',18) }}<span>Database insights</span></a>
+        <a class="nav-link {% if request.path.startswith('/database') %}active{% endif %}" href="{{ url_for('workshop.index') }}" {% if request.path.startswith('/database') %}aria-current="page"{% endif %}>{{ icon('terminal',18) }}<span>Database workshop</span></a>
         <a class="nav-link {% if request.path.startswith('/raw-data') %}active{% endif %}" href="{{ url_for('rawdata.raw_view') }}" {% if request.path.startswith('/raw-data') %}aria-current="page"{% endif %}>{{ icon('grid',18) }}<span>Raw data</span></a>
         {% if is_owner %}<a class="nav-link nav-supreme {% if request.path.startswith('/owner') or request.path.startswith('/admin-access') %}active{% endif %}" href="{{ url_for('owner.center') }}" {% if request.path.startswith('/owner') %}aria-current="page"{% endif %}>{{ icon('crown',18) }}<span>Supreme control</span>{% if owner_pending %}<span class="nav-count">{{ owner_pending }}</span>{% endif %}</a>{% endif %}
         {% endif %}

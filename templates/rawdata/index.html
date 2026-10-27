@@ -31,6 +31,7 @@
         </div>
         <div class="row-actions">
           <a class="btn-secondary-pill" href="{{ url_for('rawdata.query_console') }}">SQL console</a>
+          <a class="btn-secondary-pill" href="{{ url_for('workshop.index') }}">Database workshop</a>
           <a class="btn-secondary-pill" href="{{ url_for('rawdata.raw_csv', table=data.table) }}">Download CSV</a>
           <a class="btn-primary-pill" href="{{ url_for('rawdata.raw_pdf', table=data.table) }}">Download PDF</a>
         </div>

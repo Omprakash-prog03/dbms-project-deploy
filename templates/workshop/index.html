@@ -1,0 +1,595 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+
+{% block title %}Database workshop · {{ portal_name }}{% endblock %}
+{% block breadcrumb %}Database workshop{% endblock %}
+{% block page_title %}Database workshop{% endblock %}
+{% block page_subtitle %}Joins, views, procedures, functions and triggers — read from this database and run in front of you.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workshop.css') }}">
+{% endblock %}
+
+{% macro sql_block(sql, label='SQL', note=None) %}
+<div class="ws-worksheet" data-copyable>
+  <div class="ws-worksheet-bar">
+    <span class="ws-dot" aria-hidden="true"></span>
+    <span class="ws-worksheet-label">{{ label }}</span>
+    {% if note %}<span class="ws-worksheet-note">{{ note }}</span>{% endif %}
+  </div>
+  <pre class="ws-code" aria-label="{{ label }}"><span class="ws-gutter" aria-hidden="true">{%- for line in sql.split('\n') -%}{{ loop.index }}
+{% endfor -%}</span><span class="ws-code-body">{{ sql }}</span></pre>
+</div>
+{% endmacro %}
+
+{% macro grid(result, caption=None) %}
+{% if not result %}
+{% elif result.ok %}
+<div class="ws-grid-wrap" tabindex="0" role="region" aria-label="Result rows{% if caption %} · {{ caption }}{% endif %}">
+  <table class="ws-grid">
+    <thead>
+      <tr><th class="ws-rownum" scope="col"><span aria-hidden="true">#</span><span class="sr-only">Row</span></th>
+        {% for column in result.columns %}<th scope="col">{{ column }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in result.rows %}
+      <tr>
+        <td class="ws-rownum" aria-hidden="true">{{ row.number }}</td>
+        {% for cell in row.cells %}
+        <td class="{{ 'is-null' if cell.null else ('is-num' if cell.numeric else '') }}">{{ cell.text }}</td>
+        {% endfor %}
+      </tr>
+      {% else %}
+      <tr><td class="ws-empty" colspan="{{ result.columns|length + 1 }}">No rows selected.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="ws-statusbar">
+  <span><strong>{{ result.row_count }}</strong> row{{ '' if result.row_count == 1 else 's' }} selected</span>
+  <span aria-hidden="true">·</span>
+  <span>{{ result.elapsed_ms }} ms</span>
+  {% if result.truncated %}
+  <span aria-hidden="true">·</span>
+  <span class="ws-warn">showing the first {{ result.shown }}</span>
+  {% endif %}
+  <span class="ws-statusbar-spacer"></span>
+  <span class="ws-statusbar-engine">{{ overview.storage.engine }} {{ overview.storage.version }}</span>
+  {% if caption %}<span aria-hidden="true">·</span><span>{{ caption }}</span>{% endif %}
+</div>
+{% else %}
+<div class="ws-error" role="alert">
+  <strong>The engine refused this statement.</strong>
+  <p>{{ result.error }}</p>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% block content %}
+
+<div class="ws-shell">
+  <header class="ws-toolbar">
+    <div class="ws-toolbar-left">
+      <span class="ws-engine-chip">{{ icon('database', 15) }} {{ overview.storage.engine }} {{ overview.storage.version }}</span>
+      <span class="ws-toolbar-path" title="{{ overview.storage.database }}">{{ overview.storage.database }}</span>
+    </div>
+    <div class="ws-toolbar-right">
+      <a class="ws-btn" href="{{ url_for('workshop.handout') }}">{{ icon('download', 14) }} Workshop PDF</a>
+      <a class="ws-btn" href="{{ url_for('rawdata.query_console') }}">{{ icon('terminal', 14) }} Open SQL console</a>
+    </div>
+  </header>
+
+  <nav class="ws-tabs" aria-label="Workshop topics">
+    {% for key, label in tabs %}
+    <a class="ws-tab {{ 'is-active' if tab == key }}" href="{{ url_for('workshop.index', tab=key) }}"
+       {% if tab == key %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+
+  {% if tab == 'overview' %}
+  <!-- ================= HOW IT WORKS ================= -->
+  <section class="ws-panel">
+    <h2 class="ws-h2">What this database actually is</h2>
+    <div class="ws-facts">
+      <div><span>Engine</span><strong>{{ overview.storage.engine }} {{ overview.storage.version }}</strong></div>
+      <div><span>Database</span><strong class="ws-mono">{{ overview.storage.database }}</strong></div>
+      <div><span>Size on disk</span><strong>{{ overview.storage.size }}</strong></div>
+      <div><span>Page size</span><strong>{{ overview.storage.page_size }}</strong></div>
+      <div><span>Durability</span><strong>{{ overview.storage.journal }}</strong></div>
+      <div><span>Concurrency</span><strong>{{ overview.storage.concurrency }}</strong></div>
+      {% if overview.storage.foreign_keys %}<div><span>Foreign keys</span><strong>{{ overview.storage.foreign_keys }}</strong></div>{% endif %}
+      <div><span>Tables · views · triggers</span>
+        <strong>{{ overview.counts.tables }} · {{ overview.counts.views }} · {{ overview.counts.triggers }}</strong></div>
+      <div><span>Indexes · procedures · functions</span>
+        <strong>{{ overview.counts.indexes }} · {{ overview.counts.procedures }} · {{ overview.counts.functions }}</strong></div>
+    </div>
+  </section>
+
+  <section class="ws-panel">
+    <h2 class="ws-h2">The life of one statement, stage by stage</h2>
+    <p class="ws-lede">This is the answer to "how does the database actually work?" — from the
+      keystroke to the row on screen. Every stage below is something you can point at in this
+      portal.</p>
+    <ol class="ws-pipeline">
+      {% for stage in primer.pipeline %}
+      <li>
+        <div class="ws-pipeline-stage">{{ stage.stage }}</div>
+        <p class="ws-pipeline-what">{{ stage.what }}</p>
+        <p class="ws-pipeline-portal"><span>In this portal</span> {{ stage.portal }}</p>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <div class="ws-two-col">
+    <section class="ws-panel">
+      <h2 class="ws-h2">ACID, and where you can see it here</h2>
+      <table class="ws-mini-table">
+        <thead><tr><th>Property</th><th>What it means</th><th>Where it lives in this project</th></tr></thead>
+        <tbody>
+          {% for row in primer.acid %}
+          <tr><td><strong>{{ row.property }}</strong></td><td>{{ row.meaning }}</td><td class="ws-muted">{{ row.where }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="ws-panel">
+      <h2 class="ws-h2">Isolation levels</h2>
+      <table class="ws-mini-table">
+        <thead><tr><th>Level</th><th>Dirty read</th><th>Non-repeatable</th><th>Phantom</th></tr></thead>
+        <tbody>
+          {% for row in primer.isolation %}
+          <tr>
+            <td><strong>{{ row.level }}</strong><br><span class="ws-muted">{{ row.note }}</span></td>
+            <td>{{ row.dirty }}</td><td>{{ row.nonrepeatable }}</td><td>{{ row.phantom }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+  {% endif %}
+
+  {% if tab == 'joins' %}
+  <!-- ================= JOINS ================= -->
+  <div class="ws-workbench">
+    <aside class="ws-tree" aria-label="Join demonstrations">
+      <div class="ws-tree-head">Join demonstrations</div>
+      {% for item in demos %}
+      <a class="ws-tree-item {{ 'is-active' if demo and demo.key == item.key }}"
+         href="{{ url_for('workshop.index', tab='joins', item=item.key) }}">
+        <span class="ws-tree-kind">{{ item.label }}</span>
+        <span class="ws-tree-title">{{ item.title }}</span>
+      </a>
+      {% endfor %}
+    </aside>
+
+    <div class="ws-main">
+      {% if demo %}
+      <section class="ws-panel">
+        <div class="ws-panel-head">
+          <div>
+            <div class="ws-eyebrow">{{ demo.label }}</div>
+            <h2 class="ws-h2">{{ demo.title }}</h2>
+            <p class="ws-lede">{{ demo.question }}</p>
+          </div>
+          <div class="ws-panel-actions">
+            <button class="ws-btn ws-btn-primary" type="button"
+                    data-ws-run="{{ demo.key }}">Run statement</button>
+            <button class="ws-btn" type="button" data-ws-explain="{{ demo.key }}">Explain plan</button>
+          </div>
+        </div>
+
+        {{ sql_block(demo.engine_sql, 'SQL · ' ~ demo.label) }}
+        {% if demo.rewrite %}<p class="ws-note">{{ demo.rewrite }}</p>{% endif %}
+
+        <div id="wsResult" class="ws-live">
+          {{ grid(demo_result, 'live result') }}
+        </div>
+
+        <div class="ws-teaching">
+          <div>
+            <h3>Why it behaves like this</h3>
+            <p>{{ demo.why }}</p>
+          </div>
+          <div>
+            <h3>Say it in one sentence</h3>
+            <p class="ws-say">{{ demo.note }}</p>
+            <h3>What to look at in the result</h3>
+            <p class="ws-muted">{{ demo.check }}</p>
+          </div>
+        </div>
+
+        {% if plan and plan.ok %}
+        <details class="ws-details" open>
+          <summary>Execution plan — what the optimiser chose</summary>
+          <div class="ws-plan-verdict ws-plan-{{ plan.verdict }}">
+            {{ 'Index lookups only' if plan.verdict == 'index' else 'Full table scan involved' }} ·
+            {{ plan.elapsed_ms }} ms to plan
+          </div>
+          <ol class="ws-plan-steps">
+            {% for step in plan.steps %}
+            <li class="ws-plan-step ws-plan-step-{{ step.kind }}">
+              <span class="ws-plan-kind">{{ step.kind }}</span>
+              <span class="ws-mono">{{ step.detail }}</span>
+            </li>
+            {% endfor %}
+          </ol>
+          <p class="ws-muted">{{ plan.summary }}</p>
+        </details>
+        {% endif %}
+      </section>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if tab == 'views' %}
+  <!-- ================= VIEWS ================= -->
+  <section class="ws-panel">
+    <h2 class="ws-h2">A view is a saved question, not a saved table</h2>
+    <p class="ws-lede">Nothing below stores a single row. Each view is a named SELECT kept in the
+      catalogue; the rows are produced every time it is read, which is why a view can never go
+      stale. There are {{ views_catalogue|length }} of them in this database.</p>
+  </section>
+
+  {% for view in views_catalogue %}
+  <section class="ws-panel ws-view-card">
+    <div class="ws-panel-head">
+      <div>
+        <div class="ws-eyebrow">VIEW · {{ view.rows }} row{{ '' if view.rows == 1 else 's' }}</div>
+        <h2 class="ws-h2 ws-mono">{{ view.name }}</h2>
+      </div>
+      <div class="ws-panel-actions">
+        <a class="ws-btn" href="{{ url_for('workshop.index', tab='views', item=view.name) }}#preview-{{ view.name }}">
+          Jump to preview</a>
+      </div>
+    </div>
+
+    <div class="ws-teaching">
+      <div>
+        <h3>What it answers</h3><p>{{ view.purpose }}</p>
+        <h3>What it hides</h3><p class="ws-muted">{{ view.hides }}</p>
+      </div>
+      <div>
+        <h3>Why it exists</h3><p>{{ view.why }}</p>
+        <h3>The trap to avoid</h3><p class="ws-muted">{{ view.watch }}</p>
+      </div>
+    </div>
+
+    <details class="ws-details">
+      <summary>Definition — exactly as the database stores it</summary>
+      {{ sql_block(view.ddl, 'DDL · ' ~ view.name) }}
+    </details>
+
+    <div id="preview-{{ view.name }}">
+      {{ grid(view.preview, 'first rows of ' ~ view.name) }}
+    </div>
+  </section>
+  {% endfor %}
+  {% endif %}
+
+  {% if tab == 'procedures' %}
+  <!-- ================= PROCEDURES ================= -->
+  <div class="ws-workbench">
+    <aside class="ws-tree" aria-label="Stored procedures">
+      <div class="ws-tree-head">Stored procedures</div>
+      {% for item in procedures %}
+      <a class="ws-tree-item {{ 'is-active' if procedure_item and procedure_item.name == item.name }}"
+         href="{{ url_for('workshop.index', tab='procedures', item=item.name) }}">
+        <span class="ws-tree-kind">PROCEDURE</span>
+        <span class="ws-tree-title ws-mono">{{ item.name }}</span>
+      </a>
+      {% endfor %}
+    </aside>
+
+    <div class="ws-main">
+      {% if procedure_item %}
+      <section class="ws-panel">
+        <div class="ws-panel-head">
+          <div>
+            <div class="ws-eyebrow">PROCEDURE</div>
+            <h2 class="ws-h2 ws-mono">{{ procedure_item.name }}</h2>
+            <p class="ws-lede">{{ procedure_item.purpose }}</p>
+          </div>
+          <div class="ws-panel-actions">
+            <button class="ws-btn ws-btn-primary" type="button"
+                    data-ws-procedure="{{ procedure_item.name }}">Walk through it</button>
+          </div>
+        </div>
+
+        <table class="ws-mini-table ws-params">
+          <thead><tr><th>Mode</th><th>Parameter</th><th>Type</th></tr></thead>
+          <tbody>
+            {% for param in procedure_item.params %}
+            <tr>
+              <td><span class="ws-param-mode ws-mode-{{ param.mode|lower }}">{{ param.mode }}</span></td>
+              <td class="ws-mono">{{ param.name }}</td>
+              <td class="ws-mono ws-muted">{{ param.type }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <h3 class="ws-h3">What it does, in order</h3>
+        <ol class="ws-steps">
+          {% for step in procedure_item.steps %}<li>{{ step }}</li>{% endfor %}
+        </ol>
+
+        <div class="ws-guarantee">
+          <strong>What it guarantees</strong>
+          <p>{{ procedure_item.guarantees }}</p>
+        </div>
+
+        <h3 class="ws-h3">The read-only walkthrough</h3>
+        <p class="ws-lede">The same checks the procedure performs, executed against real rows
+          without writing anything. Nothing here can change the database.</p>
+        <div id="wsDryRun">
+          {% if dry_run %}
+          <div class="ws-dryrun">
+            {% for step in dry_run.steps %}
+            <div class="ws-dryrun-step {{ 'is-pass' if step.ok else 'is-stop' }}">
+              <div class="ws-dryrun-head">
+                <span class="ws-dryrun-badge">{{ 'PASS' if step.ok else 'STOP' }}</span>
+                <strong>{{ step.title }}</strong>
+              </div>
+              <pre class="ws-code ws-code-inline">{{ step.sql }}</pre>
+              <p class="ws-dryrun-detail">{{ step.detail }}</p>
+            </div>
+            {% endfor %}
+            <p class="ws-dryrun-verdict">{{ dry_run.verdict }}</p>
+          </div>
+          {% endif %}
+        </div>
+
+        <details class="ws-details">
+          <summary>Full source — MySQL 8 stored procedure</summary>
+          {{ sql_block(procedure_item.ddl, 'DDL · ' ~ procedure_item.name) }}
+        </details>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if tab == 'functions' %}
+  <!-- ================= FUNCTIONS ================= -->
+  <div class="ws-workbench">
+    <aside class="ws-tree" aria-label="Stored functions">
+      <div class="ws-tree-head">Stored functions</div>
+      {% for item in functions_catalogue %}
+      <a class="ws-tree-item {{ 'is-active' if function_item and function_item.name == item.name }}"
+         href="{{ url_for('workshop.index', tab='functions', item=item.name) }}">
+        <span class="ws-tree-kind">FUNCTION</span>
+        <span class="ws-tree-title ws-mono">{{ item.name }}</span>
+      </a>
+      {% endfor %}
+      <div class="ws-tree-note">A function returns a value and cannot change the database —
+        which is exactly what makes it safe to call inside a SELECT.</div>
+    </aside>
+
+    <div class="ws-main">
+      {% if function_item %}
+      <section class="ws-panel">
+        <div class="ws-panel-head">
+          <div>
+            <div class="ws-eyebrow">FUNCTION · {{ function_item.characteristic or 'deterministic' }}</div>
+            <h2 class="ws-h2 ws-mono">{{ function_item.signature or function_item.name }}</h2>
+            <p class="ws-lede">{{ function_item.purpose }}</p>
+          </div>
+          <div class="ws-panel-actions">
+            <button class="ws-btn ws-btn-primary" type="button"
+                    data-ws-function="{{ function_item.demo }}">Evaluate it</button>
+          </div>
+        </div>
+
+        <div class="ws-teaching">
+          <div>
+            <h3>Why this is a function and not a page</h3>
+            <p>{{ function_item.why }}</p>
+          </div>
+          <div>
+            <h3>Declared behaviour</h3>
+            <p class="ws-muted">{{ function_item.characteristic or 'DETERMINISTIC' }} — the same
+              input always produces the same output, which is why the optimiser may call it once
+              per distinct argument rather than once per row.</p>
+          </div>
+        </div>
+
+        <div id="wsFunction">
+          {% if function_result %}
+          <p class="ws-note">{{ function_result.blurb }}</p>
+          {{ grid(function_result, 'evaluated live') }}
+          {% endif %}
+        </div>
+
+        <details class="ws-details">
+          <summary>Full source — MySQL 8 stored function</summary>
+          {{ sql_block(function_item.ddl, 'DDL · ' ~ function_item.name) }}
+        </details>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if tab == 'triggers' %}
+  <!-- ================= TRIGGERS ================= -->
+  <section class="ws-panel">
+    <h2 class="ws-h2">{{ trigger_count }} triggers are enforcing rules in this database</h2>
+    <p class="ws-lede">A trigger is code the database runs by itself when a row changes. It cannot
+      be bypassed by a page, a script or the SQL console — which is the whole point: a rule that
+      only exists in the browser is a suggestion. Each one below can be *tried*, and the attempt is
+      rolled back, so nothing changes except what you learn.</p>
+  </section>
+
+  {% for group in trigger_groups %}
+  <section class="ws-panel">
+    <h2 class="ws-h2 ws-mono">table {{ group.table }}</h2>
+    <div class="ws-trigger-list">
+      {% for trigger in group.triggers %}
+      <article class="ws-trigger {{ 'has-proof' if trigger.proof }}">
+        <div class="ws-trigger-head">
+          <div>
+            <h3 class="ws-mono">{{ trigger.name }}</h3>
+            <p class="ws-trigger-when">
+              <span class="ws-chip">{{ trigger.timing }}</span>
+              <span class="ws-chip">{{ trigger.event }}</span>
+              <span class="ws-chip">ON {{ trigger.table }}</span>
+            </p>
+          </div>
+          {% if trigger.proof %}
+          <button class="ws-btn ws-btn-danger" type="button" data-ws-prove="{{ trigger.proof }}"
+                  data-ws-prove-target="proof-{{ trigger.name }}">
+            Try to break it
+          </button>
+          {% endif %}
+        </div>
+
+        <p class="ws-trigger-rule">{{ trigger.rule or trigger.message or 'Guards this table.' }}</p>
+        {% if trigger.message %}<p class="ws-trigger-message"><span>Message on screen</span> <em>“{{ trigger.message }}”</em></p>{% endif %}
+        {% if trigger.when %}<p class="ws-mono ws-when-clause">WHEN {{ trigger.when }}</p>{% endif %}
+
+        <div class="ws-proof" id="proof-{{ trigger.name }}" hidden></div>
+
+        <details class="ws-details">
+          <summary>Definition</summary>
+          {{ sql_block(trigger.body, 'TRIGGER · ' ~ trigger.name) }}
+        </details>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+  {% endif %}
+
+  {% if tab == 'plans' %}
+  <!-- ================= PLANS ================= -->
+  <section class="ws-panel">
+    <h2 class="ws-h2">What the optimiser does with the same statement</h2>
+    <p class="ws-lede">A table scan reads every row; an index lookup jumps straight to the rows it
+      needs. The engine decides, not the developer — but the developer can read the decision. At
+      this data size a scan is harmless; at a million rows it is the difference between 2 ms and
+      two seconds.</p>
+  </section>
+
+  {% for item in plans %}
+  <section class="ws-panel">
+    <div class="ws-panel-head">
+      <div>
+        <div class="ws-eyebrow">{{ item.demo.label }}</div>
+        <h2 class="ws-h2">{{ item.demo.title }}</h2>
+      </div>
+      <div class="ws-panel-actions">
+        <a class="ws-btn" href="{{ url_for('workshop.index', tab='joins', item=item.demo.key) }}">Open it</a>
+        <button class="ws-btn" type="button" data-ws-explain="{{ item.demo.key }}"
+                data-ws-plan-target="plan-panel-{{ item.demo.key }}">Re-plan</button>
+      </div>
+    </div>
+    <div id="plan-panel-{{ item.demo.key }}">
+      {% if item.plan.ok %}
+      <div class="ws-plan-verdict ws-plan-{{ item.plan.verdict }}">
+        {{ 'Index lookups only' if item.plan.verdict == 'index' else 'Full table scan involved' }}
+      </div>
+      <ol class="ws-plan-steps">
+        {% for step in item.plan.steps %}
+        <li class="ws-plan-step ws-plan-step-{{ step.kind }}">
+          <span class="ws-plan-kind">{{ step.kind }}</span>
+          <span class="ws-mono">{{ step.detail }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      <p class="ws-muted">{{ item.plan.summary }}</p>
+      {% else %}
+      <div class="ws-error"><p>{{ item.plan.error }}</p></div>
+      {% endif %}
+    </div>
+  </section>
+  {% endfor %}
+  {% endif %}
+
+  {% if tab == 'schema' %}
+  <!-- ================= SCHEMA ================= -->
+  <section class="ws-panel">
+    <h2 class="ws-h2">{{ schema_tables|length }} tables, {{ indexes|length }} indexes</h2>
+    <p class="ws-lede">Read live from the catalogue: the same information a database client shows
+      when you expand a table in its tree. Primary keys are marked, every foreign key is listed, and
+      the row counts are exact at the moment this page was built.</p>
+  </section>
+
+  <div class="ws-two-col">
+    <section class="ws-panel">
+      <h2 class="ws-h2">Indexes</h2>
+      <table class="ws-mini-table">
+        <thead><tr><th>Index</th><th>Table</th><th>Columns</th><th>Unique</th></tr></thead>
+        <tbody>
+          {% for index in indexes %}
+          <tr>
+            <td class="ws-mono">{{ index.name }}</td>
+            <td class="ws-mono ws-muted">{{ index.table }}</td>
+            <td class="ws-mono">{{ index.columns|join(', ') }}</td>
+            <td>{{ 'yes' if index.unique else 'no' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="ws-panel">
+      <h2 class="ws-h2">Why indexes matter here</h2>
+      <p class="ws-lede">Every foreign key in this schema has an index behind it, so the joins on
+        the previous tabs do not have to scan. The two registers — sign-in history and change log —
+        are indexed on the columns the dashboard filters by, which is why those sections stay fast
+        as they grow.</p>
+      <div class="ws-guarantee">
+        <strong>Rule of thumb</strong>
+        <p>Index the columns you filter and join on, not the ones you merely display. Every index
+          makes a read faster and a write slightly slower, because it has to be maintained too.</p>
+      </div>
+    </section>
+  </div>
+
+  {% for table in schema_tables %}
+  <section class="ws-panel">
+    <div class="ws-panel-head">
+      <div>
+        <div class="ws-eyebrow">TABLE · {{ table.rows }} row{{ '' if table.rows == 1 else 's' }}</div>
+        <h2 class="ws-h2 ws-mono">{{ table.name }}</h2>
+      </div>
+      <div class="ws-panel-actions">
+        <a class="ws-btn" href="{{ url_for('rawdata.raw_view', table=table.name) }}">Open in Raw data</a>
+      </div>
+    </div>
+
+    <table class="ws-mini-table ws-columns">
+      <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Default</th><th>Key</th></tr></thead>
+      <tbody>
+        {% for column in table.columns %}
+        <tr>
+          <td class="ws-mono">{{ column.name }}</td>
+          <td class="ws-mono ws-muted">{{ column.type }}</td>
+          <td>{{ 'yes' if column.nullable else 'no' }}</td>
+          <td class="ws-mono ws-muted">{{ column['default'] if column['default'] is not none else '—' }}</td>
+          <td>{% if column.pk %}<span class="ws-chip ws-chip-key">PK</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if table.foreign_keys %}
+    <p class="ws-fk">
+      <span>References</span>
+      {% for fk in table.foreign_keys %}
+      <span class="ws-chip">{{ fk.column_name }} → {{ fk.ref_table }}.{{ fk.ref_column }}</span>
+      {% endfor %}
+    </p>
+    {% endif %}
+  </section>
+  {% endfor %}
+  {% endif %}
+</div>
+
+<script src="{{ url_for('static', filename='js/workshop.js') }}"></script>
+{% endblock %}
