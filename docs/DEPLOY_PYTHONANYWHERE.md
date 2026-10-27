@@ -278,6 +278,21 @@ press **Reset practice schema**. To remove it entirely, delete
 Override the location with `STUDIO_ORACLE_PATH` if you prefer it outside
 `instance/` (the code refuses to point it at the portal database).
 
+### Studio undo snapshots
+
+The studio's **portal** connection writes to `instance/hogwards.db` and takes a
+snapshot before every write. Those snapshots live beside the database, in
+`instance/studio_portal_journal/` (`index.json`, one file per step, twelve steps),
+and the practice schema keeps its own in `instance/studio_oracle_journal/`.
+`instance/studio_portal_journal/created.json` records which tables the studio
+created, so it knows what it may drop.
+
+Both directories are ignored by Git and recreated on demand; together they stay
+well inside a few MB on the free tier (a snapshot is one compressed copy of the
+database, and only twelve are kept). To reclaim the space, delete the directory —
+you lose the undo history, not the data. `instance/hogwards.db` itself is never
+removed by the studio.
+
 
 ## The supreme administrator and the administrator codes
 

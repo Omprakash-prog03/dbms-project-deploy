@@ -1,13 +1,48 @@
-"""SQL Studio: the administrator's read-only database client.
+"""SQL Studio: the administrator's desktop client for the portal database.
 
-Reads run for real; data changes are prepared and declined; structure changes
-are refused. The tests hold the studio to that promise, and check the client
-itself renders with its navigator, worksheets and panes.
+Reads run for real, writes run for real and commit, created objects show up in
+Raw data, portal tables are protected from DROP/ALTER/TRUNCATE, the append-only
+registers stay closed, and every write is snapshotted so it can be undone. The
+tests hold the studio to that promise, and check the client itself renders with
+its navigator, worksheets and panes.
 """
 import pytest
 
 from app import create_app
 from repositories import studio
+from repositories.db_pool import db_pool as pool
+
+NEW_STUDENT_SQL = (
+    "INSERT INTO student (roll_no, first_name, last_name, email, phone, dob, gender, "
+    "address, dept_id, admission_date, current_semester, status) VALUES "
+    "('STUDIO-TEST-1', 'Studio', 'Tester', 'studio.tester@nist.edu', '9000000000', "
+    "'2005-01-01', 'Male', 'Studio row', 1, '2026-07-01', 1, 'Active')"
+)
+
+
+def drop_studio_objects():
+    """Remove anything a previous test created and left behind."""
+    for name in sorted(studio.studio_created()):
+        for kind in ('VIEW', 'TABLE'):
+            try:
+                pool.execute_dml(f'DROP {kind} IF EXISTS "{name}"')
+                break
+            except Exception:
+                continue
+
+
+@pytest.fixture(autouse=True)
+def portal_undone():
+    """Every test starts and ends with an empty journal and no leftovers."""
+    drop_studio_objects()
+    studio.portal_journal().clear()
+    yield
+    for _ in range(40):
+        if not studio.journal_state()['can_undo']:
+            break
+        studio.undo()
+    drop_studio_objects()
+    studio.portal_journal().clear()
 
 WATCHED = ['student', 'enrollment', 'course_offering', 'department', 'result',
            'fee_payment', 'app_user', 'login_history', 'staff_activity']
@@ -57,7 +92,7 @@ def test_the_studio_renders_for_an_administrator(admin):
     for marker in (b'st-app', b'st-tree', b'stSql', b'stGrid', b'studio.css', b'studio.js'):
         assert marker in body, marker
     assert b'{{' not in body
-    assert b'READ-ONLY' in body.upper()
+    assert b'linked to the portal' in body.lower()
 
 
 def test_the_navigator_lists_the_catalogue(admin):
@@ -123,37 +158,118 @@ def test_a_statement_without_a_table_can_run(admin):
 
 # ------------------------------------------------------------------ writes ----
 
-def test_writes_are_prepared_and_never_committed(admin):
-    before = counts()
+def test_a_row_inserted_here_shows_up_on_the_students_screen(admin):
+    payload = admin.post('/studio/run', json={'sql': NEW_STUDENT_SQL}).get_json()
+    assert payload['ok'] is True, payload
+    assert payload['kind'] == 'write'
+    assert payload['affected'] == 1
+    assert payload['journal']['can_undo'] is True
+    page = admin.get('/students?search=STUDIO-TEST-1').data
+    assert b'studio.tester@nist.edu' in page
+
+
+def test_a_row_deleted_here_leaves_the_students_screen(admin):
+    admin.post('/studio/run', json={'sql': NEW_STUDENT_SQL})
     payload = admin.post('/studio/run', json={
-        'sql': "UPDATE student SET status = 'Suspended' WHERE student_id = 1"}).get_json()
+        'sql': "DELETE FROM student WHERE roll_no = 'STUDIO-TEST-1'"}).get_json()
     assert payload['ok'] is True
-    assert payload['kind'] == 'prepare'
-    assert 'read-only' in payload['note'].lower()
-    assert counts() == before
+    # the search box echoes the word typed, so the row's e-mail is the marker
+    assert b'studio.tester@nist.edu' not in admin.get('/students?search=STUDIO-TEST-1').data
 
 
-def test_an_invalid_write_is_rejected_by_the_engine(admin):
+def test_undo_puts_the_deleted_row_back(admin):
+    admin.post('/studio/run', json={'sql': NEW_STUDENT_SQL})
+    admin.post('/studio/run', json={"sql": "DELETE FROM student WHERE roll_no = 'STUDIO-TEST-1'"})
+    payload = admin.post('/studio/undo', json={}).get_json()
+    assert payload['ok'] is True, payload
+    assert payload['message'].startswith('Undone')
+    assert b'studio.tester@nist.edu' in admin.get('/students?search=STUDIO-TEST-1').data
+
+
+def test_redo_replays_the_change_undo_took_back(admin):
+    admin.post('/studio/run', json={'sql': NEW_STUDENT_SQL})
+    admin.post('/studio/undo', json={})
+    assert b'studio.tester@nist.edu' not in admin.get('/students?search=STUDIO-TEST-1').data
+    payload = admin.post('/studio/redo', json={}).get_json()
+    assert payload['ok'] is True, payload
+    assert b'studio.tester@nist.edu' in admin.get('/students?search=STUDIO-TEST-1').data
+
+
+def test_a_table_created_here_reaches_raw_data_and_can_be_dropped(admin):
     payload = admin.post('/studio/run', json={
-        'sql': 'INSERT INTO student (no_such_column) VALUES (1)'}).get_json()
-    assert payload['ok'] is False
-    assert payload['code'] == 'STUDIO-005'
+        'sql': 'CREATE TABLE studio_report (id NUMBER GENERATED BY DEFAULT AS IDENTITY, '
+               'note VARCHAR2(40))'}).get_json()
+    assert payload['ok'] is True, payload
+    assert payload['kind'] == 'ddl'
+    assert payload['message'] == 'Table created.'
+    assert 'studio_report' in studio.studio_created()
+    raw = admin.get('/raw-data?table=studio_report')
+    assert raw.status_code == 200, raw.status_code
+    assert b'created from studio' in raw.data.lower() or b'studio_report' in raw.data
+    dropped = admin.post('/studio/run', json={'sql': 'DROP TABLE studio_report'}).get_json()
+    assert dropped['ok'] is True, dropped
+    undone = admin.post('/studio/undo', json={}).get_json()
+    assert undone['ok'] is True
+    assert 'studio_report' in [table['name'] for table in studio.catalogue()['tables']]
+    assert studio.portal_tables() is not None
 
 
-def test_schema_and_transaction_control_are_refused(admin):
+def test_the_portals_own_tables_cannot_be_dropped(admin):
     for statement in ('DROP TABLE student', 'ALTER TABLE student ADD COLUMN x INT',
-                      'PRAGMA journal_mode=WAL', 'COMMIT', 'ATTACH DATABASE \'x.db\' AS x'):
+                      'TRUNCATE TABLE fee_payment'):
+        payload = admin.post('/studio/run', json={'sql': statement}).get_json()
+        assert payload['ok'] is False, statement
+        assert payload['code'] == 'STUDIO-007', statement
+        assert 'belongs to the portal' in payload['error']
+
+
+def test_transaction_control_and_engine_settings_are_refused(admin):
+    for statement in ('PRAGMA journal_mode=WAL', 'COMMIT', 'ATTACH DATABASE \'x.db\' AS x'):
         payload = admin.post('/studio/run', json={'sql': statement}).get_json()
         assert payload['ok'] is False, statement
         assert payload['code'] == 'STUDIO-002', statement
         assert payload['error']
 
 
-def test_the_append_only_registers_are_protected(admin):
+def test_an_invalid_write_is_rejected_and_leaves_no_journal_step(admin):
     payload = admin.post('/studio/run', json={
-        'sql': "DELETE FROM login_history"}).get_json()
+        'sql': 'INSERT INTO student (no_such_column) VALUES (1)'}).get_json()
     assert payload['ok'] is False
-    assert payload['code'] == 'STUDIO-004'
+    assert payload['code'] == 'STUDIO-009'
+    assert studio.journal_state()['can_undo'] is False
+
+
+def test_the_append_only_registers_are_protected(admin):
+    for statement in ('DELETE FROM login_history', "INSERT INTO staff_activity (activity_id) VALUES (1)"):
+        payload = admin.post('/studio/run', json={'sql': statement}).get_json()
+        assert payload['ok'] is False, statement
+        assert payload['code'] == 'STUDIO-004', statement
+
+
+def test_a_write_is_one_undo_step_and_a_read_is_not(admin):
+    studio.portal_journal().clear()
+    admin.post('/studio/run', json={'sql': NEW_STUDENT_SQL})
+    admin.post('/studio/run', json={'sql': 'SELECT COUNT(*) FROM student'})
+    state = studio.journal_state()
+    assert state['depth'] == 1
+    assert state['can_undo'] is True
+    assert 'INSERT' in state['undo_label'].upper()
+
+
+def test_the_tree_endpoint_returns_the_navigator_and_the_journal(admin):
+    payload = admin.get('/studio/tree').get_json()
+    assert payload['ok'] is True
+    assert any(table['name'] == 'student' for table in payload['catalogue']['tables'])
+    assert 'stTreePortal' not in payload['tree_html']
+    assert 'student' in payload['tree_html']
+    assert payload['journal']['depth'] == 0
+
+
+def test_undo_with_an_empty_journal_says_so(admin):
+    studio.portal_journal().clear()
+    payload = admin.post('/studio/undo', json={}).get_json()
+    assert payload['ok'] is False
+    assert payload['error']
 
 
 def test_two_statements_need_run_script(admin):
@@ -233,7 +349,7 @@ def test_describe_unknown_object_is_404(admin):
 
 # -------------------------------------------------------------------- misc ----
 
-def test_studio_runs_stay_out_of_the_change_log(admin):
+def test_studio_reads_stay_out_of_the_change_log(admin):
     from repositories.db_pool import db_pool as pool
     before = pool.execute_query('SELECT COUNT(*) FROM staff_activity', fetch='val')
     admin.post('/studio/run', json={'sql': 'SELECT 1'})

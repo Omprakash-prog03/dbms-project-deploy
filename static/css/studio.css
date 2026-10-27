@@ -1852,6 +1852,8 @@ body.studio-page .flash-message {
   .st-dialog-layer {
     position: fixed;
     padding: 12px;
+    place-items: start center;
+    overflow-y: auto;
   }
   .st-dialog {
     max-height: calc(100dvh - 24px);

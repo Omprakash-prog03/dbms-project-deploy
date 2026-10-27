@@ -25,6 +25,10 @@
      data-oracle-undo-url="{{ url_for('studio.oracle_undo') }}"
      data-oracle-redo-url="{{ url_for('studio.oracle_redo') }}"
      data-oracle-journal="{{ oracle_journal|tojson|forceescape }}"
+     data-portal-journal="{{ portal_journal|tojson|forceescape }}"
+     data-portal-tree-url="{{ url_for('studio.tree') }}"
+     data-portal-undo-url="{{ url_for('studio.undo') }}"
+     data-portal-redo-url="{{ url_for('studio.redo') }}"
      data-oracle-starter="{{ oracle_starter|e }}">
 
   {# ---------------------------------------------------------------- title #}
@@ -41,11 +45,11 @@
       <label for="stConnectionSelect">Connection</label>
       <div class="st-select">
         <select id="stConnectionSelect" aria-label="Active connection">
-          <option value="portal">{{ connection.name }} · {{ connection.engine }} {{ connection.version }} · read-only</option>
+          <option value="portal">{{ connection.name }} · {{ connection.engine }} {{ connection.version }} · linked to the portal</option>
           <option value="oracle">{{ oracle_connection.name }} · Oracle 21c XE · practice schema</option>
         </select>
       </div>
-      <span class="st-ro-chip" id="stSessionChip" data-mode="portal" title="Statements that change data are prepared and declined">{{ icon('lock', 12) }}<span id="stSessionChipText">Read-only session</span></span>
+      <span class="st-ro-chip is-writable" id="stSessionChip" data-mode="portal" title="Changes run against the portal's own database and appear on its screens; every change can be undone">{{ icon('unlocked', 12) }}<span id="stSessionChipText">Live data · linked to the portal</span></span>
     </div>
 
     <div class="st-title-actions">
@@ -92,10 +96,10 @@
     </button>
     <span class="st-tool-sep" aria-hidden="true"></span>
 
-    <button type="button" class="st-tool is-dim" data-action="commit" title="Commit — disabled in a read-only session">
+    <button type="button" class="st-tool" data-action="commit" title="Commit — each statement commits as it runs">
       {{ icon('check', 14) }}<span>Commit</span>
     </button>
-    <button type="button" class="st-tool is-dim" data-action="rollback" title="Roll back — nothing is pending in a read-only session">
+    <button type="button" class="st-tool" data-action="rollback" title="Roll back — use Undo to reverse the last change">
       {{ icon('arrow-right', 14) }}<span>Roll back</span>
     </button>
     <span class="st-tool-sep" aria-hidden="true"></span>
@@ -105,6 +109,14 @@
     </button>
     <button type="button" class="st-tool st-tool-undo is-flipped" data-action="redo" id="stRedoTool" title="Redo the edit that undo took back (Ctrl+Shift+Z)" disabled>
       {{ icon('arrow-right', 13) }}<span>Redo</span>
+    </button>
+    <span class="st-tool-sep" aria-hidden="true"></span>
+
+    <button type="button" class="st-tool st-tool-db-undo" data-action="undo-change" id="stDbUndoTool" title="Undo the last database change" disabled>
+      {{ icon('arrow-right', 13) }}<span>Undo change</span>
+    </button>
+    <button type="button" class="st-tool st-tool-db-undo is-flipped" data-action="redo-change" id="stDbRedoTool" title="Redo the database change undo took back" disabled>
+      {{ icon('arrow-right', 13) }}<span>Redo change</span>
     </button>
     <span class="st-tool-sep" aria-hidden="true"></span>
 
@@ -135,160 +147,7 @@
 
       <div class="st-tree" id="stTree">
         <div id="stTreePortal">
-        <div class="st-node is-open" data-node>
-          <button type="button" class="st-node-row st-node-root" data-tree-toggle aria-expanded="true">
-            <span class="st-caret" aria-hidden="true"></span>
-            {{ icon('database', 14) }}
-            <span class="st-node-label">{{ connection.name }}</span>
-            <span class="st-node-note">{{ connection.engine }}</span>
-          </button>
-
-          <div class="st-node-children">
-            {# ---- tables ---- #}
-            <div class="st-node" data-node data-group="tables">
-              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
-                <span class="st-caret" aria-hidden="true"></span>
-                {{ icon('grid', 13) }}
-                <span class="st-node-label">Tables</span>
-                <span class="st-node-count">{{ table_count }}</span>
-              </button>
-              <div class="st-node-children" hidden>
-                {% for table in catalogue.tables %}
-                <div class="st-node" data-node data-object-row>
-                  <button type="button" class="st-node-row st-object" data-tree-toggle aria-expanded="false"
-                          data-object-type="table" data-object-name="{{ table.name }}"
-                          title="{{ table.name }} · {{ '{:,}'.format(table.rows) }} rows">
-                    <span class="st-caret" aria-hidden="true"></span>
-                    <span class="st-node-label">{{ table.name }}</span>
-                    <span class="st-node-meta">{{ '{:,}'.format(table.rows) }}</span>
-                  </button>
-                  <div class="st-node-children" hidden>
-                    {% for column in table.columns %}
-                    <button type="button" class="st-leaf st-leaf-column" data-column="{{ column.name }}" data-object-name="{{ table.name }}" title="Double-click to insert the column name">
-                      <span class="st-leaf-name">{{ column.name }}</span>
-                      <span class="st-leaf-type">{{ column.type }}{% if column.pk %} · PK{% elif not column.nullable %} · NN{% endif %}</span>
-                    </button>
-                    {% endfor %}
-                    {% for fk in table.foreign_keys %}
-                    <button type="button" class="st-leaf st-leaf-fk" data-column="{{ fk.column_name }}" title="Double-click to insert the column name">
-                      <span class="st-leaf-name">{{ fk.column_name }}</span>
-                      <span class="st-leaf-type">→ {{ fk.ref_table }}.{{ fk.ref_column }}</span>
-                    </button>
-                    {% endfor %}
-                  </div>
-                </div>
-                {% endfor %}
-              </div>
-            </div>
-
-            {# ---- views ---- #}
-            <div class="st-node" data-node data-group="views">
-              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
-                <span class="st-caret" aria-hidden="true"></span>
-                {{ icon('eye', 13) }}
-                <span class="st-node-label">Views</span>
-                <span class="st-node-count">{{ view_count }}</span>
-              </button>
-              <div class="st-node-children" hidden>
-                {% for view in catalogue.views %}
-                <div class="st-node" data-node data-object-row>
-                  <button type="button" class="st-node-row st-object" data-tree-toggle aria-expanded="false"
-                          data-object-type="view" data-object-name="{{ view.name }}"
-                          title="{{ view.purpose }}">
-                    <span class="st-caret" aria-hidden="true"></span>
-                    <span class="st-node-label">{{ view.name }}</span>
-                    <span class="st-node-meta">{{ '{:,}'.format(view.rows) }}</span>
-                  </button>
-                  <div class="st-node-children" hidden>
-                    {% for column in view.columns %}
-                    <button type="button" class="st-leaf st-leaf-column" data-column="{{ column.name }}" data-object-name="{{ view.name }}" title="Double-click to insert the column name">
-                      <span class="st-leaf-name">{{ column.name }}</span>
-                      <span class="st-leaf-type">{{ column.type }}</span>
-                    </button>
-                    {% endfor %}
-                  </div>
-                </div>
-                {% endfor %}
-              </div>
-            </div>
-
-            {# ---- indexes ---- #}
-            <div class="st-node" data-node data-group="indexes">
-              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
-                <span class="st-caret" aria-hidden="true"></span>
-                {{ icon('layers', 13) }}
-                <span class="st-node-label">Indexes</span>
-                <span class="st-node-count">{{ index_count }}</span>
-              </button>
-              <div class="st-node-children" hidden>
-                {% for index in catalogue.indexes %}
-                <button type="button" class="st-leaf" data-object-type="index" data-object-name="{{ index.name }}"
-                        title="{{ index.name }} on {{ index.table }} ({{ index.columns|join(', ') }})">
-                  <span class="st-leaf-name">{{ index.name }}</span>
-                  <span class="st-leaf-type">{{ index.table }}{% if index.unique %} · unique{% endif %}</span>
-                </button>
-                {% endfor %}
-              </div>
-            </div>
-
-            {# ---- triggers ---- #}
-            <div class="st-node" data-node data-group="triggers">
-              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
-                <span class="st-caret" aria-hidden="true"></span>
-                {{ icon('shield', 13) }}
-                <span class="st-node-label">Triggers</span>
-                <span class="st-node-count">{{ trigger_count }}</span>
-              </button>
-              <div class="st-node-children" hidden>
-                {% for trigger in catalogue.triggers %}
-                <button type="button" class="st-leaf" data-object-type="trigger" data-object-name="{{ trigger.name }}"
-                        title="{{ trigger.rule or trigger.message }}">
-                  <span class="st-leaf-name">{{ trigger.name }}</span>
-                  <span class="st-leaf-type">{{ trigger.timing }} {{ trigger.event }} · {{ trigger.table }}</span>
-                </button>
-                {% endfor %}
-              </div>
-            </div>
-
-            {# ---- procedures ---- #}
-            <div class="st-node" data-node data-group="procedures">
-              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
-                <span class="st-caret" aria-hidden="true"></span>
-                {{ icon('terminal', 13) }}
-                <span class="st-node-label">Procedures</span>
-                <span class="st-node-count">{{ catalogue.procedures|length }}</span>
-              </button>
-              <div class="st-node-children" hidden>
-                {% for procedure in catalogue.procedures %}
-                <button type="button" class="st-leaf" data-object-type="procedure" data-object-name="{{ procedure.name }}"
-                        title="{{ procedure.purpose }}">
-                  <span class="st-leaf-name">{{ procedure.name }}</span>
-                  <span class="st-leaf-type">{{ procedure.params|length }} parameter{{ '' if procedure.params|length == 1 else 's' }}</span>
-                </button>
-                {% endfor %}
-              </div>
-            </div>
-
-            {# ---- functions ---- #}
-            <div class="st-node" data-node data-group="functions">
-              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
-                <span class="st-caret" aria-hidden="true"></span>
-                {{ icon('sparkles', 13) }}
-                <span class="st-node-label">Functions</span>
-                <span class="st-node-count">{{ catalogue.functions|length }}</span>
-              </button>
-              <div class="st-node-children" hidden>
-                {% for function in catalogue.functions %}
-                <button type="button" class="st-leaf" data-object-type="function" data-object-name="{{ function.name }}"
-                        title="{{ function.purpose }}">
-                  <span class="st-leaf-name">{{ function.name }}</span>
-                  <span class="st-leaf-type">→ {{ function.returns }}</span>
-                </button>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-        </div>
+          {% include 'studio/_tree_portal.html' %}
         </div>
 
         {# ---- the Oracle practice connection ---------------------------------- #}
@@ -415,7 +274,7 @@
                     autocomplete="off" wrap="off" aria-label="SQL worksheet"
                     aria-describedby="stEditorHelp">{{ starter }}</textarea>
         </div>
-        <p class="sr-only" id="stEditorHelp">Press Control Enter to run the statement under the cursor, or F5 to run the whole script. The session is read-only.</p>
+        <p class="sr-only" id="stEditorHelp">Press Control Enter to run the statement under the cursor, or F5 to run the whole script. Statements that change data write to the portal database and can be undone.</p>
       </div>
 
       <div class="st-results">
@@ -457,7 +316,7 @@
 
         <div class="st-pane" id="pane-output" role="tabpanel" aria-labelledby="stTabOutput" hidden>
           <div class="st-log" id="stLog" aria-live="polite">
-            <p class="st-log-line" id="stSessionBanner"><span class="st-log-time">session</span><span class="st-log-text" id="stSessionBannerText">Connected to {{ connection.name }} as {{ current_user.username }}. The session is read-only.</span></p>
+            <p class="st-log-line" id="stSessionBanner"><span class="st-log-time">session</span><span class="st-log-text" id="stSessionBannerText">Connected to {{ connection.name }} as {{ current_user.username }}. Changes here reach the portal.</span></p>
             <p class="st-log-line"><span class="st-log-time">session</span><span class="st-log-text">Run a script with F5 to see one line per statement here.</span></p>
           </div>
         </div>
@@ -481,11 +340,13 @@
               <div><span>Size on disk</span><strong>{{ connection.size }}</strong></div>
               <div><span>Page size</span><strong>{{ connection.page_size }}</strong></div>
               <div><span>Journal</span><strong>{{ connection.journal }}</strong></div>
+              <div><span>Changes kept</span><strong id="stJournalState">{{ portal_journal.depth }}/{{ portal_journal.limit }}</strong></div>
               <div><span>Foreign keys</span><strong>{{ connection.foreign_keys }}</strong></div>
               <div><span>Isolation</span><strong>{{ connection.isolation }}</strong></div>
               <div><span>Autocommit</span><strong>{{ connection.autocommit }}</strong></div>
               <div><span>Character set</span><strong>{{ connection.charset }}</strong></div>
-              <div><span>Mode</span><strong>Read-only simulation</strong></div>
+              <div><span>Mode</span><strong>Linked to the portal · writable, undoable</strong></div>
+              <div><span>Last change</span><strong id="stLastChange">{{ portal_journal.undo_label or 'none yet' }}</strong></div>
             </div>
             <div class="st-facts" id="stFactsOracle" hidden>
               <div><span>Connection</span><strong>{{ oracle_connection.name }}</strong></div>
@@ -495,6 +356,7 @@
               <div><span>Size on disk</span><strong>{{ oracle_connection.size }}</strong></div>
               <div><span>Page size</span><strong>{{ oracle_connection.page_size }}</strong></div>
               <div><span>Redo</span><strong>{{ oracle_connection.journal }}</strong></div>
+              <div><span>Last change</span><strong>{{ oracle_journal.undo_label or 'none yet' }}</strong></div>
               <div><span>Foreign keys</span><strong>{{ oracle_connection.foreign_keys }}</strong></div>
               <div><span>Isolation</span><strong>{{ oracle_connection.isolation }}</strong></div>
               <div><span>Autocommit</span><strong>{{ oracle_connection.autocommit }}</strong></div>
@@ -516,7 +378,7 @@
     <span class="st-status-item" id="stStatusRows">No statement run</span>
     <span class="st-status-item" id="stStatusTime">—</span>
     <span class="st-tool-grow"></span>
-    <span class="st-status-item st-status-mode" id="stStatusMode">{{ icon('lock', 11) }} <span>Read-only</span></span>
+    <span class="st-status-item st-status-mode" id="stStatusMode">{{ icon('unlocked', 11) }} <span>Writable</span></span>
     <span class="st-status-item" id="stStatusEngine">{{ connection.engine }} {{ connection.version }}</span>
     <span class="st-status-item" id="stStatusCharset">{{ connection.charset }}</span>
   </footer>
@@ -585,12 +447,12 @@
           <span class="st-brand-mark">{{ icon('terminal', 20) }}</span>
           <div><strong>SQL Studio</strong><span>Version 1.0 · {{ portal_name }}</span></div>
         </div>
-        <p class="st-dialog-text">A read-only worksheet against the live portal database, built to be used the way a desktop client is used: a navigator on the left, worksheets in the middle, results underneath, and a status bar that tells you what just happened.</p>
+        <p class="st-dialog-text">A working client for the live portal database, built to be used the way a desktop client is used: a navigator on the left, worksheets in the middle, results underneath, and a status bar that tells you what just happened. Statements you run here write to the portal's own tables, so the change shows up on the portal screens — and every change can be undone.</p>
         <dl class="st-dialog-facts">
           <div><dt>Engine</dt><dd>{{ connection.engine }} {{ connection.version }}</dd></div>
           <div><dt>Connection</dt><dd>{{ connection.name }}</dd></div>
           <div><dt>Database</dt><dd>{{ connection.database }}</dd></div>
-          <div><dt>Session</dt><dd>Read-only · nothing is committed</dd></div>
+          <div><dt>Session</dt><dd>Writable · linked to the portal · undo keeps 12 changes</dd></div>
           <div><dt>Objects</dt><dd>{{ table_count }} tables · {{ view_count }} views · {{ index_count }} indexes · {{ trigger_count }} triggers</dd></div>
         </dl>
       </div>
@@ -651,18 +513,20 @@
   <div class="st-dialog-layer" id="stReadOnlyDialog" hidden>
     <div class="st-dialog" role="dialog" aria-modal="true" aria-labelledby="stReadOnlyTitle">
       <div class="st-dialog-head">
-        <h2 id="stReadOnlyTitle">Why this session is read-only</h2>
+        <h2 id="stReadOnlyTitle">What this window may change</h2>
         <button type="button" class="st-dialog-close" data-dialog-close aria-label="Close">×</button>
       </div>
       <div class="st-dialog-body">
-        <p class="st-dialog-text">A database client that can run anything is a database client that can break anything. This one is a teaching simulation, so the rules are drawn where they keep the portal safe:</p>
+        <p class="st-dialog-text">This window is connected to the portal's own database. A client that can run anything can break anything, so the rules are drawn where they keep the portal safe while still letting you work:</p>
         <ul class="st-dialog-list">
           <li><strong>SELECT, WITH, VALUES, TABLE, EXPLAIN</strong> run for real, against the live rows.</li>
-          <li><strong>INSERT, UPDATE, DELETE</strong> are compiled by the engine and reported as prepared, then declined — you see whether the statement is valid without changing a row.</li>
-          <li><strong>DROP, ALTER, CREATE, PRAGMA, COMMIT, ROLLBACK</strong> and the rest are refused, because a typo there would damage the schema or the session.</li>
+          <li><strong>INSERT, UPDATE, DELETE</strong> really run and commit: the row is on the Students, Fees or Reports screen the next time it loads.</li>
+          <li><strong>CREATE TABLE, CREATE VIEW, CREATE INDEX, CREATE SEQUENCE</strong> really create objects; they appear in the navigator marked <em>studio</em> and in Raw data.</li>
+          <li><strong>DROP, ALTER and TRUNCATE</strong> are allowed only on objects the studio created. The portal's own {{ portal_base_tables|length }} tables are protected, because the portal needs them.</li>
           <li>The two append-only registers — sign-in history and the change log — cannot be written from any client, including this one.</li>
+          <li><strong>Every write is snapshotted first.</strong> Undo (Ctrl+Alt+Z) restores the database exactly as it was, twelve changes deep; Redo puts a change back.</li>
         </ul>
-        <p class="st-dialog-text">To change data, use the portal screens, or the SQL console at <code>/raw-data/query</code>, which runs data changes and commits them.</p>
+        <p class="st-dialog-text">Data changes also reach the SQL console at <code>/raw-data/query</code>, which is a plain prompt with no undo — this window is the safer place to experiment.</p>
       </div>
       <div class="st-dialog-foot">
         <a class="st-dialog-link" href="{{ url_for('rawdata.query_console') }}">Open the SQL console</a>

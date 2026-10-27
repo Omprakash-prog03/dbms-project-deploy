@@ -28,6 +28,7 @@ import uuid
 from datetime import datetime, timezone
 
 from config import Config, BASE_DIR
+from repositories.journal import Journal
 
 CONNECTION_NAME = 'ORACLE_XE'
 JOURNAL_LIMIT = 12
@@ -194,174 +195,44 @@ def journal_path():
     return directory
 
 
-def _journal_read():
-    """The journal index: an undo stack and a redo stack of file snapshots."""
-    try:
-        with open(os.path.join(journal_path(), 'index.json'), 'r', encoding='utf-8') as handle:
-            state = json.load(handle)
-    except (OSError, ValueError):
-        state = {}
-    clean = {'undo': [], 'redo': []}
-    for stack in ('undo', 'redo'):
-        for item in state.get(stack) or []:
-            if isinstance(item, dict) and item.get('file'):
-                clean[stack].append({
-                    'file': str(item['file']),
-                    'label': str(item.get('label') or 'a statement'),
-                    'verb': str(item.get('verb') or ''),
-                    'at': str(item.get('at') or ''),
-                })
-    return clean
-
-
-def _journal_write(state):
-    try:
-        with open(os.path.join(journal_path(), 'index.json'), 'w', encoding='utf-8') as handle:
-            json.dump(state, handle)
-    except OSError:
-        pass
-
-
-def _journal_remove(item):
-    try:
-        os.remove(os.path.join(journal_path(), item['file']))
-    except OSError:
-        pass
-
-
-def _journal_copy():
-    """Freeze the practice file as it stands, and return the snapshot's name."""
-    name = f'{uuid.uuid4().hex}.db'
-    ensure_schema()
-    shutil.copy2(path(), os.path.join(journal_path(), name))
-    return name
-
-
-def _journal_label(sql):
-    text = ' '.join((sql or '').split())
-    return text if len(text) <= 90 else text[:89] + '…'
-
-
-def _journal_record(sql, verb):
-    """Keep the state a statement is about to replace. Called before it runs."""
-    if verb not in _WRITABLE:
-        return
-    try:
-        state = _journal_read()
-        state['undo'].append({'file': _journal_copy(), 'label': _journal_label(sql),
-                              'verb': verb, 'at': datetime.now().strftime('%H:%M:%S')})
-        for forgotten in state['redo']:
-            _journal_remove(forgotten)
-        state['redo'] = []
-        while len(state['undo']) > JOURNAL_LIMIT:
-            _journal_remove(state['undo'].pop(0))
-        _journal_write(state)
-    except (OSError, sqlite3.Error):
-        pass
-
-
-def _journal_forget():
-    """Drop the newest snapshot: the statement it guarded never landed."""
-    try:
-        state = _journal_read()
-        if state['undo']:
-            _journal_remove(state['undo'].pop())
-            _journal_write(state)
-    except OSError:
-        pass
+def _journal():
+    """The practice schema's own undo stack, bound to the file it protects."""
+    return Journal(path(), journal_path(), limit=JOURNAL_LIMIT, noun='change')
 
 
 def journal_state():
-    state = _journal_read()
-    undo = state['undo']
-    redo = state['redo']
-    return {
-        'can_undo': bool(undo), 'can_redo': bool(redo),
-        'undo_label': undo[-1]['label'] if undo else '',
-        'redo_label': redo[-1]['label'] if redo else '',
-        'undo_verb': undo[-1]['verb'] if undo else '',
-        'redo_verb': redo[-1]['verb'] if redo else '',
-        'depth': len(undo),
-        'history': [{'label': item['label'], 'verb': item['verb'], 'at': item['at']}
-                    for item in reversed(undo[-8:])],
-    }
+    return _journal().state()
+
+
+def _journal_record(sql, verb):
+    if verb not in _WRITABLE:
+        return False
+    ensure_schema()
+    return _journal().record(sql, verb)
+
+
+def _journal_forget():
+    _journal().forget()
 
 
 def undo():
     """Put the practice schema back exactly as it was before the last change."""
-    state = _journal_read()
-    if not state['undo']:
-        return {'ok': False, 'error': 'There is no change to undo in this practice schema.',
-                'journal': journal_state()}
-    entry = state['undo'][-1]
-    frozen = os.path.join(journal_path(), entry['file'])
-    if not os.path.exists(frozen):
-        state['undo'].pop()
-        _journal_write(state)
-        return {'ok': False, 'error': 'That snapshot is gone; nothing to undo.',
-                'journal': journal_state()}
-    try:
-        current = _journal_copy()
-    except (OSError, sqlite3.Error):
-        return {'ok': False, 'error': 'The practice schema is busy; try again.',
-                'journal': journal_state()}
-    state['undo'].pop()
-    state['redo'].append({'file': current, 'label': entry['label'], 'verb': entry['verb'],
-                          'at': datetime.now().strftime('%H:%M:%S')})
-    while len(state['redo']) > JOURNAL_LIMIT:
-        _journal_remove(state['redo'].pop(0))
-    _journal_write(state)
-    try:
-        shutil.copy2(frozen, path())
-    except OSError:
-        return {'ok': False, 'error': 'The practice file could not be restored.',
-                'journal': journal_state()}
-    _journal_remove(entry)
-    return {'ok': True, 'message': f'Undone: {entry["label"]}',
-            'label': entry['label'], 'verb': entry['verb'],
-            'catalogue': catalogue(), 'journal': journal_state()}
+    payload = _journal().undo()
+    if payload.get('ok'):
+        payload['catalogue'] = catalogue()
+    return payload
 
 
 def redo():
     """Replay the change that undo took back."""
-    state = _journal_read()
-    if not state['redo']:
-        return {'ok': False, 'error': 'There is no undone change to replay.',
-                'journal': journal_state()}
-    entry = state['redo'][-1]
-    frozen = os.path.join(journal_path(), entry['file'])
-    if not os.path.exists(frozen):
-        state['redo'].pop()
-        _journal_write(state)
-        return {'ok': False, 'error': 'That snapshot is gone; nothing to replay.',
-                'journal': journal_state()}
-    try:
-        current = _journal_copy()
-    except (OSError, sqlite3.Error):
-        return {'ok': False, 'error': 'The practice schema is busy; try again.',
-                'journal': journal_state()}
-    state['redo'].pop()
-    state['undo'].append({'file': current, 'label': entry['label'], 'verb': entry['verb'],
-                          'at': datetime.now().strftime('%H:%M:%S')})
-    while len(state['undo']) > JOURNAL_LIMIT:
-        _journal_remove(state['undo'].pop(0))
-    _journal_write(state)
-    try:
-        shutil.copy2(frozen, path())
-    except OSError:
-        return {'ok': False, 'error': 'The practice file could not be restored.',
-                'journal': journal_state()}
-    _journal_remove(entry)
-    return {'ok': True, 'message': f'Restored: {entry["label"]}',
-            'label': entry['label'], 'verb': entry['verb'],
-            'catalogue': catalogue(), 'journal': journal_state()}
+    payload = _journal().redo()
+    if payload.get('ok'):
+        payload['catalogue'] = catalogue()
+    return payload
 
 
 def clear_journal():
-    state = _journal_read()
-    for item in state['undo'] + state['redo']:
-        _journal_remove(item)
-    _journal_write({'undo': [], 'redo': []})
+    _journal().clear()
 
 
 # ---------------------------------------------------------------------------

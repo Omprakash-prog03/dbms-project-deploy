@@ -1,10 +1,14 @@
-"""SQL Studio: the administrator's simulated database client.
+"""SQL Studio: the administrator's desktop client for the portal database.
 
 The workshop page explains; this page is the tool an administrator would use —
 navigator, worksheets, a worksheet editor, a result grid, script output, an
-execution plan and a status bar. It is a simulation in one specific sense: the
-session is read-only. Reads execute against the live database, writes are
-prepared and declined, and schema changes never leave the text editor.
+execution plan and a status bar.
+
+The window is **linked to the portal**: a row inserted here is the row the
+Students screen shows on its next load, and a table created here appears in Raw
+data. Every statement that writes is snapshotted first so it can be undone, and
+the portal's own tables cannot be dropped or altered from this client. The
+second connection (`ORACLE_XE`) stays a separate, writable practice schema.
 """
 from flask import Blueprint, abort, g, jsonify, render_template, request
 
@@ -28,6 +32,9 @@ MENUS = [
     ('Edit', [
         ('Undo', 'Ctrl+Z', 'undo'),
         ('Redo', 'Ctrl+Y', 'redo'),
+        None,
+        ('Undo last database change', 'Ctrl+Alt+Z', 'undo-change'),
+        ('Redo database change', 'Ctrl+Alt+Y', 'redo-change'),
         None,
         ('Select all', 'Ctrl+A', 'select-all'),
         ('Copy worksheet', 'Ctrl+C', 'copy-sql'),
@@ -58,7 +65,7 @@ MENUS = [
     ('Help', [
         ('Guided tour', '', 'tour'),
         ('Keyboard shortcuts', 'F1', 'shortcuts'),
-        ('Read-only session', '', 'read-only-notice'),
+        ('What this window may change', '', 'read-only-notice'),
         None,
         ('About SQL Studio', '', 'about'),
     ]),
@@ -96,6 +103,9 @@ def workspace():
         oracle_views=len(practice['views']),
         oracle_sequences=len(practice['sequences']),
         oracle_journal=oracle.journal_state(),
+        portal_journal=studio.journal_state(),
+        portal_base_tables=studio.portal_tables(),
+        studio_created=sorted(studio.studio_created()),
     )
 
 
@@ -133,6 +143,42 @@ def explain():
     if not isinstance(sql, str):
         return jsonify(ok=False, error='Send the statement as "sql".'), 400
     return jsonify(studio.explain(sql))
+
+
+@studio_bp.route('/studio/tree')
+@login_required
+@role_required('admin')
+def tree():
+    """The portal navigator, re-read after a structural change."""
+    catalogue = studio.catalogue()
+    created = sorted(studio.studio_created())
+    tree_html = render_template(
+        'studio/_tree_portal.html',
+        connection=studio.connection(),
+        catalogue=catalogue,
+        table_count=len(catalogue['tables']),
+        view_count=len(catalogue['views']),
+        index_count=len(catalogue['indexes']),
+        studio_created=created,
+    )
+    return jsonify(ok=True, catalogue=catalogue, journal=studio.journal_state(),
+                   created=created, tree_html=tree_html)
+
+
+@studio_bp.route('/studio/undo', methods=['POST'])
+@login_required
+@role_required('admin')
+def undo():
+    """Put the portal database back as it was before the last studio change."""
+    return jsonify(studio.undo())
+
+
+@studio_bp.route('/studio/redo', methods=['POST'])
+@login_required
+@role_required('admin')
+def redo():
+    """Replay the portal change that undo took back."""
+    return jsonify(studio.redo())
 
 
 @studio_bp.route('/studio/describe/<name>')

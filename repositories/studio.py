@@ -1,18 +1,23 @@
-"""SQL Studio: a read-only simulation of a desktop database client.
+"""SQL Studio: a desktop client over the portal's own database.
 
 The portal's workshop explains the schema; this module gives the administrator a
 client to *use* it with — the navigator, the worksheet, the result grid, the
 script output and the execution plan, all driven by the running database.
 
-One rule shapes everything here: the studio never changes a row. A read
-statement is executed. A data-changing statement is *prepared* by the engine
-(`EXPLAIN` compiles it without running it) so the client can report that the
-statement is valid, and then declines to commit. Structure changes, transaction
-control and engine settings are refused outright.
+The studio is **linked to the portal**: a row it inserts is the row the Students
+screen shows, and a table it creates appears in Raw data on the next page load.
+Every statement that writes is snapshotted first, so the change can be undone,
+and the portal's own tables cannot be dropped, altered or truncated from here —
+only tables the studio created can be. Oracle SQL is accepted throughout.
 """
+import json
+import os
 import re
 import time
 from decimal import Decimal
+
+from config import Config
+from repositories.journal import Journal
 
 from repositories import rawdata
 from repositories import workshop
@@ -25,17 +30,16 @@ _QUOTE = '`' if workshop.is_mysql() else '"'
 MAX_CELL = 120
 CONNECTION_NAME = 'NIST_UNIVERSITY'
 
-READ_VERBS = {'SELECT', 'WITH', 'VALUES', 'TABLE', 'SHOW', 'DESCRIBE', 'DESC'}
+READ_VERBS = {'SELECT', 'WITH', 'VALUES', 'TABLE', 'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN'}
 WRITE_VERBS = {'INSERT', 'REPLACE', 'UPDATE', 'DELETE', 'MERGE'}
-BLOCKED_VERBS = {'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'RENAME', 'ATTACH', 'DETACH',
-                 'PRAGMA', 'VACUUM', 'REINDEX', 'ANALYZE', 'GRANT', 'REVOKE', 'BEGIN',
-                 'COMMIT', 'ROLLBACK', 'SAVEPOINT', 'RELEASE', 'SET', 'USE', 'CALL',
-                 'EXEC', 'EXECUTE', 'LOAD', 'DO', 'LOCK', 'UNLOCK'}
+# Structure changes are handled above (CREATE and the DROP/ALTER family), so this
+# set is only the statements that stay refused: transaction control, engine
+# settings, privileges and the escape hatches around the file.
+BLOCKED_VERBS = {'ATTACH', 'DETACH', 'PRAGMA', 'VACUUM', 'REINDEX', 'ANALYZE',
+                 'GRANT', 'REVOKE', 'BEGIN', 'COMMIT', 'ROLLBACK', 'SAVEPOINT',
+                 'RELEASE', 'SET', 'USE', 'CALL', 'EXEC', 'EXECUTE', 'LOAD', 'DO',
+                 'LOCK', 'UNLOCK'}
 PLACEHOLDER = '•••'
-
-_READ_ONLY_NOTE = ('SQL Studio is a read-only session: the statement was prepared and '
-                   'validated by the engine, but nothing was written or committed.')
-_WRITE_VERBS_TEXT = ', '.join(sorted(WRITE_VERBS))
 
 
 # ---------------------------------------------------------------------------
@@ -54,8 +58,9 @@ def connection():
         'page_size': facts.get('page_size', ''),
         'journal': facts.get('journal', ''),
         'foreign_keys': facts.get('foreign_keys', 'ON'),
-        'read_only': True,
-        'autocommit': 'OFF (simulated)',
+        'read_only': False,
+        'autocommit': 'ON · each statement commits',
+        'mode': 'Linked to the portal · writable, undoable',
         'isolation': 'SERIALIZABLE (SQLite default)',
         'schema': 'main',
         'charset': 'UTF-8',
@@ -212,16 +217,22 @@ def _strip_noise(text):
     return text
 
 
+CREATE_VERBS = {'CREATE'}
+STRUCTURE_VERBS = {'DROP', 'ALTER', 'TRUNCATE', 'RENAME'}
+
+
 def classify(sql):
-    """read / write / blocked / unknown — decided on comment-stripped text."""
+    """read / write / create / drop / blocked / unknown, on comment-stripped text."""
     words = _strip_noise(sql).strip().lstrip('( ').split()
     verb = words[0].upper() if words else ''
     if verb in READ_VERBS:
         return verb, 'read'
-    if verb == 'EXPLAIN':
-        return verb, 'read'
     if verb in WRITE_VERBS:
         return verb, 'write'
+    if verb == 'CREATE':
+        return verb, 'create'
+    if verb in STRUCTURE_VERBS:
+        return verb, 'drop'
     if verb in BLOCKED_VERBS:
         return verb, 'blocked'
     return verb, 'unknown'
@@ -356,6 +367,197 @@ def _grid(cursor_rows, columns, elapsed):
     }
 
 
+# ---------------------------------------------------------------------------
+# the link to the portal: what the studio may change, and how it is undone
+# ---------------------------------------------------------------------------
+APPEND_ONLY = ('login_history', 'staff_activity')
+
+
+def _state_dir():
+    directory = os.path.join(os.path.dirname(str(Config.SQLITE_PATH)), 'studio_portal_journal')
+    os.makedirs(directory, exist_ok=True)
+    return directory
+
+
+def _ownership_file():
+    return os.path.join(_state_dir(), 'created.json')
+
+
+def _read_owned():
+    """Every name this client has ever created, lower-cased, kept on disk."""
+    try:
+        with open(_ownership_file(), 'r', encoding='utf-8') as handle:
+            data = json.load(handle)
+        names = data.get('created', []) if isinstance(data, dict) else data
+        return sorted({str(name).strip().lower() for name in names if str(name).strip()})
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def _remember_owned(*names):
+    owned = _read_owned()
+    for name in names:
+        clean_name = str(name or '').strip().lower()
+        if clean_name and clean_name not in owned:
+            owned.append(clean_name)
+    try:
+        with open(_ownership_file(), 'w', encoding='utf-8') as handle:
+            json.dump({'created': sorted(owned)}, handle, indent=2)
+    except OSError:
+        pass
+
+
+def portal_tables():
+    """The portal's own tables: everything this client did not create.
+
+    Ownership is recorded when the studio creates an object, so a table that
+    existed before the studio was ever opened can never be dropped, altered or
+    truncated from here — including tables added by a later migration.
+    """
+    try:
+        existing = {str(name).lower() for name in rawdata.table_names()}
+    except Exception:
+        return set()
+    return existing - set(_read_owned())
+
+
+def studio_created():
+    """Objects this client added that still exist, for the navigator badge."""
+    try:
+        existing = {str(name).lower() for name in rawdata.table_names()}
+    except Exception:
+        return set()
+    return existing & set(_read_owned())
+
+
+def _object_of(statement):
+    """The table name a DROP/ALTER/TRUNCATE statement is aimed at."""
+    match = re.search(
+        r'\b(?:table|view|index)\s+("?[A-Za-z_][A-Za-z0-9_$#]*"?)|'
+        r'\btruncate\s+(?:table\s+)?"?([A-Za-z_][A-Za-z0-9_$#]*)"?',
+        _strip_noise(statement), re.I)
+    if not match:
+        return ''
+    return (match.group(1) or match.group(2) or '').strip().strip('"').lower()
+
+
+def portal_journal():
+    """The undo stack for the portal file itself."""
+    return Journal(Config.SQLITE_PATH, _state_dir(), limit=12, noun='portal change')
+
+
+def journal_state():
+    return portal_journal().state()
+
+
+def undo():
+    payload = portal_journal().undo()
+    if payload.get('ok'):
+        payload['catalogue'] = catalogue()
+    return payload
+
+
+def redo():
+    payload = portal_journal().redo()
+    if payload.get('ok'):
+        payload['catalogue'] = catalogue()
+    return payload
+
+
+_OBJECT_NOUNS = {'TABLE': 'Table', 'VIEW': 'View', 'INDEX': 'Index',
+                 'SEQUENCE': 'Sequence', 'DATABASE': 'Database'}
+
+
+def _ddl_message(verb, statement, done):
+    """`Table created.` / `View dropped.` — the noun Oracle would print."""
+    words = _strip_noise(statement).split()
+    noun = ''
+    for index, word in enumerate(words[1:5], start=1):
+        candidate = word.upper().lstrip('(')
+        if candidate in _OBJECT_NOUNS:
+            noun = _OBJECT_NOUNS[candidate]
+            break
+        if candidate in ('OR', 'REPLACE', 'UNIQUE', 'GLOBAL', 'TEMPORARY', 'IF', 'NOT', 'EXISTS'):
+            continue
+    if verb == 'TRUNCATE':
+        noun = 'Table'
+    return f'{noun or "Object"} {done}.'
+
+
+def _keep_name_case(engine_sql, name):
+    """Oracle folds an unquoted name to upper case; the portal's own screens and
+    the raw-data browser match names case-sensitively, so a table created here
+    keeps the spelling the administrator typed."""
+    if not engine_sql or not name:
+        return engine_sql
+    folded = '"%s"' % name.upper()
+    if folded not in engine_sql:
+        return engine_sql
+    return engine_sql.replace(folded, '"%s"' % name)
+
+
+def _write(statement, verb, kind):
+    """Run a real change against the portal, with a snapshot taken first."""
+    protected = portal_tables()
+    if kind == 'drop':
+        target = _object_of(statement)
+        if target in APPEND_ONLY:
+            return {'ok': False, 'code': 'STUDIO-004', 'error': (
+                'The sign-in history and the change log are append-only. They cannot be '
+                'dropped, altered or truncated, not even from this client.')}
+        if target in protected:
+            return {'ok': False, 'code': 'STUDIO-007', 'error': (
+                f'{target} belongs to the portal. The studio will not drop, alter or '
+                'truncate a portal table: use the management screens, or the practice '
+                'schema connection (ORACLE_XE) if you want to try it on a copy.')}
+    if verb in WRITE_VERBS and re.search(r'\b(login_history|staff_activity)\b',
+                                         statement.lower()):
+        return {'ok': False, 'code': 'STUDIO-004', 'error': (
+            'The sign-in history and the change log are append-only. They cannot be '
+            'written from any client, including this one.')}
+
+    journal = portal_journal()
+    if not journal.record(statement, verb):
+        return {'ok': False, 'code': 'STUDIO-008', 'error': (
+            'The studio could not take a snapshot of the database, so it will not change '
+            'it: without a snapshot there would be no way to undo this statement.')}
+
+    started = time.perf_counter()
+    try:
+        engine_sql, notes = dialect.to_engine(statement)
+        engine_sql = _keep_name_case(engine_sql, _object_of(statement))
+        result = db_pool.execute_dml(engine_sql)
+    except Exception as exc:
+        journal.forget()
+        elapsed = round((time.perf_counter() - started) * 1000, 1)
+        return {'ok': False, 'code': 'STUDIO-009', 'elapsed_ms': elapsed,
+                'error': str(exc).strip() or 'The engine rejected that statement.'}
+
+    elapsed = round((time.perf_counter() - started) * 1000, 1)
+    if kind == 'create' and verb == 'CREATE':
+        _remember_owned(_object_of(statement))
+    affected = result.get('rowcount')
+    affected = 0 if affected is None or affected < 0 else affected
+    if kind == 'create':
+        message = _ddl_message(verb, statement, 'created')
+    elif verb == 'INSERT':
+        message = f'{affected:,} row{"" if affected == 1 else "s"} created.'
+    elif verb in ('UPDATE',):
+        message = f'{affected:,} row{"" if affected == 1 else "s"} updated.'
+    elif verb == 'DELETE':
+        message = f'{affected:,} row{"" if affected == 1 else "s"} deleted.'
+    elif kind == 'drop':
+        message = _ddl_message(verb, statement, 'dropped' if verb in ('DROP', 'TRUNCATE')
+                               else 'altered')
+    else:
+        message = f'{affected:,} row{"" if affected == 1 else "s"} changed.'
+    return {'ok': True, 'kind': 'ddl' if kind != 'write' else 'write', 'verb': verb,
+            'statement': statement, 'message': message, 'affected': affected,
+            'elapsed_ms': elapsed, 'translated': engine_sql,
+            'notes': notes, 'row_count': None, 'columns': [], 'rows': [],
+            'shown': 0, 'truncated': 0, 'journal': journal.state()}
+
+
 def run(sql):
     """Execute one statement the way the studio treats it."""
     statement, error = clean(sql)
@@ -367,35 +569,25 @@ def run(sql):
 
     if kind == 'blocked':
         return {**base, 'ok': False, 'elapsed_ms': 0, 'code': 'STUDIO-002',
-                'error': (f'{verb} is not available in this session. The studio is a '
-                          'read-only simulation: schema changes, transaction control and '
-                          'engine settings would let a typo damage the portal.')}
+                'error': (f'{verb} is refused in this window. Transaction control, engine '
+                          'settings and privilege statements are blocked so a typo cannot '
+                          'strand the database; data and schema changes do run for real.')}
     if kind == 'unknown':
         return {**base, 'ok': False, 'elapsed_ms': 0, 'code': 'STUDIO-003',
                 'error': (f'{verb or "That statement"} is not something this session runs. '
-                          'Use SELECT, WITH, VALUES, TABLE or EXPLAIN.')}
-    if verb in WRITE_VERBS and (
-            'login_history' in statement.lower() or 'staff_activity' in statement.lower()):
-        return {**base, 'ok': False, 'elapsed_ms': 0, 'code': 'STUDIO-004',
-                'error': ('The sign-in history and the change log are append-only. They '
-                          'cannot be written from any client, including this one.')}
+                          'Use SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER or '
+                          'TRUNCATE.')}
+
+    if verb == 'EXPLAIN':
+        return explain(statement)
+
+    if kind in ('write', 'create', 'drop'):
+        payload = _write(statement, verb, kind)
+        if not payload['ok']:
+            return {**base, **payload, 'elapsed_ms': payload.get('elapsed_ms', 0)}
+        return {**base, **payload}
 
     started = time.perf_counter()
-    if kind == 'write':
-        # EXPLAIN compiles the statement without running it: a real prepare step.
-        try:
-            db_pool.execute_query('EXPLAIN ' + statement, fetch='table')
-            elapsed = round((time.perf_counter() - started) * 1000, 1)
-            return {**base, 'ok': True, 'kind': 'prepare', 'elapsed_ms': elapsed,
-                    'row_count': None, 'columns': [], 'rows': [], 'shown': 0,
-                    'truncated': 0,
-                    'message': 'Statement prepared successfully.',
-                    'note': _READ_ONLY_NOTE}
-        except Exception as exc:
-            elapsed = round((time.perf_counter() - started) * 1000, 1)
-            return {**base, 'ok': False, 'elapsed_ms': elapsed, 'code': 'STUDIO-005',
-                    'error': str(exc).strip() or 'The engine rejected that statement.'}
-
     try:
         engine_sql, notes = dialect.to_engine(statement)
         table = db_pool.execute_query(statement, fetch='table')
@@ -434,7 +626,7 @@ def run_script(text):
         'failed': len(failed),
         'prepared': len(prepared),
         'elapsed_ms': round(sum(item['elapsed_ms'] for item in results), 1),
-        'note': _READ_ONLY_NOTE if prepared else '',
+        'note': '',
     }
 
 

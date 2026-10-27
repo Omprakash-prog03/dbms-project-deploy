@@ -1,0 +1,156 @@
+{% from 'components/icons.html' import icon %}
+        <div class="st-node is-open" data-node>
+          <button type="button" class="st-node-row st-node-root" data-tree-toggle aria-expanded="true">
+            <span class="st-caret" aria-hidden="true"></span>
+            {{ icon('database', 14) }}
+            <span class="st-node-label">{{ connection.name }}</span>
+            <span class="st-node-note">{{ connection.engine }}</span>
+          </button>
+
+          <div class="st-node-children">
+            {# ---- tables ---- #}
+            <div class="st-node" data-node data-group="tables">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('grid', 13) }}
+                <span class="st-node-label">Tables</span>
+                <span class="st-node-count">{{ table_count }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for table in catalogue.tables %}
+                <div class="st-node" data-node data-object-row>
+                  <button type="button" class="st-node-row st-object" data-tree-toggle aria-expanded="false"
+                          data-object-type="table" data-object-name="{{ table.name }}"
+                          title="{{ table.name }} · {{ '{:,}'.format(table.rows) }} rows">
+                    <span class="st-caret" aria-hidden="true"></span>
+                    <span class="st-node-label">{{ table.name }}</span>
+                    {% if table.name in studio_created %}<span class="st-badge-studio" title="Created from SQL Studio — drop it here and undo puts it back">studio</span>{% endif %}
+                    <span class="st-node-meta">{{ '{:,}'.format(table.rows) }}</span>
+                  </button>
+                  <div class="st-node-children" hidden>
+                    {% for column in table.columns %}
+                    <button type="button" class="st-leaf st-leaf-column" data-column="{{ column.name }}" data-object-name="{{ table.name }}" title="Double-click to insert the column name">
+                      <span class="st-leaf-name">{{ column.name }}</span>
+                      <span class="st-leaf-type">{{ column.type }}{% if column.pk %} · PK{% elif not column.nullable %} · NN{% endif %}</span>
+                    </button>
+                    {% endfor %}
+                    {% for fk in table.foreign_keys %}
+                    <button type="button" class="st-leaf st-leaf-fk" data-column="{{ fk.column_name }}" title="Double-click to insert the column name">
+                      <span class="st-leaf-name">{{ fk.column_name }}</span>
+                      <span class="st-leaf-type">→ {{ fk.ref_table }}.{{ fk.ref_column }}</span>
+                    </button>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- views ---- #}
+            <div class="st-node" data-node data-group="views">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('eye', 13) }}
+                <span class="st-node-label">Views</span>
+                <span class="st-node-count">{{ view_count }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for view in catalogue.views %}
+                <div class="st-node" data-node data-object-row>
+                  <button type="button" class="st-node-row st-object" data-tree-toggle aria-expanded="false"
+                          data-object-type="view" data-object-name="{{ view.name }}"
+                          title="{{ view.purpose }}">
+                    <span class="st-caret" aria-hidden="true"></span>
+                    <span class="st-node-label">{{ view.name }}</span>
+                    <span class="st-node-meta">{{ '{:,}'.format(view.rows) }}</span>
+                  </button>
+                  <div class="st-node-children" hidden>
+                    {% for column in view.columns %}
+                    <button type="button" class="st-leaf st-leaf-column" data-column="{{ column.name }}" data-object-name="{{ view.name }}" title="Double-click to insert the column name">
+                      <span class="st-leaf-name">{{ column.name }}</span>
+                      <span class="st-leaf-type">{{ column.type }}</span>
+                    </button>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- indexes ---- #}
+            <div class="st-node" data-node data-group="indexes">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('layers', 13) }}
+                <span class="st-node-label">Indexes</span>
+                <span class="st-node-count">{{ index_count }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for index in catalogue.indexes %}
+                <button type="button" class="st-leaf" data-object-type="index" data-object-name="{{ index.name }}"
+                        title="{{ index.name }} on {{ index.table }} ({{ index.columns|join(', ') }})">
+                  <span class="st-leaf-name">{{ index.name }}</span>
+                  <span class="st-leaf-type">{{ index.table }}{% if index.unique %} · unique{% endif %}</span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- triggers ---- #}
+            <div class="st-node" data-node data-group="triggers">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('shield', 13) }}
+                <span class="st-node-label">Triggers</span>
+                <span class="st-node-count">{{ trigger_count }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for trigger in catalogue.triggers %}
+                <button type="button" class="st-leaf" data-object-type="trigger" data-object-name="{{ trigger.name }}"
+                        title="{{ trigger.rule or trigger.message }}">
+                  <span class="st-leaf-name">{{ trigger.name }}</span>
+                  <span class="st-leaf-type">{{ trigger.timing }} {{ trigger.event }} · {{ trigger.table }}</span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- procedures ---- #}
+            <div class="st-node" data-node data-group="procedures">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('terminal', 13) }}
+                <span class="st-node-label">Procedures</span>
+                <span class="st-node-count">{{ catalogue.procedures|length }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for procedure in catalogue.procedures %}
+                <button type="button" class="st-leaf" data-object-type="procedure" data-object-name="{{ procedure.name }}"
+                        title="{{ procedure.purpose }}">
+                  <span class="st-leaf-name">{{ procedure.name }}</span>
+                  <span class="st-leaf-type">{{ procedure.params|length }} parameter{{ '' if procedure.params|length == 1 else 's' }}</span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- functions ---- #}
+            <div class="st-node" data-node data-group="functions">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('sparkles', 13) }}
+                <span class="st-node-label">Functions</span>
+                <span class="st-node-count">{{ catalogue.functions|length }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for function in catalogue.functions %}
+                <button type="button" class="st-leaf" data-object-type="function" data-object-name="{{ function.name }}"
+                        title="{{ function.purpose }}">
+                  <span class="st-leaf-name">{{ function.name }}</span>
+                  <span class="st-leaf-type">→ {{ function.returns }}</span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
