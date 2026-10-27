@@ -296,9 +296,20 @@ def test_the_studio_screen_offers_both_connections(admin):
     assert '{{' not in body
 
 
-def test_the_portal_connection_is_still_read_only(admin):
-    payload = admin.post('/studio/run', json={'sql': "INSERT INTO department (dept_code, dept_name) VALUES ('X', 'Y')"}).get_json()
-    assert payload['ok'] and payload['kind'] == 'prepare'
+def test_the_portal_connection_now_writes_and_undoes(admin):
+    """v10: the studio's portal connection is live, and one undo takes it back."""
+    from repositories import studio
+    studio.portal_journal().clear()
+    before = admin.get('/database').status_code
+    payload = admin.post('/studio/run', json={
+        'sql': "UPDATE student SET status = 'Suspended' WHERE student_id = 2"}).get_json()
+    assert payload['ok'] is True, payload
+    assert payload['kind'] == 'write'
+    assert payload['journal']['can_undo'] is True
+    undone = admin.post('/studio/undo', json={}).get_json()
+    assert undone['ok'] is True
+    studio.portal_journal().clear()
+    assert before == 200
 
 
 def test_a_missing_sql_body_is_a_client_error(admin):

@@ -21,6 +21,9 @@
       script: app.dataset.scriptUrl,
       explain: app.dataset.explainUrl,
       describe: app.dataset.describeUrl,
+      tree: app.dataset.portalTreeUrl,
+      undo: app.dataset.portalUndoUrl,
+      redo: app.dataset.portalRedoUrl,
     },
     oracle: {
       run: app.dataset.oracleRunUrl,
@@ -77,13 +80,20 @@
   const state = {
     connection: "portal",
     memory: { portal: null, oracle: null },
-    journal: (() => {
-      try {
-        return JSON.parse(app.dataset.oracleJournal || "{}");
-      } catch (error) {
-        return {};
-      }
+    journals: (() => {
+      const read = (text) => {
+        try {
+          return JSON.parse(text || "{}");
+        } catch (error) {
+          return {};
+        }
+      };
+      return {
+        portal: read(app.dataset.portalJournal),
+        oracle: read(app.dataset.oracleJournal),
+      };
     })(),
+    journal: {},
     busySchema: false,
     worksheets: [],
     activeId: 1,
@@ -653,7 +663,7 @@
       "Worksheet opened",
       state.connection === "oracle"
         ? `${worksheet.name} is ready on ORACLE_XE. DDL and DML run against the practice schema.`
-        : `${worksheet.name} is ready. The portal session is still read-only.`,
+        : `${worksheet.name} is ready. The portal connection is live: what you run here reaches the portal's own screens.`,
     );
     toast(`${worksheet.name} opened`);
   };
@@ -1056,10 +1066,10 @@
       const journal = payload.journal || null;
       const undoRow = journal
         ? `<div class="st-command-actions">
-             <button type="button" class="st-command-button" data-action="oracle-undo"${
+             <button type="button" class="st-command-button" data-action="undo-change"${
                journal.can_undo ? "" : " disabled"
              }>Undo this change</button>
-             <button type="button" class="st-command-button" data-action="oracle-redo"${
+             <button type="button" class="st-command-button" data-action="redo-change"${
                journal.can_redo ? "" : " disabled"
              }>Redo</button>
              <span class="st-command-hint">Ctrl+Alt+Z · Ctrl+Alt+Y</span>
@@ -1068,7 +1078,9 @@
       panel.innerHTML = `<div class="st-command-card">
           <div class="st-command-verdict">${escapeHtml(payload.message || "Statement completed.")}</div>
           <p class="st-command-meta">${escapeHtml(payload.verb || "")} · ${payload.elapsed_ms} ms · ${
-            payload.connection === "oracle" ? "committed to the practice schema" : "prepared, not committed"
+            payload.connection === "oracle"
+              ? "committed to the practice schema"
+              : "committed to the portal database · visible on every portal screen"
           }</p>
           ${undoRow}
         </div>${translatedNote(payload)}`;
@@ -1077,6 +1089,7 @@
       el.statusRows.textContent = payload.message || "Command completed";
       el.statusTime.textContent = `${payload.elapsed_ms} ms`;
       if (payload.connection === "oracle") refreshOracleTree();
+      else if (payload.kind === "ddl") refreshPortalTree();
       return;
     }
     const command = $("#stCommand");
@@ -1093,12 +1106,17 @@
       el.statusTime.textContent = `${payload.elapsed_ms} ms`;
       return;
     }
+    const structureVerb = ["CREATE", "DROP", "ALTER", "TRUNCATE", "RENAME"].includes(payload.verb);
+    if (!payload.ok && structureVerb && state.connection === "portal") {
+      message("note", "Want to create or drop tables for real?",
+        "Switch the Connection selector to ORACLE_XE: that schema is fully writable, and nothing you do there touches the portal. Data changes (INSERT, UPDATE, DELETE) do run here and can be undone with Undo change.");
+    }
     if (payload.ok && payload.kind === "prepare") {
       state.payload = null;
       renderGrid();
       el.resultEmpty.querySelector("h2").textContent = "Statement prepared, not run";
       el.resultEmpty.querySelector("p").textContent =
-        "The engine compiled the statement and found it valid. SQL Studio is a read-only session, so nothing was written. Open Messages for the detail.";
+        "The engine compiled the statement and found it valid, but it was not run. Open Messages for the detail.";
       activatePane("results");
       el.statusRows.textContent = "Prepared, not committed";
       el.statusTime.textContent = `${payload.elapsed_ms} ms`;
@@ -1135,7 +1153,7 @@
       el.statusTime.textContent = `${payload.elapsed_ms ?? 0} ms`;
     }
     if (payload.kind === "prepare") {
-      message("note", "Prepared in a read-only session", payload.note || payload.message);
+      message("note", "Prepared, not run", payload.note || payload.message);
       if (state.connection === "portal") {
         message(
           "note",
@@ -1514,8 +1532,8 @@
         message("note", "Commit complete",
           "The practice session uses autocommit, the way a SQL*Plus session does after each DDL statement. Nothing is waiting.");
       } else {
-        logLine("note", "COMMIT · nothing to commit. The studio session is read-only.");
-        message("note", "Commit ignored", "A read-only session has no pending changes to commit.");
+        logLine("note", "COMMIT · every statement already commits as it runs.");
+        message("note", "Nothing to commit", "This window commits each statement as it runs, so there is nothing pending. Every write is snapshotted — use Undo change to take one back.");
       }
       activatePane("messages");
     },
@@ -1525,15 +1543,19 @@
         message("note", "Rollback not needed",
           "Each statement on ORACLE_XE is committed as it runs, so there is no open transaction to undo. Drop or delete what you created instead — or reset the practice schema.");
       } else {
-        logLine("note", "ROLLBACK · nothing to roll back. The studio session is read-only.");
-        message("note", "Rollback ignored", "A read-only session keeps no uncommitted changes.");
+        logLine("note", "ROLLBACK · nothing to roll back. Use Undo change instead.");
+        message("note", "Rollback is not needed", "Nothing is pending: use Undo change (Ctrl+Alt+Z) to reverse the last statement, which restores the database exactly.");
       }
       activatePane("messages");
     },
     undo: () => undoEdit(),
     redo: () => redoEdit(),
+    "undo-change": () => schemaStep("undo"),
+    "redo-change": () => schemaStep("redo"),
     "oracle-undo": () => schemaStep("undo"),
     "oracle-redo": () => schemaStep("redo"),
+    "portal-undo": () => schemaStep("undo"),
+    "portal-redo": () => schemaStep("redo"),
     "select-all": () => {
       el.sql.focus();
       el.sql.select();
@@ -1586,7 +1608,7 @@
       message(
         "note",
         "Connection information",
-        `${$("#stConnectionSelect")?.value || "connection"}\nRead-only session · ${el.statusTime.textContent}`,
+        `${$("#stConnectionSelect")?.value || "connection"}\nWritable · ${el.statusTime.textContent}`,
       );
       activatePane("messages");
     },
@@ -1973,9 +1995,7 @@
     if (menuNote) menuNote.textContent = name;
     const statusMode = $("#stStatusMode");
     if (statusMode) {
-      statusMode.innerHTML = oracle
-        ? `${lockIcon("unlocked")}<span>Writable</span>`
-        : `${lockIcon("lock")}<span>Read-only</span>`;
+      statusMode.innerHTML = `${lockIcon("unlocked")}<span>Writable</span>`;
     }
     const engine = $("#stStatusEngine");
     if (engine) engine.textContent = oracle ? "Oracle 21c XE · simulated" : "SQLite 3.40.1";
@@ -1985,18 +2005,20 @@
     if (banner) {
       banner.textContent = oracle
         ? `Connected to ORACLE_XE as ${statusConnectionName()}. This practice schema is writable.`
-        : `Connected to NIST_UNIVERSITY as ${statusConnectionName()}. The session is read-only.`;
+        : `Connected to NIST_UNIVERSITY as ${statusConnectionName()}. Changes here reach the portal.`;
     }
     const factsPortal = $("#stFactsPortal");
     const factsOracle = $("#stFactsOracle");
     if (factsPortal) factsPortal.hidden = oracle;
     if (factsOracle) factsOracle.hidden = !oracle;
     sessionChip.dataset.mode = mode;
-    sessionChip.classList.toggle("is-writable", oracle);
-    sessionChipText.textContent = oracle ? "Practice schema · writable" : "Read-only session";
+    sessionChip.classList.add("is-writable");
+    sessionChipText.textContent = oracle
+      ? "Practice schema · writable"
+      : "Live data · linked to the portal";
     sessionChip.title = oracle
-      ? "CREATE, INSERT, UPDATE and DELETE really run — in the practice schema only"
-      : "Statements that change data are prepared and declined";
+      ? "CREATE, INSERT, UPDATE and DELETE run in the practice schema, never the portal"
+      : "Changes run against the portal's own database and appear on its screens; every change can be undone";
   };
 
   const switchConnection = (mode) => {
@@ -2004,6 +2026,7 @@
     flushHistory();
     state.memory[state.connection] = el.sql.value;
     state.connection = mode;
+    state.journal = state.journals[mode] || {};
     setChip(mode);
     $("#stTreePortal").hidden = mode !== "portal";
     $("#stTreeOracle").hidden = mode !== "oracle";
@@ -2029,7 +2052,7 @@
     el.resultEmpty.querySelector("p").textContent =
       mode === "oracle"
         ? "EMP, DEPT and EMP_SEQ are loaded. Press F9 to run the statement under the cursor — CREATE, INSERT, UPDATE and DELETE really work here."
-        : "Press F9 to run the statement under the cursor, or F5 to run the whole worksheet. Reads execute against the live database; data changes are prepared and declined.";
+        : "Press F9 to run the statement under the cursor, or F5 to run the whole worksheet. This window writes to the portal's own database, so a change made here is the change Students, Fees and Reports show. Every change can be undone.";
     recordHistory();
     updateHistoryButtons();
     updateSchemaButtons();
@@ -2040,10 +2063,10 @@
       mode === "oracle" ? "Connected to ORACLE_XE" : "Connected to NIST_UNIVERSITY",
       mode === "oracle"
         ? "Oracle Database 21c Express Edition (simulated). This session is writable: DDL and DML change the practice schema, never the portal."
-        : "The portal session is read-only: reads run, data changes are prepared and declined.",
+        : "Linked to the portal: INSERT, UPDATE, DELETE and CREATE run against the live database, so the change is on the portal's screens immediately. Undo takes it back.",
     );
     activatePane("results");
-    toast(mode === "oracle" ? "ORACLE_XE · practice schema (writable)" : "NIST_UNIVERSITY · read-only");
+    toast(mode === "oracle" ? "ORACLE_XE · practice schema (writable)" : "NIST_UNIVERSITY · linked to the portal");
     el.sql.focus();
   };
 
@@ -2102,6 +2125,25 @@
     $("#stOracleIndexCount").textContent = catalogue.indexes.length;
   };
 
+  const refreshPortalTree = async () => {
+    try {
+      const response = await fetch(app.dataset.portalTreeUrl, {
+        headers: { Accept: "application/json", "X-CSRF-Token": CSRF },
+        credentials: "same-origin",
+      });
+      const payload = await response.json();
+      if (!payload || !payload.ok) return;
+      if (typeof payload.tree_html === "string") {
+        const host = $("#stTreePortal");
+        if (host) host.innerHTML = payload.tree_html;
+      }
+      if (payload.journal) state.journals.portal = payload.journal;
+      setJournal(payload.journal);
+    } catch (error) {
+      /* the navigator keeps its previous contents */
+    }
+  };
+
   const refreshOracleTree = async () => {
     if (state.connection !== "oracle") return;
     try {
@@ -2122,29 +2164,32 @@
 
   // ---------------------------------------------------- undoing real changes
   const setJournal = (journal) => {
-    if (journal) state.journal = journal;
+    if (journal) state.journals[state.connection] = journal;
+    state.journal = state.journals[state.connection] || {};
     updateSchemaButtons();
   };
 
   const updateSchemaButtons = () => {
     const journal = state.journal || {};
-    const oracle = state.connection === "oracle";
-    $$("[data-action='oracle-undo']").forEach((button) => {
-      button.disabled = !oracle || !journal.can_undo;
-      button.title = journal.can_undo ? `Undo: ${journal.undo_label}` : "No change to undo";
+    const scope = state.connection === "oracle" ? "practice schema" : "portal";
+    $$("[data-action='undo-change'], [data-action='oracle-undo'], [data-action='portal-undo']").forEach((button) => {
+      button.disabled = !journal.can_undo;
+      button.title = journal.can_undo ? `Undo the last ${scope} change: ${journal.undo_label}` : `No ${scope} change to undo`;
     });
-    $$("[data-action='oracle-redo']").forEach((button) => {
-      button.disabled = !oracle || !journal.can_redo;
+    $$("[data-action='redo-change'], [data-action='oracle-redo'], [data-action='portal-redo']").forEach((button) => {
+      button.disabled = !journal.can_redo;
       button.title = journal.can_redo ? `Redo: ${journal.redo_label}` : "Nothing to redo";
     });
+    const stateLine = $("#stJournalState");
+    if (stateLine) {
+      stateLine.textContent = `${journal.depth || 0}/${journal.limit || 12}`;
+    }
   };
 
   const schemaStep = async (direction) => {
-    if (state.connection !== "oracle") {
-      toast("Switch to the Oracle connection first");
-      return;
-    }
     if (state.busySchema) return;
+    const oracle = state.connection === "oracle";
+    const scope = oracle ? "practice schema" : "portal";
     state.busySchema = true;
     try {
       const response = await fetch(endpoints()[direction], {
@@ -2161,13 +2206,14 @@
       if (!payload.ok) {
         setJournal(payload.journal);
         toast(payload.error || "Nothing to do");
-        message(direction === "undo" ? "note" : "note",
-                direction === "undo" ? "Nothing to undo" : "Nothing to redo",
+        message("note",
+                `${scope}: ${direction === "undo" ? "nothing to undo" : "nothing to redo"}`,
                 payload.error || "The journal is empty.");
         return;
       }
-      if (payload.catalogue) renderOracleTree(payload.catalogue);
+      if (payload.catalogue && oracle) renderOracleTree(payload.catalogue);
       setJournal(payload.journal);
+      if (!oracle) await refreshPortalTree();
       const command = $("#stCommand");
       if (command) {
         command.hidden = true;
@@ -2178,13 +2224,16 @@
       el.resultEmpty.hidden = false;
       el.resultEmpty.querySelector("h2").textContent =
         direction === "undo" ? "Change undone" : "Change replayed";
-      el.resultEmpty.querySelector("p").textContent =
-        `${payload.message}. The navigator and the practice schema agree again.`;
+      el.resultEmpty.querySelector("p").textContent = oracle
+        ? `${payload.message}. The navigator and the practice schema agree again.`
+        : `${payload.message}. The portal database is back the way it was — Students, Fees and Reports read it on their next load.`;
       logLine("ok", `${direction === "undo" ? "UNDO" : "REDO"} · ${payload.message}`);
       message(
         "note",
-        direction === "undo" ? "Practice schema restored" : "Practice schema replayed",
-        `${payload.message}. Undo reaches back twelve changes; Reset practice schema starts the demonstration over.`,
+        `${scope} ${direction === "undo" ? "restored" : "replayed"}`,
+        oracle
+          ? `${payload.message}. Undo reaches back twelve changes; Reset practice schema starts the demonstration over.`
+          : `${payload.message}. Undo reaches back twelve portal changes, so a wrong INSERT here is one click away from being gone.`,
       );
       el.statusRows.textContent = payload.message;
       el.statusTime.textContent = "—";
@@ -2225,7 +2274,7 @@
     {
       target: ".st-titlebar",
       title: "The connection",
-      text: "A client is useless until it is connected. This bar names the connection, the engine and its version, and says out loud that the session is read-only.",
+      text: "A client is useless until it is connected. This bar names the connection, the engine and its version, and says whether the window writes: the portal connection is live and undoable, the practice connection is separate.",
     },
     {
       target: ".st-navigator",
@@ -2389,7 +2438,7 @@
   message(
     "note",
     "Session opened",
-    `${$("#stConnectionSelect")?.value || "NIST_UNIVERSITY"} · read-only simulation. Reads run for real; data changes are prepared and declined.`,
+    "NIST_UNIVERSITY · linked to the portal. Reads, writes and schema changes run for real; every change is snapshotted and can be undone. Switch to ORACLE_XE for the separate practice schema.",
   );
   el.messageBadge.hidden = true;
 
