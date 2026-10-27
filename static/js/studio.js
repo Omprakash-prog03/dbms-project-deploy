@@ -16,12 +16,27 @@
     document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
 
   const urls = {
-    run: app.dataset.runUrl,
-    script: app.dataset.scriptUrl,
-    explain: app.dataset.explainUrl,
-    describe: app.dataset.describeUrl,
+    portal: {
+      run: app.dataset.runUrl,
+      script: app.dataset.scriptUrl,
+      explain: app.dataset.explainUrl,
+      describe: app.dataset.describeUrl,
+    },
+    oracle: {
+      run: app.dataset.oracleRunUrl,
+      script: app.dataset.oracleScriptUrl,
+      explain: app.dataset.oracleExplainUrl,
+      tree: app.dataset.oracleTreeUrl,
+      reset: app.dataset.oracleResetUrl,
+    },
   };
+  const oracleStarter = app.dataset.oracleStarter || "";
+  const endpoints = () => urls[state.connection];
 
+  const lockIcon = (kind) =>
+    kind === "unlocked"
+      ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 7-2.6"/></svg>'
+      : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
   const STORAGE_KEY = "nist-sql-studio-v1";
   const HISTORY_KEY = "nist-sql-studio-history-v1";
   const MAX_WORKSHEETS = 8;
@@ -58,6 +73,8 @@
   };
 
   const state = {
+    connection: "portal",
+    memory: { portal: null, oracle: null },
     worksheets: [],
     activeId: 1,
     nextId: 2,
@@ -96,7 +113,7 @@
     node.textContent = text;
     node.classList.add("is-visible");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => node.classList.remove("is-visible"), 2200);
+    toastTimer = setTimeout(() => node.classList.remove("is-visible"), 1500);
   };
 
   const api = async (url, body) => {
@@ -443,15 +460,25 @@
       toast("Eight worksheets is the limit in one browser tab");
       return;
     }
+    const title = name || `Worksheet ${state.nextId}`;
     const worksheet = {
       id: state.nextId,
-      name: name || `Worksheet ${state.nextId}`,
-      sql: `-- ${name || `Worksheet ${state.nextId}`}\n-- Type a statement, then press F9 to run it.\n\nSELECT *\nFROM department\nORDER BY dept_code;\n`,
+      name: title,
+      sql:
+        state.connection === "oracle"
+          ? oracleStarter
+          : `-- ${title}\n-- Type a statement, then press F9 to run it.\n\nSELECT *\nFROM department\nORDER BY dept_code;\n`,
     };
     state.nextId += 1;
     state.worksheets.push(worksheet);
     showWorksheet(worksheet.id);
-    message("note", "Worksheet opened", `${worksheet.name} is ready. The session is still read-only.`);
+    message(
+      "note",
+      "Worksheet opened",
+      state.connection === "oracle"
+        ? `${worksheet.name} is ready on ORACLE_XE. DDL and DML run against the practice schema.`
+        : `${worksheet.name} is ready. The portal session is still read-only.`,
+    );
     toast(`${worksheet.name} opened`);
   };
 
@@ -826,9 +853,52 @@
     return payload.message || "Statement completed.";
   };
 
+  const translatedNote = (payload) => {
+    if (!payload || !payload.translated) return "";
+    const notes = (payload.notes || []).map((note) => `· ${note}`).join(" ");
+    return `<div class="st-translated"><span>Translated and executed</span>
+      <pre>${escapeHtml(payload.translated)}</pre>
+      ${notes ? `<p>${escapeHtml(notes)}</p>` : ""}</div>`;
+  };
+
   const showOutcome = (payload) => {
     state.payload = payload;
     state.sort = { column: null, direction: 1 };
+    if (payload.ok && (payload.kind === "ddl" || payload.kind === "write")) {
+      state.payload = null;
+      renderGrid();
+      el.resultEmpty.hidden = true;
+      el.gridScroll.hidden = true;
+      el.gridNote.hidden = true;
+      el.resultBadge.textContent = "";
+      const panel = $("#stCommand");
+      panel.hidden = false;
+      panel.innerHTML = `<div class="st-command-card">
+          <div class="st-command-verdict">${escapeHtml(payload.message || "Statement completed.")}</div>
+          <p class="st-command-meta">${escapeHtml(payload.verb || "")} · ${payload.elapsed_ms} ms · ${
+            payload.connection === "oracle" ? "committed to the practice schema" : "prepared, not committed"
+          }</p>
+        </div>${translatedNote(payload)}`;
+      activatePane("results");
+      el.statusRows.textContent = payload.message || "Command completed";
+      el.statusTime.textContent = `${payload.elapsed_ms} ms`;
+      if (payload.connection === "oracle") refreshOracleTree();
+      return;
+    }
+    const command = $("#stCommand");
+    if (command) {
+      command.hidden = true;
+      command.innerHTML = "";
+    }
+    if (payload.ok && payload.kind === "describe") {
+      el.resultEmpty.hidden = true;
+      el.gridScroll.hidden = false;
+      renderGrid();
+      activatePane("results");
+      el.statusRows.textContent = `${payload.row_count} columns`;
+      el.statusTime.textContent = `${payload.elapsed_ms} ms`;
+      return;
+    }
     if (payload.ok && payload.kind === "prepare") {
       state.payload = null;
       renderGrid();
@@ -843,19 +913,42 @@
       el.resultEmpty.querySelector("p").textContent =
         "Press F9 to run the statement under the cursor, or F5 to run the whole worksheet. Reads execute against the live database; data changes are prepared and declined.";
       renderGrid();
+      if (payload.translated) {
+        const panel = $("#stCommand");
+        panel.hidden = false;
+        panel.innerHTML = translatedNote(payload);
+      }
       activatePane("results");
       el.statusRows.textContent = `${(payload.row_count ?? 0).toLocaleString()} rows`;
       el.statusTime.textContent = `${payload.elapsed_ms} ms`;
     } else {
       state.payload = null;
       renderGrid();
-      message("error", payload.code || "Statement failed", payload.error || "The statement failed.");
+      message(
+        "error",
+        payload.code || "Statement failed",
+        `${payload.error || "The statement failed."}${payload.hint ? `\n\n${payload.hint}` : ""}`,
+      );
+      if (state.connection === "portal" && (payload.code || "").startsWith("STUDIO-")) {
+        message(
+          "note",
+          "The practice schema accepts this",
+          "ORACLE_XE — the second connection — is writable. Switch to it in the Connection selector and the same statement will run.",
+        );
+      }
       activatePane("messages");
       el.statusRows.textContent = "Statement failed";
       el.statusTime.textContent = `${payload.elapsed_ms ?? 0} ms`;
     }
     if (payload.kind === "prepare") {
       message("note", "Prepared in a read-only session", payload.note || payload.message);
+      if (state.connection === "portal") {
+        message(
+          "note",
+          "Want it to run for real?",
+          "Switch the Connection selector to ORACLE_XE. The practice schema on that connection is writable: CREATE, INSERT, UPDATE, DELETE and DROP all really execute there.",
+        );
+      }
     }
   };
 
@@ -869,7 +962,7 @@
     setBusy(true);
     el.statusRows.textContent = "Running…";
     try {
-      const payload = await api(urls.run, { sql });
+      const payload = await api(endpoints().run, { sql });
       logLine(
         payload.ok ? "ok" : "error",
         `${payload.verb || "STATEMENT"} · ${describeOutcome(payload)} ${payload.elapsed_ms ? `· ${payload.elapsed_ms} ms` : ""}`,
@@ -894,7 +987,7 @@
     const rule = logLine("rule", `Run script · ${clock()}`);
     rule.classList.add("is-head");
     try {
-      const payload = await api(urls.script, { sql: text });
+      const payload = await api(endpoints().script, { sql: text });
       if (payload.error) {
         logLine("error", payload.error);
         return;
@@ -921,7 +1014,11 @@
       const firstFailure = payload.statements.find((statement) => !statement.ok);
       const lastRead = [...payload.statements].reverse().find((statement) => statement.ok && statement.kind === "read");
       if (firstFailure) {
-        message("error", firstFailure.code || "Statement failed", `${firstFailure.statement}\n${firstFailure.error}`);
+        message(
+          "error",
+          firstFailure.code || "Statement failed",
+          `${firstFailure.statement}\n${firstFailure.error}${firstFailure.hint ? `\n\n${firstFailure.hint}` : ""}`,
+        );
       }
       if (lastRead) {
         showOutcome(lastRead);
@@ -932,6 +1029,17 @@
       el.statusRows.textContent = `${payload.succeeded}/${payload.total} statements`;
       el.statusTime.textContent = `${payload.elapsed_ms} ms`;
       activatePane(firstFailure ? "output" : "results");
+      if (state.connection === "oracle") {
+        const created = payload.statements.filter((statement) => statement.kind === "ddl" && statement.ok);
+        if (created.length) {
+          message(
+            "note",
+            "Schema changed",
+            created.map((statement) => `${statement.verb} · ${statement.object || statement.statement.split("\n")[0]}`).join("\n"),
+          );
+        }
+        refreshOracleTree();
+      }
       toast(
         payload.failed
           ? `Script finished with ${payload.failed} error${payload.failed === 1 ? "" : "s"}`
@@ -951,7 +1059,7 @@
     }
     setBusy(true);
     try {
-      const payload = await api(urls.explain, { sql });
+      const payload = await api(endpoints().explain, { sql });
       activatePane("plan");
       renderPlan(payload);
       if (payload.ok) {
@@ -1048,6 +1156,10 @@
       return;
     }
     try {
+      if (state.connection === "oracle") {
+        toast("Object details for the practice schema are in the navigator");
+        return;
+      }
       const url = urls.describe.replace("__object__", encodeURIComponent(name));
       const response = await fetch(url, {
         headers: { Accept: "application/json", "X-CSRF-Token": CSRF },
@@ -1201,13 +1313,25 @@
       toast("Worksheet cleared");
     },
     commit: () => {
-      logLine("note", "COMMIT · nothing to commit. The studio session is read-only.");
-      message("note", "Commit ignored", "A read-only session has no pending changes to commit.");
+      if (state.connection === "oracle") {
+        logLine("ok", "COMMIT · complete. Every statement on this connection commits as it runs.");
+        message("note", "Commit complete",
+          "The practice session uses autocommit, the way a SQL*Plus session does after each DDL statement. Nothing is waiting.");
+      } else {
+        logLine("note", "COMMIT · nothing to commit. The studio session is read-only.");
+        message("note", "Commit ignored", "A read-only session has no pending changes to commit.");
+      }
       activatePane("messages");
     },
     rollback: () => {
-      logLine("note", "ROLLBACK · nothing to roll back. The studio session is read-only.");
-      message("note", "Rollback ignored", "A read-only session keeps no uncommitted changes.");
+      if (state.connection === "oracle") {
+        logLine("note", "ROLLBACK · nothing pending. The practice session commits as it runs.");
+        message("note", "Rollback not needed",
+          "Each statement on ORACLE_XE is committed as it runs, so there is no open transaction to undo. Drop or delete what you created instead — or reset the practice schema.");
+      } else {
+        logLine("note", "ROLLBACK · nothing to roll back. The studio session is read-only.");
+        message("note", "Rollback ignored", "A read-only session keeps no uncommitted changes.");
+      }
       activatePane("messages");
     },
     undo: () => {
@@ -1277,6 +1401,8 @@
       activatePane("messages");
     },
     tour: () => startTour(),
+    "oracle-info": () => openDialog("stOracleDialog"),
+    "oracle-reset": () => resetPractice(),
     about: () => openDialog("stAboutDialog"),
     shortcuts: () => openDialog("stShortcutDialog"),
     "read-only-notice": () => openDialog("stReadOnlyDialog"),
@@ -1615,6 +1741,189 @@
     button.addEventListener("click", () => closePopovers()),
   );
 
+
+  /* -------------------------------------------------------- second connection */
+  const sessionChip = $("#stSessionChip");
+  const sessionChipText = $("#stSessionChipText");
+  const connectionSelect = $("#stConnectionSelect");
+
+  const statusConnectionName = () =>
+    ($("#stStatusConnection")?.textContent || "").split("@")[0] || "user";
+
+  const setChip = (mode) => {
+    const oracle = mode === "oracle";
+    const name = `${statusConnectionName()}@${oracle ? "ORACLE_XE" : "NIST_UNIVERSITY"}`;
+    const conn = $("#stStatusConnection");
+    if (conn) conn.textContent = name;
+    const menuNote = $("#stMenuConnection");
+    if (menuNote) menuNote.textContent = name;
+    const statusMode = $("#stStatusMode");
+    if (statusMode) {
+      statusMode.innerHTML = oracle
+        ? `${lockIcon("unlocked")}<span>Writable</span>`
+        : `${lockIcon("lock")}<span>Read-only</span>`;
+    }
+    const engine = $("#stStatusEngine");
+    if (engine) engine.textContent = oracle ? "Oracle 21c XE · simulated" : "SQLite 3.40.1";
+    const charset = $("#stStatusCharset");
+    if (charset) charset.textContent = oracle ? "AL32UTF8" : "UTF-8";
+    const banner = $("#stSessionBannerText");
+    if (banner) {
+      banner.textContent = oracle
+        ? `Connected to ORACLE_XE as ${statusConnectionName()}. This practice schema is writable.`
+        : `Connected to NIST_UNIVERSITY as ${statusConnectionName()}. The session is read-only.`;
+    }
+    const factsPortal = $("#stFactsPortal");
+    const factsOracle = $("#stFactsOracle");
+    if (factsPortal) factsPortal.hidden = oracle;
+    if (factsOracle) factsOracle.hidden = !oracle;
+    sessionChip.dataset.mode = mode;
+    sessionChip.classList.toggle("is-writable", oracle);
+    sessionChipText.textContent = oracle ? "Practice schema · writable" : "Read-only session";
+    sessionChip.title = oracle
+      ? "CREATE, INSERT, UPDATE and DELETE really run — in the practice schema only"
+      : "Statements that change data are prepared and declined";
+  };
+
+  const switchConnection = (mode) => {
+    if (mode === state.connection) return;
+    state.memory[state.connection] = el.sql.value;
+    state.connection = mode;
+    setChip(mode);
+    $("#stTreePortal").hidden = mode !== "portal";
+    $("#stTreeOracle").hidden = mode !== "oracle";
+    $("#stSnippetPortal").hidden = mode !== "portal";
+    $("#stSnippetOracle").hidden = mode !== "oracle";
+    const stored = state.memory[mode];
+    el.sql.value = stored !== null && stored !== undefined
+      ? stored
+      : mode === "oracle"
+        ? oracleStarter
+        : (activeWorksheet()?.sql || "");
+    commitEditor();
+    state.payload = null;
+    renderGrid();
+    const command = $("#stCommand");
+    if (command) {
+      command.hidden = true;
+      command.innerHTML = "";
+    }
+    el.resultEmpty.hidden = false;
+    el.resultEmpty.querySelector("h2").textContent =
+      mode === "oracle" ? "The practice schema is ready" : "No statement has run yet";
+    el.resultEmpty.querySelector("p").textContent =
+      mode === "oracle"
+        ? "EMP, DEPT and EMP_SEQ are loaded. Press F9 to run the statement under the cursor — CREATE, INSERT, UPDATE and DELETE really work here."
+        : "Press F9 to run the statement under the cursor, or F5 to run the whole worksheet. Reads execute against the live database; data changes are prepared and declined.";
+    el.statusRows.textContent = "No statement run";
+    el.statusTime.textContent = "—";
+    message(
+      "note",
+      mode === "oracle" ? "Connected to ORACLE_XE" : "Connected to NIST_UNIVERSITY",
+      mode === "oracle"
+        ? "Oracle Database 21c Express Edition (simulated). This session is writable: DDL and DML change the practice schema, never the portal."
+        : "The portal session is read-only: reads run, data changes are prepared and declined.",
+    );
+    activatePane("results");
+    toast(mode === "oracle" ? "ORACLE_XE · practice schema (writable)" : "NIST_UNIVERSITY · read-only");
+    el.sql.focus();
+  };
+
+  // The Oracle navigator is rebuilt after DDL, so it always matches the schema.
+  const treeNode = (kind, name, meta, extra) =>
+    `<div class="st-node" data-node data-object-row>
+       <button type="button" class="st-node-row st-object" data-tree-toggle aria-expanded="false"
+               data-object-type="${kind}" data-object-name="${escapeHtml(name)}">
+         <span class="st-caret" aria-hidden="true"></span>
+         <span class="st-node-label">${escapeHtml(name)}</span>
+         <span class="st-node-meta">${escapeHtml(meta)}</span>
+       </button>
+       <div class="st-node-children" hidden>${extra}</div>
+     </div>`;
+
+  const leafNode = (kind, name, label, meta) =>
+    `<button type="button" class="st-leaf" data-object-type="${kind}" data-object-name="${escapeHtml(name)}"
+             ${kind === "column" ? `data-column="${escapeHtml(name)}"` : ""}>
+       <span class="st-leaf-name">${escapeHtml(name)}</span>
+       <span class="st-leaf-type">${escapeHtml(meta || label || "")}</span>
+     </button>`;
+
+  const renderOracleTree = (catalogue) => {
+    const tables = catalogue.tables
+      .map((table) =>
+        treeNode(
+          "table",
+          table.name,
+          table.rows.toLocaleString(),
+          table.columns
+            .map((column) =>
+              leafNode(
+                "column",
+                column.name,
+                "",
+                `${column.type}${column.pk ? " · PK" : ""}${column.nullable ? "" : " · NN"}`,
+              ),
+            )
+            .join(""),
+        ),
+      )
+      .join("");
+    $("#stOracleTables").innerHTML = tables;
+    $("#stOracleTableCount").textContent = catalogue.tables.length;
+    $("#stOracleSequences").innerHTML = catalogue.sequences
+      .map((sequence) => leafNode("sequence", sequence.name, "", `next ${sequence.next}`))
+      .join("");
+    $("#stOracleSequenceCount").textContent = catalogue.sequences.length;
+    $("#stOracleViews").innerHTML = catalogue.views
+      .map((view) => leafNode("view", view.name, "", `${view.columns.length} columns`))
+      .join("");
+    $("#stOracleViewCount").textContent = catalogue.views.length;
+    $("#stOracleIndexes").innerHTML = catalogue.indexes
+      .map((index) => leafNode("index", index.name, "", index.table))
+      .join("");
+    $("#stOracleIndexCount").textContent = catalogue.indexes.length;
+  };
+
+  const refreshOracleTree = async () => {
+    if (state.connection !== "oracle") return;
+    try {
+      const response = await fetch(endpoints().tree, {
+        headers: { Accept: "application/json", "X-CSRF-Token": CSRF },
+        credentials: "same-origin",
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        renderOracleTree(payload.catalogue);
+        if (el.filter?.value.trim()) el.filter.dispatchEvent(new Event("input"));
+      }
+    } catch (error) {
+      /* the navigator simply keeps the last known schema */
+    }
+  };
+
+  const resetPractice = async () => {
+    if (state.connection !== "oracle") {
+      toast("Switch to the Oracle connection first");
+      return;
+    }
+    const response = await fetch(endpoints().reset, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRF-Token": CSRF },
+      credentials: "same-origin",
+      body: "{}",
+    });
+    const payload = await response.json().catch(() => null);
+    if (!payload) {
+      toast("The reset did not reach the server");
+      return;
+    }
+    await refreshOracleTree();
+    logLine("note", `Practice schema reset · ${payload.tables} tables · SCOTT seed restored`);
+    message("note", "Practice schema reset", "Every object you created was dropped and EMP/DEPT/EMP_SEQ were seeded again.");
+    toast("Practice schema reset");
+  };
+
+  connectionSelect?.addEventListener("change", (event) => switchConnection(event.target.value));
 
   /* -------------------------------------------------------------------- tour */
   const tourSteps = [

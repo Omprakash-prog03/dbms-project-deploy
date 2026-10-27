@@ -263,6 +263,21 @@ Download and retain private backups regularly; free accounts do not provide the 
 
 The original internal database identifier `sims_db`, old CSS class names, and the historical ZIP are retained for compatibility. They are not the portal's displayed name and are not used to seed this private installation.
 
+### SQL Studio's practice schema
+
+`/studio` offers a second connection, `ORACLE_XE`, which is writable. It lives in
+its own small file, `instance/studio_oracle.db` (about 60 KB, created and seeded
+on first use, ignored by Git), and **never** touches `instance/hogwards.db`.
+Nothing has to be installed: the Oracle dialect is translated and executed by an
+embedded engine, so the free account needs no listener and no extra package.
+Students and faculty cannot open it — `/studio` stays administrator-only.
+
+To start the demonstration from scratch, open `/studio`, choose `ORACLE_XE` and
+press **Reset practice schema**. To remove it entirely, delete
+`instance/studio_oracle.db`; it is recreated the next time the screen is opened.
+Override the location with `STUDIO_ORACLE_PATH` if you prefer it outside
+`instance/` (the code refuses to point it at the portal database).
+
 
 ## The supreme administrator and the administrator codes
 

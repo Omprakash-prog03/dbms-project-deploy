@@ -133,6 +133,69 @@ body.studio-page .flash-message {
   outline: 2px solid var(--st-accent);
   outline-offset: 1px;
 }
+.st-ro-chip.is-writable {
+  color: #c6f2d4;
+  background: rgba(34, 108, 66, 0.28);
+  border-color: rgba(72, 168, 110, 0.55);
+}
+.st-ro-chip.is-writable svg {
+  color: #7fe0a5;
+}
+
+/* a statement that changed the schema, printed in the results pane */
+.st-command {
+  margin: 0 0 10px;
+}
+.st-command-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(72, 168, 110, 0.34);
+  background: linear-gradient(180deg, rgba(34, 108, 66, 0.16), rgba(24, 26, 33, 0.5));
+}
+.st-command-verdict {
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  color: #d8f6e3;
+}
+.st-command-meta {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8fa79a;
+}
+.st-translated {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed #3a3b45;
+  background: #191a21;
+}
+.st-translated span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7d7f8c;
+  margin-bottom: 6px;
+}
+.st-translated pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #b9c9c6;
+}
+.st-translated p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #8b8d99;
+}
 .st-ro-chip {
   display: inline-flex;
   align-items: center;
@@ -1742,6 +1805,14 @@ body.studio-page .flash-message {
   }
 }
 @media (max-width: 640px) {
+  /* a dialog taller than a phone screen must be able to scroll, not float off it */
+  .st-dialog-layer {
+    position: fixed;
+    padding: 12px;
+  }
+  .st-dialog {
+    max-height: calc(100dvh - 24px);
+  }
   .st-toolbar {
     gap: 2px;
   }
