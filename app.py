@@ -10,6 +10,9 @@ from config import Config
 from extensions import limiter
 from werkzeug.middleware.proxy_fix import ProxyFix
 from repositories.db_pool import db_pool, get_last_queries, clear_last_queries
+from repositories import admin_sessions
+from repositories import login_history
+from repositories import staff_activity
 from repositories import owner as owner_guard
 
 
@@ -52,6 +55,16 @@ def create_app(test_config=None):
     for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp, reports_bp, rawdata_bp, owner_bp):
         app.register_blueprint(blueprint)
 
+    # The guard and the session registry are additive tables; create them up front
+    # so the very first sign-in never has to build them mid-request.
+    try:
+        owner_guard.ensure_schema()
+        admin_sessions.ensure_schema()
+        login_history.ensure_schema()
+        staff_activity.ensure_schema()
+    except Exception:  # a read-only database must not stop the app from booting
+        app.logger.warning('Could not prepare the owner tables at startup', exc_info=True)
+
     # Bounded, per-session query traces. Never a process-global feed of other users' SQL.
     traces = OrderedDict()
     trace_lock = threading.Lock()
@@ -82,10 +95,16 @@ def create_app(test_config=None):
         # owner's current epoch and their access approval still hold.
         if session.get('role') == 'admin' and request.endpoint not in ('auth.login_view', 'static'):
             username = session.get('username', '')
-            if owner_guard.is_owner(username):
-                if not owner_guard.session_is_current():
+            owner_here = owner_guard.is_owner(username)
+            stale = (not owner_guard.session_is_current()
+                     or int(session.get('admin_token_version') or 0) != admin_sessions.version(username))
+            if owner_here:
+                if stale:
+                    # The owner re-stamps: a lockdown never ends the owner's own session.
+                    session['admin_token_version'] = admin_sessions.version(username)
                     owner_guard.stamp_session()
-            elif not session.get('access_approved') or not owner_guard.session_is_current():
+                admin_sessions.touch(username, request.remote_addr or '')
+            elif stale or not session.get('access_approved'):
                 ended_by_owner = owner_guard.session_is_current()
                 session.clear()
                 message = ('The owner ended your administrator session. Ask them for a new access code.'
@@ -95,9 +114,16 @@ def create_app(test_config=None):
                     return jsonify(success=False, code='owner_signed_out', message=message), 401
                 flash(message, 'info')
                 return redirect(url_for('auth.login_view'))
+            else:
+                admin_sessions.touch(username, request.remote_addr or '')
 
     @app.after_request
     def after_req(response):
+        # Who changed what: one line per successful admin/faculty change.
+        try:
+            staff_activity.capture_request(response)
+        except Exception:
+            pass
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         if app.config['APP_ENV'] == 'production' and not app.config['EMBEDDED_PREVIEW']:
@@ -122,7 +148,7 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_globals():
         is_owner = session.get('role') == 'admin' and owner_guard.is_owner(session.get('username'))
-        names = {'dashboard':'Overview', 'students':'Students', 'faculty':'Faculty', 'departments':'Departments', 'courses':'Courses', 'offerings':'Course offerings', 'enrollments':'Enrollments', 'attendance':'Attendance', 'results':'Results', 'fees':'Fees & payments', 'admissions':'Admissions', 'insights':'Database insights', 'reports':'Reports & PDF', 'raw-data':'Raw data', 'admin-access':'Admin access'}
+        names = {'dashboard':'Overview', 'students':'Students', 'faculty':'Faculty', 'departments':'Departments', 'courses':'Courses', 'offerings':'Course offerings', 'enrollments':'Enrollments', 'attendance':'Attendance', 'results':'Results', 'fees':'Fees & payments', 'admissions':'Admissions', 'insights':'Database insights', 'reports':'Reports & PDF', 'raw-data':'Raw data', 'admin-access':'Supreme control', 'owner':'Supreme control'}
         pending_count = 0
         if session.get('role') in ('admin', 'faculty'):
             pending_count = db_pool.execute_query("SELECT COUNT(*) FROM admission_application WHERE status='Pending'", fetch='val') or 0

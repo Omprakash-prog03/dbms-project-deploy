@@ -513,3 +513,93 @@
   border-color: #53262c;
   color: #f3c3c9;
 }
+
+/* Administrator access code, always visible so the rule is never a surprise */
+.label-note {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #ffffff12;
+  color: #b3adc2;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.access-status {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #171522;
+  border: 1px solid #352d49;
+}
+.access-status p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #d8d0ec;
+}
+.access-status-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: #c9a4f2;
+  animation: access-pulse 1.6s ease-in-out infinite;
+}
+.access-status[data-state="ready"] {
+  background: #101f19;
+  border-color: #2c5641;
+}
+.access-status[data-state="ready"] .access-status-dot {
+  background: #6fd39c;
+  animation: none;
+}
+.access-status[data-state="ready"] p {
+  color: #bce8ce;
+}
+.access-status[data-state="blocked"] {
+  background: #221316;
+  border-color: #53262c;
+}
+.access-status[data-state="blocked"] .access-status-dot {
+  background: #f0858f;
+  animation: none;
+}
+.access-status[data-state="blocked"] p {
+  color: #f3c3c9;
+}
+/* A submitted code that did not match deserves its own amber tone. */
+.access-status[data-state="warn"] {
+  background: #221c12;
+  border-color: #574325;
+}
+.access-status[data-state="warn"] .access-status-dot {
+  background: #e6b169;
+  animation: none;
+}
+.access-status[data-state="warn"] p {
+  color: #f0d6ae;
+}
+@keyframes access-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .access-status-dot { animation: none; }
+}
+
+/* The supreme administrator has their own door; point at it, quietly. */
+.login-supreme-link {
+  color: #cbb6e8;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(203, 182, 232, 0.35);
+}
+.login-supreme-link:hover {
+  color: #e6d6ff;
+  border-bottom-color: rgba(230, 214, 255, 0.6);
+}

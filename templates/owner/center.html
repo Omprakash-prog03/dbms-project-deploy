@@ -1,0 +1,499 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+{% block title %}Supreme control · {{ portal_name }}{% endblock %}
+{% block page_title %}Supreme control{% endblock %}
+{% block page_subtitle %}Your private command centre — everyone else's access passes through here.{% endblock %}
+
+{% block content %}
+<div class="supreme">
+
+  <section class="supreme-banner">
+    <div class="supreme-crown" aria-hidden="true">{{ icon('crown', 22) }}</div>
+    <div>
+      <div class="eyebrow">SUPREME · {{ current_user.username }} · signed in at /supreme</div>
+      <h2>You are the supreme administrator.</h2>
+      <p>{% if code_required %}Administrators must type a code after their password —
+         the rotating number below, or a one-time code you issue.
+         {% if no_code_names %}<strong>{{ no_code_names }}</strong> {{ 'are' if ',' in no_code_names else 'is' }} exempt.{% endif %}
+         {% else %}Administrators sign in with their username and password, as normal.
+         Switch a code on below if you ever want one checked as well.{% endif %}
+         You can end any session, close the door entirely, or
+         remove an account, all from here.</p>
+    </div>
+    <div class="supreme-stats">
+      <div><strong>{{ other_count }}</strong><span>other admins</span></div>
+      <div><strong>{{ online_others }}</strong><span>signed in</span></div>
+      <div><strong>{{ pending|length }}</strong><span>waiting for a code</span></div>
+    </div>
+  </section>
+
+  {% if issued %}
+  <section class="sims-card supreme-code-card">
+    <div>
+      <h2>Access code for <code>{{ issued.username }}</code></h2>
+      <p class="subtle">Works once · expires in {{ issued.minutes }} minutes · never shown again.</p>
+    </div>
+    <div class="supreme-code-row">
+      <output class="supreme-code">{{ issued.code }}</output>
+      <button class="btn-secondary-pill" type="button" data-copy="{{ issued.code }}">Copy</button>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if issued_key %}
+  <section class="sims-card supreme-code-card">
+    <div>
+      <h2>Your new master key</h2>
+      <p class="subtle">Write it down now — only a hash is stored, so it cannot be shown again.</p>
+    </div>
+    <div class="supreme-code-row">
+      <output class="supreme-code supreme-code-key">{{ issued_key }}</output>
+      <button class="btn-secondary-pill" type="button" data-copy="{{ issued_key }}">Copy</button>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="supreme-grid">
+
+    <!-- who is signed in -->
+    <section class="sims-card supreme-wide">
+      <div class="panel-heading" style="margin-bottom:12px">
+        <div>
+          <h2>Administrators</h2>
+          <p>Live state · signed in means active in the last {{ online_window }} minutes.</p>
+        </div>
+        <form method="post" action="{{ url_for('owner.lockdown') }}" class="supreme-inline" id="lockdownForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input class="form-input supreme-mini" name="master_key" type="password"
+                 {% if key_set %}required{% endif %}
+                 autocomplete="off" placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+                 aria-label="Master key to sign everyone out">
+          <button class="supreme-lock" type="submit" {% if not key_set %}disabled{% endif %}>
+            {{ icon('lock', 15) }} Sign out everyone else
+          </button>
+        </form>
+      </div>
+
+      {% if not key_set %}
+      <p class="supreme-warn">{{ icon('key', 15) }} No master key yet — your supreme password is the only lock. Create one below so every action here asks for it again.</p>
+      {% endif %}
+
+      <div class="sims-table-container">
+        <table class="sims-table supreme-table">
+          <thead><tr>
+            <th>Account</th><th>State</th><th>Last active</th><th>Sign-ins</th><th>Actions</th>
+          </tr></thead>
+          <tbody>
+            {% for admin in admins %}
+            <tr class="{{ 'is-owner' if admin.is_owner }}">
+              <td>
+                <strong>{{ admin.username }}</strong>
+                {% if admin.is_owner %}<span class="supreme-tag is-owner">you · supreme</span>{% endif %}
+                {% if code_required and admin.no_code and not admin.is_owner %}<span class="supreme-tag is-exempt">no code needed</span>{% endif %}
+                {% if admin.linked %}<span class="supreme-tag">{{ admin.linked }} linked</span>{% endif %}
+              </td>
+              <td>
+                {% if admin.is_owner %}
+                  <span class="supreme-state is-online">signed in</span>
+                {% elif admin.blocked %}
+                  <span class="supreme-state is-blocked">blocked</span>
+                {% elif admin.signed_in %}
+                  <span class="supreme-state is-online">signed in</span>
+                {% else %}
+                  <span class="supreme-state">signed out</span>
+                {% endif %}
+              </td>
+              <td><span class="subtle">{{ admin.last_seen_ago }}</span></td>
+              <td>{{ admin.login_count }}</td>
+              <td>
+                {% if admin.is_owner %}
+                  <span class="subtle">—</span>
+                {% else %}
+                <div class="supreme-actions">
+                  <form method="post" action="{{ url_for('owner.sign_out_admin', username=admin.username) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="supreme-mini-btn" type="submit">Sign out</button>
+                  </form>
+                  <details class="supreme-more">
+                    <summary aria-label="More actions for {{ admin.username }}">•••</summary>
+                    <div class="supreme-more-body">
+                      <form method="post" action="{{ url_for('owner.block_admin', username=admin.username) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="blocked" value="{{ '0' if admin.blocked else '1' }}">
+                        <button class="supreme-mini-btn {{ 'is-warn' if not admin.blocked }}" type="submit">
+                          {{ 'Unblock sign-in' if admin.blocked else 'Block sign-in' }}
+                        </button>
+                      </form>
+                      <form method="post" action="{{ url_for('owner.reset_admin_password') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="username" value="{{ admin.username }}">
+                        <label for="pw-{{ loop.index }}">New password</label>
+                        <input class="form-input supreme-mini" id="pw-{{ loop.index }}" name="new_password"
+                               type="password" minlength="8" required autocomplete="new-password">
+                        <input class="form-input supreme-mini" name="master_key" type="password"
+                               {% if key_set %}required{% endif %} placeholder="Master key" autocomplete="off">
+                        <button class="supreme-mini-btn" type="submit">Reset password</button>
+                      </form>
+                      <form method="post" action="{{ url_for('owner.remove_admin', username=admin.username) }}"
+                            data-confirm="Remove {{ admin.username }} from the portal? They will be signed out and their account deleted.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <label for="rm-{{ loop.index }}">Remove this administrator</label>
+                        <input class="form-input supreme-mini" id="rm-{{ loop.index }}" name="master_key" type="password"
+                               {% if key_set %}required{% endif %} placeholder="Master key" autocomplete="off">
+                        <button class="supreme-mini-btn is-danger" type="submit">Remove admin</button>
+                      </form>
+                    </div>
+                  </details>
+                </div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- sign-in switch -->
+    <section class="sims-card supreme-switch {{ 'is-closed' if logins_closed }}">
+      <div class="panel-heading" style="margin-bottom:8px">
+        <div>
+          <h2>Administrator sign-in</h2>
+          <p>{% if logins_closed %}Closed — only you can sign in.{% elif code_required %}Open — other admins may request a code.{% else %}Open — other admins sign in with their password.{% endif %}</p>
+        </div>
+        <span class="supreme-switch-state {{ 'is-closed' if logins_closed }}">{{ 'CLOSED' if logins_closed else 'OPEN' }}</span>
+      </div>
+      <p class="subtle">Closing it signs everyone else out and refuses every administrator sign-in,
+        however they would have signed in. Your own session is never affected.</p>
+      <form method="post" action="{{ url_for('owner.switch_logins') }}" class="supreme-stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="closed" value="{{ '0' if logins_closed else '1' }}">
+        <input class="form-input supreme-mini" name="master_key" type="password"
+               {% if key_set %}required{% endif %} autocomplete="off"
+               placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+               aria-label="Master key to change administrator sign-in">
+        <button class="supreme-switch-btn {{ 'is-open' if logins_closed }}" type="submit">
+          {{ 'Reopen administrator sign-in' if logins_closed else 'Close administrator sign-in' }}
+        </button>
+      </form>
+    </section>
+
+    <!-- master key -->
+    <section class="sims-card supreme-key">
+      <div class="panel-heading" style="margin-bottom:8px">
+        <div>
+          <h2>Master key</h2>
+          <p>{% if key_set %}Set · <code>{{ key_hint }}</code>{% else %}Not set — actions here ask for your supreme password only{% endif %}</p>
+        </div>
+        <span class="supreme-tag">{{ icon('key', 13) }} PIN</span>
+      </div>
+      <p class="subtle">Optional extra lock: once set, every action on this page asks for it again.
+        Stored as a hash only, never shown.</p>
+      <form method="post" action="{{ url_for('owner.master_key') }}" class="supreme-stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if key_set %}
+        <label class="supreme-label" for="currentKey">Current key</label>
+        <input class="form-input supreme-mini" id="currentKey" name="master_key" type="password" required autocomplete="off">
+        <label class="supreme-label" for="newKey">New master key <span class="subtle">(blank = generate)</span></label>
+        <input class="form-input supreme-mini" id="newKey" name="new_key" type="text"
+               minlength="{{ min_key_length }}" autocomplete="off" placeholder="Leave blank to generate">
+        <button class="btn-secondary-pill" type="submit">Replace master key</button>
+        {% else %}
+        <label class="supreme-label" for="newKey">Choose your master key <span class="subtle">({{ min_key_length }}+ characters)</span></label>
+        <input class="form-input supreme-mini" id="newKey" name="new_key" type="text"
+               minlength="{{ min_key_length }}" autocomplete="off" placeholder="Leave blank to generate">
+        <button class="btn-primary-pill" type="submit" id="createKey">Create master key</button>
+        {% endif %}
+      </form>
+      <p class="subtle" style="margin-top:10px">Lock #{{ epoch }} · a recovery key can also be made from a
+        console with <code>python scripts/owner_key.py --generate</code>.</p>
+    </section>
+
+    <!-- administrator sign-in: password only, or password + a rotating number -->
+    <section class="sims-card supreme-wide supreme-rotating" id="rotating-code">
+      <div class="panel-heading" style="margin-bottom:12px">
+        <div>
+          <h2>Administrator sign-in code</h2>
+          <p>{% if code_required %}Administrators must type a code after their password.{% else %}Administrators sign in with their username and password only.{% endif %}
+             The six-digit number below changes by itself every {{ rotating_minutes }} minutes.</p>
+        </div>
+        <span class="supreme-tag {{ 'is-ready' if code_required else 'is-stale' }}">
+          {{ icon('key', 13) }} {{ 'Codes required' if code_required else 'Password only' }}
+        </span>
+      </div>
+
+      <div class="supreme-rotating-body">
+        <div class="supreme-rotating-code {{ '' if code_required else 'is-idle' }}">
+          <output class="supreme-code supreme-rotating-digits" id="rotatingCode"
+                  aria-live="polite" aria-label="Current rotating access code">{{ rotating.code }}</output>
+          <p class="supreme-rotating-meta">
+            <span id="rotatingTimer" data-seconds="{{ rotating.seconds_left }}"
+                  data-minutes="{{ rotating_minutes }}">changes in {{ '%d:%02d'|format(rotating.seconds_left // 60, rotating.seconds_left % 60) }}</span>
+            <span>next number at <span id="rotatingNext">{{ rotating.next_change_label }}</span></span>
+          </p>
+          <div class="supreme-rotating-actions">
+            <button class="supreme-mini-btn" type="button" id="rotatingCopy"
+                    data-copy="{{ rotating.code }}">Copy number</button>
+            <span class="subtle" id="rotatingCopied" hidden>Copied.</span>
+          </div>
+          {% if not code_required %}
+          <p class="subtle supreme-rotating-idle">Not needed right now — nobody is asked for it.</p>
+          {% endif %}
+        </div>
+
+        <div class="supreme-rotating-note">
+          <p><strong>{% if code_required %}Codes are on.{% else %}Codes are off.{% endif %}</strong>
+             {% if code_required %}
+             An administrator types their username and password at <code>/login</code>, then this
+             number or a one-time code of their own.
+             {% else %}
+             Everybody signs in the normal way: username and password. Switch codes on if you want
+             this number checked as well.
+             {% endif %}</p>
+          <p class="subtle">The previous number is accepted for a moment after it changes, so nobody
+             is locked out mid-typing. Every sign-in, with or without a code, is written to the
+             sign-in history below.</p>
+          <div class="supreme-rotating-actions">
+            <form method="post" action="{{ url_for('owner.switch_code_required') }}" class="supreme-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="required" value="{{ 0 if code_required else 1 }}">
+              <input class="form-input supreme-mini" name="master_key" type="password"
+                     {% if key_set %}required{% endif %} autocomplete="off"
+                     placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+                     aria-label="Master key to change the sign-in code rule">
+              <button class="supreme-mini-btn" type="submit" id="codeRequiredSwitch">
+                {{ 'Switch codes off (password only)' if code_required else 'Require a code at sign-in' }}
+              </button>
+            </form>
+            {% if code_required %}
+            <form method="post" action="{{ url_for('owner.switch_rotating_code') }}" class="supreme-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="enabled" value="{{ 0 if rotating.enabled else 1 }}">
+              <input class="form-input supreme-mini" name="master_key" type="password"
+                     {% if key_set %}required{% endif %} autocomplete="off"
+                     placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+                     aria-label="Master key to switch the rotating number">
+              <button class="supreme-mini-btn" type="submit">
+                {{ 'Stop accepting the rotating number' if rotating.enabled else 'Accept the rotating number' }}
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- access codes -->
+    <section class="sims-card supreme-wide">
+      <div class="panel-heading" style="margin-bottom:12px">
+        <div>
+          <h2>Access codes</h2>
+          <p>{{ pending|length }} request{{ '' if pending|length == 1 else 's' }} · one code each, {{ code_minutes }} minutes, single use.</p>
+        </div>
+      </div>
+
+      {% if not pending %}
+      <p class="empty-note">Nobody is waiting. When another administrator signs in, their request lands
+        here and they cannot get in until you issue a code.</p>
+      {% else %}
+      <ul class="supreme-requests">
+        {% for item in pending %}
+        <li>
+          <div class="supreme-request-head">
+            <strong>{{ item.username }}</strong>
+            {% if item.expired %}
+              <span class="supreme-tag is-stale">code expired</span>
+            {% elif item.status == 'approved' %}
+              <span class="supreme-tag is-ready">code issued</span>
+            {% else %}
+              <span class="supreme-tag is-waiting">waiting {{ item.waiting_minutes }} min</span>
+            {% endif %}
+          </div>
+          <div class="supreme-request-actions">
+            <form method="post" action="{{ url_for('owner.issue') }}" class="supreme-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="request_id" value="{{ item.request_id }}">
+              <input class="form-input supreme-mini" name="master_key" type="password"
+                     {% if key_set %}required{% endif %} autocomplete="off"
+                     placeholder="{% if key_set %}Master key{% else %}No key set{% endif %}"
+                     aria-label="Master key to issue a code for {{ item.username }}">
+              <button class="btn-primary-pill" type="submit">Issue code</button>
+            </form>
+            <form method="post" action="{{ url_for('owner.revoke') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="request_id" value="{{ item.request_id }}">
+              <button class="supreme-mini-btn" type="submit">Close request</button>
+            </form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+
+  </div>
+
+  {% if history %}
+  <section class="sims-card supreme-history" id="sign-in-history">
+    <div class="panel-heading" style="margin-bottom:12px">
+      <div>
+        <h2>Sign-in history</h2>
+        <p>Every sign-in and sign-out on the portal — administrators, supreme, faculty and
+           students. Times are {{ history_time_label }}. Entries cannot be edited or deleted;
+           not even from the SQL console.</p>
+      </div>
+      <div class="supreme-history-side">
+        <div class="supreme-history-counts">
+          <span><strong>{{ history_totals.signed_in }}</strong> in</span>
+          <span><strong>{{ history_totals.signed_out }}</strong> out</span>
+          <span><strong>{{ history_totals.today }}</strong> today</span>
+        </div>
+        <div class="supreme-downloads">
+          <a class="supreme-mini-btn" href="{{ url_for('owner.history_csv', **request.args) }}">CSV</a>
+          <a class="supreme-mini-btn" href="{{ url_for('owner.history_pdf', **request.args) }}">PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <form class="supreme-history-filter" method="get" action="{{ url_for('owner.center') }}">
+      <input class="form-input supreme-mini" type="search" name="who" value="{{ history_who }}"
+             placeholder="Username" aria-label="Filter the history by username">
+      <select class="form-input supreme-mini" name="role" aria-label="Filter the history by role">
+        <option value="">Everyone</option>
+        {% for value, label in [('supreme','Supreme'), ('admin','Administrators'), ('faculty','Faculty'), ('student','Students')] %}
+        <option value="{{ value }}" {{ 'selected' if history_role == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select class="form-input supreme-mini" name="event" aria-label="Filter the history by event">
+        <option value="">Sign-ins and sign-outs</option>
+        <option value="signed in" {{ 'selected' if history_event == 'signed in' }}>Sign-ins only</option>
+        <option value="signed out" {{ 'selected' if history_event == 'signed out' }}>Sign-outs only</option>
+      </select>
+      <button class="supreme-mini-btn" type="submit">Filter</button>
+      {% if history_who or history_role or history_event %}
+      <a class="supreme-history-reset" href="{{ url_for('owner.center') }}">Show everything</a>
+      {% endif %}
+    </form>
+
+    <div class="sims-table-container">
+      <table class="sims-table supreme-table supreme-history-table">
+        <thead><tr><th>When</th><th>Who</th><th>Role</th><th>Event</th><th>From</th><th>Note</th></tr></thead>
+        <tbody>
+          {% for entry in history %}
+          <tr>
+            <td class="supreme-when-cell">{{ entry.at }}</td>
+            <td><strong>{{ entry.username }}</strong></td>
+            <td><span class="supreme-tag {{ 'is-owner' if entry.role == 'supreme' }}">{{ entry.role }}</span></td>
+            <td>
+              <span class="supreme-event {{ 'is-in' if entry.event == 'signed in' else 'is-out' }}">
+                {{ entry.event }}
+              </span>
+            </td>
+            <td class="subtle">{{ entry.address or '—' }}</td>
+            <td class="subtle">{{ entry.detail or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="subtle" style="margin-top:10px">Showing the latest {{ history|length }} of
+      {{ history_totals.total }} recorded events.</p>
+  </section>
+  {% endif %}
+
+  {% if activity is not none %}
+  <section class="sims-card supreme-history supreme-activity" id="change-log">
+    <div class="panel-heading" style="margin-bottom:12px">
+      <div>
+        <h2>Change log</h2>
+        <p>What administrators and faculty actually changed, detected automatically on every
+           screen — including the SQL console. Their username first, then the change.
+           Times are {{ activity_time_label }}. Append-only: nothing here can be edited or deleted.</p>
+      </div>
+      <div class="supreme-history-side">
+        <div class="supreme-history-counts">
+          <span><strong>{{ activity_totals.total }}</strong> changes</span>
+          <span><strong>{{ activity_totals.today }}</strong> today</span>
+          <span><strong>{{ activity_totals.people }}</strong> people</span>
+        </div>
+        <div class="supreme-downloads">
+          <a class="supreme-mini-btn" href="{{ url_for('owner.activity_csv', **request.args) }}">CSV</a>
+          <a class="supreme-mini-btn" href="{{ url_for('owner.activity_pdf', **request.args) }}">PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <form class="supreme-history-filter" method="get" action="{{ url_for('owner.center') }}#change-log">
+      <input class="form-input supreme-mini" type="search" name="who" value="{{ activity_who }}"
+             placeholder="Username" aria-label="Filter the change log by username">
+      <select class="form-input supreme-mini" name="role" aria-label="Filter the change log by role">
+        <option value="">Admins and faculty</option>
+        <option value="admin" {{ 'selected' if activity_role == 'admin' }}>Administrators</option>
+        <option value="faculty" {{ 'selected' if activity_role == 'faculty' }}>Faculty</option>
+      </select>
+      <select class="form-input supreme-mini" name="action" aria-label="Filter the change log by action">
+        <option value="">Every action</option>
+        {% for action in ['INSERT', 'UPDATE', 'DELETE'] %}
+        <option value="{{ action }}" {{ 'selected' if activity_action == action }}>{{ action }}</option>
+        {% endfor %}
+      </select>
+      <button class="supreme-mini-btn" type="submit">Filter</button>
+      {% if activity_who or activity_role or activity_action %}
+      <a class="supreme-history-reset" href="{{ url_for('owner.center') }}#change-log">Show everything</a>
+      {% endif %}
+    </form>
+
+    {% if not activity %}
+    <p class="empty-note">Nothing changed yet. Every change an administrator or faculty member saves
+      — from any screen or the SQL console — will appear here by itself.</p>
+    {% else %}
+    <div class="sims-table-container">
+      <table class="sims-table supreme-table supreme-history-table">
+        <thead><tr><th>When</th><th>Who</th><th>Role</th><th>Action</th><th>What</th><th>Details</th><th>From</th></tr></thead>
+        <tbody>
+          {% for entry in activity %}
+          <tr>
+            <td class="supreme-when-cell">{{ entry.at }}</td>
+            <td><strong>{{ entry.username }}</strong></td>
+            <td><span class="supreme-tag {{ 'is-owner' if entry.role == 'admin' }}">{{ entry.role }}</span></td>
+            <td><span class="supreme-event {{ 'is-out' if entry.action == 'DELETE' else 'is-in' }}">{{ entry.action }}</span></td>
+            <td><code class="supreme-object">{{ entry.object }}</code></td>
+            <td class="subtle supreme-detail-cell">{{ entry.detail or '—' }}</td>
+            <td class="subtle">{{ entry.address or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="subtle" style="margin-top:10px">Showing the latest {{ activity|length }} of
+      {{ activity_totals.total }} recorded changes.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <section class="sims-card supreme-trail">
+    <div class="panel-heading" style="margin-bottom:10px">
+      <div><h2>Owner activity</h2><p>Every lock, code and account action, newest first.</p></div>
+    </div>
+    {% if not trail %}
+    <p class="empty-note">Nothing yet. Actions you take here will appear in this list.</p>
+    {% else %}
+    <ol class="supreme-timeline">
+      {% for entry in trail %}
+      <li>
+        <span class="supreme-dot" aria-hidden="true"></span>
+        <div>
+          <strong>{{ entry.action }}</strong>
+          <span class="subtle">{% if entry.detail %}· {{ entry.detail }}{% endif %}</span>
+          <span class="supreme-when">{{ entry.when }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/owner.js') }}"></script>
+{% endblock %}

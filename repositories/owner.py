@@ -12,6 +12,7 @@ Only hashes are stored. Nothing here ever keeps a master key or an access code
 in plaintext, and the tables are created on first use so an existing
 installation needs no migration.
 """
+import hashlib
 import hmac
 import secrets
 from datetime import datetime, timedelta
@@ -20,6 +21,7 @@ import bcrypt
 from flask import g, has_app_context
 
 from config import Config
+from repositories import admin_sessions
 from repositories.db_pool import db_pool
 
 GUARD_TABLE = 'owner_guard'
@@ -93,12 +95,38 @@ def _set(key, value):
             f'INSERT INTO {GUARD_TABLE} (guard_key, guard_value) VALUES (%s, %s)', (key, value))
 
 
+def record(action, who, detail):
+    """Public audit entry, used by Supreme control."""
+    _record(action, who, detail)
+
+
+def trail(limit=12):
+    """The owner's own recent actions, newest first."""
+    ensure_schema()
+    try:
+        rows = db_pool.execute_query(
+            "SELECT action, new_values, changed_by, changed_at FROM audit_log "
+            "WHERE table_name = 'admin_guard' ORDER BY changed_at DESC, log_id DESC LIMIT %s",
+            (limit,), fetch='all') or []
+    except Exception:
+        return []
+    trail_rows = []
+    for row in rows:
+        action, _, detail = (row['new_values'] or '').partition(' | ')
+        trail_rows.append({'action': action or row['action'] or 'owner action',
+                           'detail': detail.strip(),
+                           'who': row['changed_by'] or 'owner',
+                           'when': row['changed_at']})
+    return trail_rows
+
+
 def _record(action, who, detail):
     """Keep a short trail in the existing audit log."""
     try:
         db_pool.execute_dml(
             "INSERT INTO audit_log (table_name, action, record_id, new_values, changed_by) "
-            "VALUES ('admin_guard', 'UPDATE', 0, %s, %s)", (detail, who))
+            "VALUES ('admin_guard', 'UPDATE', 0, %s, %s)",
+            (f'{action} | {detail}', who))
     except Exception:
         pass
 
@@ -120,13 +148,28 @@ def owner_username():
     return _memo('owner_username', _resolve_owner)
 
 
+def _admin_exists(username):
+    if not username:
+        return False
+    return bool(db_pool.execute_query(
+        "SELECT user_id FROM app_user WHERE LOWER(username) = LOWER(%s) AND role = 'admin'",
+        (username,), fetch='one'))
+
+
 def _resolve_owner():
-    configured = str(getattr(Config, 'OWNER_USERNAME', '') or _get('owner_username') or '').strip()
-    if not configured:
-        configured = db_pool.execute_query(
-            "SELECT username FROM app_user WHERE role = 'admin' ORDER BY user_id LIMIT 1",
-            fetch='val') or ''
-    return str(configured).strip().lower()
+    """The supreme account, the stored owner, or the first administrator.
+
+    A configured name only counts when that administrator actually exists, so a
+    typo in ``OWNER_USERNAME`` can never leave a portal with no owner at all.
+    """
+    for candidate in (getattr(Config, 'OWNER_USERNAME', ''), _get('owner_username')):
+        name = str(candidate or '').strip()
+        if name and _admin_exists(name):
+            return name.lower()
+    fallback = db_pool.execute_query(
+        "SELECT username FROM app_user WHERE role = 'admin' ORDER BY user_id LIMIT 1",
+        fetch='val') or ''
+    return str(fallback).strip().lower()
 
 
 def is_owner(username):
@@ -198,7 +241,9 @@ def lockdown(by_username):
     _set('epoch_changed_by', by_username)
     if has_app_context():
         g.owner_epoch = new_epoch
-    _record('lockdown', by_username, f'administrator sessions ended (epoch {current} -> {new_epoch})')
+    ended = admin_sessions.sign_out_everyone(by_username)
+    _record('lockdown', by_username,
+            f'administrator sessions ended (epoch {current} -> {new_epoch}); {len(ended)} account(s) signed out')
     return new_epoch
 
 
@@ -248,7 +293,7 @@ def request_access(username, user_id=None, note=''):
     row = db_pool.execute_query(
         f'SELECT request_id FROM {REQUEST_TABLE} WHERE LOWER(username) = LOWER(%s) '
         'ORDER BY request_id DESC LIMIT 1', (username,), fetch='val')
-    _record('access requested', username, 'administrator access requested')
+    _record('access requested', username, 'asked for a one-time code')
     return row
 
 
@@ -293,7 +338,8 @@ def redeem_code(username, code):
         return False, 'Enter the access code the owner gave you.'
     rows = _requests("WHERE LOWER(username) = LOWER(%s) AND status = 'approved'", (username,))
     if not rows:
-        return False, 'There is no approved access request for this account yet. Ask the owner.'
+        return False, ('There is no approved access request for this account yet. Ask the owner '
+                       'for a code, or use the rotating number shown on the supreme page.')
     row = rows[0]
     expires = _parse(row.get('code_expires'))
     if not expires or expires < _now():
@@ -321,8 +367,13 @@ def redeem_code(username, code):
     db_pool.execute_dml(
         f'UPDATE {REQUEST_TABLE} SET status = %s, resolved_at = %s, code_hash = NULL '
         'WHERE request_id = %s', ('used', _stamp(_now()), row['request_id']))
-    _record('access granted', username, 'administrator signed in with an access code')
+    _record('access granted', username, 'signed in with an access code')
     return True, 'Access granted.'
+
+
+def requests_for(username):
+    """Every access request for one account, newest first."""
+    return _requests('WHERE LOWER(username) = LOWER(%s)', (username,))
 
 
 def pending_count():
@@ -339,9 +390,66 @@ def revoke(request_id):
     _record('access revoked', 'owner', f'request {request_id} revoked')
 
 
+def otp_exempt_usernames():
+    """Administrators who sign in with a password only."""
+    raw = str(getattr(Config, 'OTP_EXEMPT_ADMINS', '') or '')
+    return {part.strip().lower() for part in raw.replace(';', ',').split(',') if part.strip()}
+
+
+def is_otp_exempt(username):
+    """The supreme administrator, and any admin explicitly exempted."""
+    name = str(username or '').strip().lower()
+    return bool(name) and (is_owner(name) or name in otp_exempt_usernames())
+
+
+def code_required():
+    """Does an administrator have to type a code at sign-in?
+
+    Off by default: administrators sign in the normal way, with their username
+    and password. The supreme administrator can switch the requirement on from
+    the supreme page, and switch it off again just as easily.
+    """
+    return bool(int(_get('code_required', 0) or 0))
+
+
+def set_code_required(required, by_username='owner'):
+    _set('code_required', 1 if required else 0)
+    _record('sign-in codes required' if required else 'password-only sign-in',
+            by_username, 'administrator sign-in')
+    return bool(required)
+
+
 def needs_approval(username, role):
-    """Administrators who are not the owner need the owner's approval."""
-    return role == 'admin' and not is_owner(username)
+    """Only when the supreme administrator has asked for codes.
+
+    The switch is off on a normal installation, so username + password is all an
+    administrator needs. While it is on, every administrator who is not exempt
+    must also supply the rotating number or a one-time code.
+    """
+    return code_required() and role == 'admin' and not is_otp_exempt(username)
+
+
+def login_closed():
+    """The owner's global switch: no administrator may sign in but them."""
+    return bool(int(_get('login_closed', 0) or 0))
+
+
+def close_logins(closed, by_username='owner'):
+    _set('login_closed', 1 if closed else 0)
+    _set('login_closed_at', _stamp(_now()))
+    _record('logins closed' if closed else 'logins opened', by_username,
+            'administrator sign-in switch')
+    return closed
+
+
+def account_blocked(username):
+    return admin_sessions.login_blocked(username)
+
+
+def block_account(username, blocked, by_username='owner'):
+    admin_sessions.block_login(username, blocked)
+    _record('account blocked' if blocked else 'account unblocked', by_username, username)
+    return blocked
 
 
 def other_admins(username):
@@ -349,3 +457,115 @@ def other_admins(username):
     rows = db_pool.execute_query(
         "SELECT username FROM app_user WHERE role = 'admin'", fetch='all') or []
     return [row['username'] for row in rows if not is_owner(row['username'])]
+
+
+# ---------------------------------------------------------------------------
+# the rotating code: one six-digit number, changed every ten minutes
+# ---------------------------------------------------------------------------
+# Some campus setups do not want a per-person code round trip: the supreme
+# administrator keeps one screen open, reads the number off it, and tells the
+# administrator who is standing in front of them. The number is derived from an
+# installation secret and the clock, so it is never stored, never reused, and it
+# changes by itself. It is deliberately *not* the same thing as the one-time
+# access code above: the owner can switch it off in one click.
+ROTATING_MINUTES = 10
+
+
+def rotating_minutes():
+    """How long one number lasts (minutes). Configurable, ten by default."""
+    try:
+        value = int(getattr(Config, 'ROTATING_CODE_MINUTES', ROTATING_MINUTES))
+    except (TypeError, ValueError):
+        return ROTATING_MINUTES
+    return value if 1 <= value <= 120 else ROTATING_MINUTES
+
+
+def _rotating_secret():
+    """A per-installation secret, created on first use."""
+    secret = _get('rotating_secret')
+    if not secret:
+        secret = secrets.token_hex(16)
+        _set('rotating_secret', secret)
+    return secret
+
+
+def rotating_window(moment=None):
+    """Which ten-minute slot a moment falls in."""
+    step = rotating_minutes() * 60
+    return int((moment or _now()).timestamp()) // step
+
+
+def rotating_code(window=None):
+    """The six-digit number for one slot (the current one by default)."""
+    slot = rotating_window() if window is None else int(window)
+    digest = hmac.new(_rotating_secret().encode('utf-8'),
+                      f'nist-rotating-{slot}'.encode('utf-8'), hashlib.sha256).digest()
+    return f'{int.from_bytes(digest[:8], "big") % 1000000:06d}'
+
+
+def rotating_seconds_left(moment=None):
+    """Seconds until the number changes."""
+    step = rotating_minutes() * 60
+    now = moment or _now()
+    return step - (int(now.timestamp()) % step)
+
+
+def rotating_enabled():
+    """Is the rotating code accepted at sign-in? On unless switched off."""
+    return bool(int(_get('rotating_enabled', 1) or 0))
+
+
+def set_rotating_enabled(enabled, by_username='owner'):
+    _set('rotating_enabled', 1 if enabled else 0)
+    _record('rotating code on' if enabled else 'rotating code off', by_username,
+            'administrator sign-in')
+    return bool(enabled)
+
+
+def verify_rotating_code(code, moment=None):
+    """Does this six-digit number match, now or in the slot that just ended?
+
+    The previous slot is accepted so a number read a few seconds before the
+    change still works while the administrator is typing it.
+    """
+    text = str(code or '').strip()
+    if not rotating_enabled() or len(text) != 6 or not text.isdigit():
+        return False
+    now = moment or _now()
+    windows = (rotating_window(now),
+               rotating_window(now - timedelta(minutes=rotating_minutes())))
+    return any(hmac.compare_digest(text, rotating_code(window)) for window in windows)
+
+
+def _portal_clock(moment):
+    """A moment as the campus reads it (IST by default), e.g. "04:10 PM IST"."""
+    try:
+        offset = int(getattr(Config, 'PORTAL_UTC_OFFSET_MINUTES', 330))
+    except (TypeError, ValueError):
+        offset = 330
+    label = str(getattr(Config, 'PORTAL_TIME_LABEL', 'IST') or 'IST')
+    return f'{(moment + timedelta(minutes=offset)).strftime("%I:%M %p").lstrip("0")} {label}'
+
+
+def rotating_snapshot(moment=None):
+    """Everything the supreme page and the sign-in page need to know."""
+    now = moment or _now()
+    minutes = rotating_minutes()
+    changes_at = now + timedelta(seconds=rotating_seconds_left(now))
+    return {
+        'code': rotating_code(rotating_window(now)),
+        'minutes': minutes,
+        'seconds_left': rotating_seconds_left(now),
+        'enabled': rotating_enabled(),
+        'next_change': _stamp(changes_at),
+        'next_change_label': _portal_clock(changes_at),
+    }
+
+
+def close_request(request_id, note='closed by the owner'):
+    """Mark a request handled without issuing a code (used by the rotating path)."""
+    ensure_schema()
+    db_pool.execute_dml(
+        f'UPDATE {REQUEST_TABLE} SET status = %s, resolved_at = %s WHERE request_id = %s',
+        ('used', _stamp(_now()), request_id))
+    _record('access granted', 'rotating code', note)

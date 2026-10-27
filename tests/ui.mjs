@@ -48,11 +48,28 @@ try {
     );
     assert.deepEqual(issues, [], `${page.url()} accessibility violations`);
   };
-  await visit("/login");
-  await page.getByLabel("Username or roll number").fill("admin");
-  await page.getByLabel("Password", { exact: true }).fill("admin123");
-  await page.getByRole("button", { name: "Step into your workspace" }).click();
-  await page.waitForURL("**/dashboard");
+  // The supreme administrator has their own door; their session is a full
+  // administrator session, which is what the rest of this suite exercises.
+  const supremeAttempts = [
+    [process.env.SUPREME_USERNAME || "om-2026", process.env.SUPREME_PASSWORD || "Superadmin123"],
+    ["admin", "admin123"], // a freshly seeded install: the first admin is the owner
+  ];
+  let supremeSignedIn = false;
+  let supremeCreds = supremeAttempts[0];
+  for (const [name, secret] of supremeAttempts) {
+    await page.goto(base + "/supreme", { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Supreme username").fill(name);
+    await page.getByLabel("Supreme password").fill(secret);
+    await page.getByRole("button", { name: "Enter the supreme dashboard" }).click();
+    await page.waitForLoadState("domcontentloaded");
+    if (/\/owner$/.test(page.url())) {
+      supremeSignedIn = true;
+      supremeCreds = [name, secret];
+      break;
+    }
+  }
+  assert.ok(supremeSignedIn, "the supreme account could not sign in");
+  await visit("/dashboard");
   await page.waitForSelector("#activityChart svg");
   assert.equal(await page.locator(".module-card:visible").count(), 6);
   await page.getByRole("tab", { name: /People/ }).click();
@@ -173,9 +190,9 @@ try {
   assert.match(await page.locator(".sql-error").innerText(), /not allowed/);
   assert.equal(await page.locator(".sql-history-item").count() > 0, true);
 
-  // Owner controls: master key, deliberate lockdown, and the owner survives it.
-  // A key may already exist from an earlier run; only create one when absent.
-  await visit("/admin-access");
+  // Supreme control: the master key, the live roster, and the owner's own
+  // session surviving a lockdown. A key may exist from an earlier run.
+  await visit("/owner");
   let masterKey = null;
   if ((await page.locator("#currentKey").count()) === 0) {
     masterKey = "ui-test-master-key-1";
@@ -184,30 +201,43 @@ try {
     await page.waitForLoadState("networkidle");
     assert.match(
       await page.locator(".flash-message").first().innerText(),
-      /master key is ready/,
+      /master key is ready/i,
     );
   }
   assert.ok(await page.locator("#lockdownForm").isVisible(), "lockdown form");
   assert.ok(
-    await page.getByRole("heading", { name: "Sign every other administrator out" }).isVisible(),
-    "lockdown heading",
+    await page.getByRole("heading", { name: "Administrators" }).isVisible(),
+    "administrator roster heading",
   );
+  assert.ok(
+    (await page.getByRole("heading", { name: "You are the supreme administrator." }).count()) === 1,
+    "owner banner",
+  );
+  for (const heading of ["Administrator sign-in", "Access codes", "Master key", "Owner activity"]) {
+    assert.ok(
+      (await page.getByRole("heading", { name: heading, exact: true }).count()) === 1,
+      `supreme section: ${heading}`,
+    );
+  }
+  // The old address still works, but as a redirect to the new home.
+  await page.goto(base + "/admin-access");
+  await page.waitForURL(/\/owner$/);
   await audit();
   if (masterKey) {
-    await page.getByLabel("Master key", { exact: true }).fill(masterKey);
-    const lockButton = page.locator(".owner-lock-btn");
+    await page.getByLabel("Master key to sign everyone out").fill(masterKey);
+    const lockButton = page.locator(".supreme-lock");
     await lockButton.click(); // the first click only arms the lock
     assert.match(await lockButton.innerText(), /again/i, "lockdown asks for confirmation");
     await lockButton.click();
     await page.waitForLoadState("networkidle");
     assert.match(
       await page.locator(".flash-message").first().innerText(),
-      /Every other administrator session has been ended/,
+      /Every other administrator has been signed out/i,
     );
     await visit("/dashboard"); // the owner survives their own lock
     assert.ok(
-      await page.getByRole("link", { name: "Admin access" }).isVisible(),
-      "owner keeps the Admin access link",
+      await page.getByRole("link", { name: "Supreme control" }).isVisible(),
+      "owner keeps the Supreme control link",
     );
   }
 
@@ -398,29 +428,26 @@ try {
       await embeddedPage.route("https://preview-frame.test/**", (route) =>
         route.fulfill({
           contentType: "text/html",
-          body: '<iframe title="Campus preview" src="https://campus-embedded.test/login" style="width:1200px;height:900px"></iframe>',
+          body: '<iframe title="Campus preview" src="https://campus-embedded.test/supreme" style="width:1200px;height:900px"></iframe>',
         }),
       );
       await embeddedPage.goto("https://preview-frame.test/");
       const frame = embeddedPage.frameLocator("iframe");
-      await frame.getByLabel("Username or roll number").fill("admin");
-      await frame.getByLabel("Password", { exact: true }).fill("admin123");
+      await frame.getByLabel("Supreme username").fill(supremeCreds[0]);
+      await frame.getByLabel("Supreme password").fill(supremeCreds[1]);
       const loginResponse = embeddedPage.waitForResponse((response) =>
-        response.url().endsWith("/api/auth/login"),
+        response.url().endsWith("/supreme/login"),
       );
       await frame
-        .getByRole("button", { name: "Step into your workspace" })
+        .getByRole("button", { name: "Enter the supreme dashboard" })
         .click();
-      assert.equal(
-        (await loginResponse).status(),
-        200,
+      // The mock rewrites redirects into a small HTML shim, so 200 is expected.
+      assert.ok(
+        [200, 302].includes((await loginResponse).status()),
         "Embedded preview login",
       );
-      await frame.locator(".module-card").first().waitFor();
-      assert.equal(await frame.locator(".module-card").count(), 6);
-      await frame
-        .getByRole("button", { name: "Sign out", exact: true })
-        .click();
+      await frame.locator(".supreme-banner").waitFor();
+      await frame.locator(".signout-btn").click();
       await frame.getByLabel("Username or roll number").waitFor();
     } finally {
       await embeddedPage.close();

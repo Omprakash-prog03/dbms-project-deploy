@@ -61,15 +61,49 @@ These were verified by reading the original source, not assumed:
 
 - **PDF reporting** (`repositories/pdf.py`): a dependency-free PDF writer producing paginated A4 reports, so the free host needs no native library or extra package.
 - **Reports page** (`/reports`): live campus figures, students by department/status, grade mix, administrator fee snapshot, row counts for every database table, per-table CSV export.
-- **Owner controls** (`/admin-access`, owner only): a bcrypt-hashed master key, one-tap lockdown that ends every other administrator session, and one-time six-digit access codes that other administrators must enter alongside their password. Backed by `owner_key.py` for recovery.
+- **Two sign-in doors**: `/login` for students, faculty and administrators (every administrator except the exempt ones also needs a one-time code), and `/supreme` for the supreme administrator's own username and password. The supreme account is refused on `/login` and redirected to `/supreme`; `/supreme` refuses everyone else.
+- **Supreme control** (`/owner`, owner only; `/admin-access` redirects): one private page holding a live administrator roster (signed in / signed out / blocked, last activity, sign-in count), per-account sign-out, the global lock, an administrator sign-in switch, one-time six-digit access codes, blocks, password resets, removals and the owner's own activity trail. A bcrypt-hashed master key guards every action and is re-checked on destructive forms; `owner_key.py` is the console fallback.
+- **Live session registry** (`admin_session`): each administrator sign-in carries a token version, so one account can be ejected without touching the others, while the lock is still an `epoch` counter that survives restarts.
+- **The sign-in page explains the rule before anyone fails**: sign-in is username and password by default, the access-code box appears only while codes are switched on (with an "administrators only" note), the page polls `/api/auth/access-status` every five seconds while an administrator waits, and closed sign-in / blocked account are stated on the page rather than failing silently. Students and faculty are never shown administrator messages.
 - **Raw data viewer** (`/raw-data`, administrator only): every physical table rendered the way a database client prints a result — the `SELECT` statement above a monospaced fixed-width grid with a dashed header rule, row numbers, pagination, and column metadata — plus CSV and landscape PDF downloads of the whole table. `password_hash` and `photo_url` are never selected.
 - **SQL console** (`/raw-data/query`, administrator only): a genuine SQL prompt over the live database — read and write statements, raw fixed-width output with timing, per-session history, schema reference and one-click examples. Schema changes are refused and credential columns are masked.
 - **Student report card PDF** (`/students/<id>/report.pdf`): enrolment, marks, attendance, and the fee ledger for administrators and the student themselves.
 - **Departments management** — the zip had a read-only departments page; creation/editing with head-of-department assignment is new.
 - **Admission application entry, examination creation, student password choice, faculty password choice** — the empty-install gaps.
 - **Deployment toolchain**: `wsgi.py`, `scripts/init_production.py`, `scripts/check_production.py`, `scripts/reset_password.py`, `scripts/setup_pythonanywhere.sh`, `scripts/browser.mjs`, `requirements-runtime.txt`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/test.yml`.
-- **Verification**: 156 Python tests (up from 43) including concurrency, backup/restore, production bootstrap and CSRF regressions, plus a Playwright suite covering 17 routes, three roles, accessibility and PDFs.
+- **Verification**: 311 Python tests (up from 43) including concurrency, backup/restore, production bootstrap and CSRF regressions, plus a Playwright suite covering 17 routes, three roles, accessibility and PDFs.
 - **Assets**: six generated glass sculptures, local Inter fonts, favicon — no runtime CDN.
+
+### 4a. The two append-only registers (latest addition)
+
+The portal now keeps two tables that nobody — not an administrator, not the SQL
+console, not the application itself — can edit or delete. Both are created on
+first start (`ensure_schema()`), so no migration step is needed on a live site.
+
+| Register                  | What it stores                                                                                        | Who is recorded                        | Downloads                  |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------- | -------------------------- |
+| `login_history`           | Every `signed in` / `signed out` event with the time (UTC on disk, IST on screen), address and a note | Administrators, supreme, faculty, students | `/owner/history.csv`, `/owner/history.pdf` |
+| `staff_activity`          | Every change an administrator or faculty member saves: username, role, action, screen/table and the fields sent | Administrators and faculty only        | `/owner/activity.csv`, `/owner/activity.pdf` |
+
+- **Automatic, not opt-in.** A Flask `after_request` hook reads the authenticated
+  role and records one line per successful state-changing request, so a new screen
+  is covered the day it is added. The SQL console records the statement itself;
+  reads and refused statements are not changes and are skipped.
+- **Three layers of immutability.** No application path updates or deletes a row;
+  database triggers (`trg_login_history_no_update/no_delete`,
+  `trg_staff_activity_no_update/no_delete`) abort any `UPDATE`/`DELETE` in SQLite
+  and MySQL; and the SQL console refuses any statement that writes to either table.
+  The raw-data viewer shows them read-only.
+- **The rotating code.** The supreme page shows one six-digit number for the whole
+  campus, derived from a per-installation secret and the ten-minute clock, so it is
+  never stored and never repeats: `/owner/rotating-code` serves it, the page counts
+  down and refreshes itself when it rolls over. Sign-in is **username and password
+  only** by default; the supreme administrator can require the number with one click
+  (`/owner/code-required/switch`) and remove the requirement with another. Personal
+  one-time codes still work while the requirement is on.
+- **On the supreme dashboard** (`/owner`) the two sections list the latest 120
+  entries each, filterable by username, role and event/action, with the totals, and
+  the CSV/PDF buttons export the whole register.
 
 ## 5. Removed from the zip
 
@@ -96,6 +130,11 @@ routes/rawdata.py                 tests/test_rawdata.py            repositories/
 tests/test_sqlconsole.py          templates/rawdata/query.html     static/js/sqlconsole.js
 tests/production_smoke.py         tests/test_backup_restore.py      tests/test_production.py
 tests/test_reports.py             tests/test_workspace.py           tests/ui.mjs
+repositories/login_history.py   repositories/staff_activity.py
+tests/test_login_history.py     tests/test_staff_activity.py
+scripts/setup_admins.py         scripts/owner_key.py
+templates/owner/center.html     static/js/owner.js
+templates/supreme-login.html    static/css/supreme-login.css
 ```
 
 ## 7. Things still not done

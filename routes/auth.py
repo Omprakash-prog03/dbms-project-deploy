@@ -3,6 +3,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 import bcrypt
 from extensions import limiter
 from repositories.db_pool import db_pool
+from repositories import admin_sessions
+from repositories import login_history
 from repositories import owner as owner_guard
 
 auth_bp = Blueprint("auth", __name__)
@@ -37,8 +39,10 @@ def role_required(*allowed_roles):
 @auth_bp.route("/login", methods=["GET"])
 def login_view():
     if "user_id" in session:
+        if session.get("role") == "admin" and owner_guard.is_owner(session.get("username")):
+            return redirect(url_for("owner.center"))
         return redirect(url_for("dashboard.dashboard_view"))
-    return render_template("login.html")
+    return render_template("login.html", code_required=owner_guard.code_required())
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
 @limiter.limit("10 per minute")
@@ -78,30 +82,59 @@ def login_api():
         status = db_pool.execute_query("SELECT status FROM faculty WHERE faculty_id = %s", (user["faculty_id"],), fetch="val")
         if status != "Active":
             return jsonify(success=False, message="This account is inactive. Please contact the university office."), 403
-    # Administrators who are not the owner must hold a code the owner issued.
+    if owner_guard.is_owner(user["username"]):
+        # The supreme administrator signs in on their own page, never here.
+        return jsonify({
+            "success": False, "code": "use_supreme_page",
+            "redirect": url_for("owner.supreme_login"),
+            "message": ("The supreme administrator signs in on the supreme page. "
+                        "Taking you there now."),
+        }), 403
+
+    # Every other administrator needs a code: the rotating number on the supreme
+    # page, or a one-time code the supreme administrator issues.
     access_code = str(data.get('access_code') or '').strip()
+    used_rotating = False
     if owner_guard.needs_approval(user['username'], user['role']):
-        if not owner_guard.master_key_set():
+        if owner_guard.login_closed():
             return jsonify({
                 'success': False, 'code': 'owner_blocked',
-                'message': ('The owner has not set a master key yet, so administrator access is '
-                            'closed. Ask the owner to open Admin access and create one.'),
+                'message': ('The supreme administrator has closed administrator sign-in. Ask them to '
+                            'open the supreme dashboard and allow administrators again.'),
             }), 403
+        if owner_guard.account_blocked(user['username']):
+            return jsonify({
+                'success': False, 'code': 'owner_blocked',
+                'message': ('This administrator account is blocked by the supreme administrator and '
+                            'cannot sign in, even with a code.'),
+            }), 403
+        request_id = owner_guard.request_access(user['username'], user['user_id'])
         if not access_code:
-            request_id = owner_guard.request_access(user['username'], user['user_id'])
+            waiting = ('Administrator access needs a code. The supreme administrator keeps a '
+                       'six-digit number that changes every '
+                       f'{owner_guard.rotating_minutes()} minutes — ask them for it, or ask for a '
+                       'one-time code of your own.')
             return jsonify({
                 'success': False, 'code': 'approval_required', 'request_id': request_id,
-                'message': ('Administrator access needs a code from the owner. Your request is '
-                            'waiting — ask the owner for the six-digit code, then enter it here.'),
+                'message': f'{waiting} Your request has been sent. Type the code in the access '
+                           'code box and sign in again.',
             }), 403
-        ok, why = owner_guard.redeem_code(user['username'], access_code)
+        # The rotating number on the supreme page works for any administrator and
+        # needs no request round trip. Personal one-time codes still work exactly
+        # as before, so nothing that used to sign in stops working.
+        used_rotating = owner_guard.verify_rotating_code(access_code)
+        if used_rotating:
+            owner_guard.close_request(request_id, f'signed in with the rotating code ({user["username"]})')
+            ok, why = True, 'Access granted with the rotating code.'
+        else:
+            ok, why = owner_guard.redeem_code(user['username'], access_code)
         if not ok:
-            owner_guard.request_access(user['username'], user['user_id'])
             if 'not correct' in why or 'attempt' in why:
                 message = why
             else:
-                message = f'{why} A fresh request is now waiting for the owner.'
-            return jsonify({'success': False, 'code': 'approval_required', 'message': message}), 403
+                message = f'{why} A fresh request is now waiting for the supreme administrator.'
+            return jsonify({'success': False, 'code': 'approval_required',
+                            'request_id': request_id, 'message': message}), 403
 
     # Rotate the session and CSRF token when privileges change.
     import secrets
@@ -115,13 +148,84 @@ def login_api():
     session["faculty_id"] = user.get("faculty_id")
     if user["role"] == "admin":
         session["access_approved"] = True
+        session["admin_token_version"] = admin_sessions.register(
+            user["username"], request.remote_addr or "")
         owner_guard.stamp_session()
 
     destination = url_for("students.profile_view", student_id=user["student_id"]) if user["role"] == "student" else url_for("dashboard.dashboard_view")
+    login_history.record(
+        user["username"],
+        "supreme" if owner_guard.is_owner(user["username"]) else user["role"],
+        login_history.SIGNED_IN,
+        request.remote_addr or "",
+        "at the campus sign-in" + (" with the rotating supreme code" if used_rotating else ""),
+    )
     return jsonify({"success": True, "redirect": destination, "role": user["role"]})
+
+@auth_bp.route("/api/auth/access-status", methods=["POST"])
+@limiter.limit("40 per minute")
+def access_status():
+    """Polled by the sign-in page: has the owner issued my code yet?"""
+    data = request.get_json(silent=True) or {}
+    username = str(data.get("username") or "").strip()
+    if not username:
+        return jsonify(success=False, message="Enter your username first."), 400
+    if owner_guard.is_owner(username):
+        return jsonify(success=True, state="owner",
+                       message="The supreme administrator signs in on the supreme page.")
+    # Only administrators pass the owner's gate; everyone else must never see
+    # administrator messages on their own sign-in page.
+    account = db_pool.execute_query(
+        "SELECT role FROM app_user WHERE LOWER(username) = LOWER(%s)", (username,), fetch="one")
+    if not account:
+        return jsonify(success=True, state="unknown",
+                       message="No account with that username.")
+    if account["role"] != "admin":
+        return jsonify(success=True, state="not-admin",
+                       message="Students and faculty sign in with just their password.")
+    if not owner_guard.code_required():
+        return jsonify(success=True, state="not-required",
+                       message="Sign in with your username and password — no code needed today.")
+    if owner_guard.is_otp_exempt(username):
+        return jsonify(success=True, state="not-required",
+                       message="This administrator signs in with a password only — no code needed.")
+    if owner_guard.login_closed():
+        return jsonify(success=True, state="closed",
+                       message="Administrator sign-in is closed by the owner.")
+    if owner_guard.account_blocked(username):
+        return jsonify(success=True, state="blocked",
+                       message="This account is blocked by the owner.")
+    rows = owner_guard.requests_for(username)
+    if not rows:
+        return jsonify(success=True, state="none",
+                       message="No request yet — sign in with your password to ask for a code.")
+    latest = rows[0]
+    state = latest.get("status") or "pending"
+    expires = owner_guard._parse(latest.get("code_expires"))
+    if state == "approved" and expires and expires < owner_guard._now():
+        state = "expired"
+    messages = {
+        "pending": "Your request is with the owner. This page checks again automatically.",
+        "approved": "The owner has issued your code — type it in the access code box.",
+        "used": "That code has already been used. Ask the owner for a new one.",
+        "revoked": "The owner closed this request. Ask for a new code.",
+        "expired": "That code expired. Ask the owner for a new one.",
+    }
+    return jsonify(success=True, state=state, message=messages.get(state, "Waiting for the owner."))
+
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
+    username = session.get("username")
+    role = session.get("role") or "account"
+    if username:
+        login_history.record(
+            username,
+            "supreme" if owner_guard.is_owner(username) else role,
+            login_history.SIGNED_OUT,
+            request.remote_addr or "",
+            "signed out from the portal",
+        )
     session.clear()
     flash("Successfully signed out.", "info")
     return redirect(url_for("auth.login_view"))

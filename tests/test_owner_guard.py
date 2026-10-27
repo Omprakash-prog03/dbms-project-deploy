@@ -36,9 +36,11 @@ def client_for(app, username, role='admin', **extra):
 def second_admin_client(app, username='deputy'):
     """An approved, signed-in administrator who is not the owner."""
     client = app.test_client()
+    from repositories import admin_sessions
     with client.session_transaction() as session:
         session.update(user_id=99, username=username, role='admin', access_approved=True,
-                       owner_epoch=owner.epoch())
+                       owner_epoch=owner.epoch(),
+                       admin_token_version=admin_sessions.version(username))
     return client
 
 
@@ -54,9 +56,22 @@ def test_first_administrator_is_the_owner():
 
 
 def test_owner_can_be_configured_explicitly(monkeypatch):
-    monkeypatch.setattr(Config, 'OWNER_USERNAME', 'omprakash')
-    assert owner.owner_username() == 'omprakash'
-    assert owner.is_owner('admin') is False
+    # A configured name only takes the supreme seat when that account exists.
+    db_pool.execute_dml(
+        "INSERT INTO app_user (username, password_hash, role) VALUES ('omprakash', 'unused', 'admin')")
+    try:
+        monkeypatch.setattr(Config, 'OWNER_USERNAME', 'omprakash')
+        assert owner.owner_username() == 'omprakash'
+        assert owner.is_owner('omprakash') is True
+        assert owner.is_owner('admin') is False
+    finally:
+        db_pool.execute_dml("DELETE FROM app_user WHERE username = 'omprakash'")
+
+
+def test_a_missing_config_name_falls_back_to_the_first_administrator(monkeypatch):
+    monkeypatch.setattr(Config, 'OWNER_USERNAME', 'nobody-at-all')
+    assert owner.owner_username() == 'admin'
+    assert owner.is_owner('admin') is True
 
 
 # ---------------------------------------------------------------------------
@@ -161,15 +176,18 @@ def test_revoked_request_disappears():
 # ---------------------------------------------------------------------------
 # login gate
 # ---------------------------------------------------------------------------
-def test_owner_logs_in_without_a_code(app):
+def test_the_owner_signs_in_on_the_supreme_page_not_the_campus_one(app):
     owner.set_master_key(MASTER)
     response = app.test_client().post('/api/auth/login', json={'username': 'admin', 'password': 'admin123'})
-    assert response.status_code == 200, response.get_json()
-    assert response.get_json()['success'] is True
+    assert response.status_code == 403
+    assert response.get_json()['code'] == 'use_supreme_page'
+    assert response.get_json()['redirect'].endswith('/supreme')
+    assert response.get_json()['success'] is False
 
 
 def test_other_administrator_is_blocked_until_a_code_is_issued(app):
     owner.set_master_key(MASTER)
+    owner.set_code_required(True)   # the supreme administrator asked for codes
     # A second admin account, created the same way the portal creates one.
     import bcrypt
     digest = bcrypt.hashpw(b'deputy-pass-1', bcrypt.gensalt()).decode()
@@ -183,7 +201,7 @@ def test_other_administrator_is_blocked_until_a_code_is_issued(app):
         assert blocked.status_code == 403
         payload = blocked.get_json()
         assert payload['code'] == 'approval_required'
-        assert 'owner' in payload['message'].lower()
+        assert 'supreme' in payload['message'].lower()
 
         # The owner sees the request and issues a code.
         pending = owner.pending_requests()
@@ -212,26 +230,32 @@ def test_other_administrator_is_blocked_until_a_code_is_issued(app):
         db_pool.execute_dml("DELETE FROM app_user WHERE user_id = %s", (user_id,))
 
 
-def test_administrator_login_is_closed_when_no_master_key_exists(app):
+def test_master_key_is_not_needed_for_an_administrator_to_ask_for_a_code(app):
+    """The key is optional step-up protection, never a closed door."""
     import bcrypt
+    owner.set_code_required(True)
+    assert not owner.master_key_set()
     digest = bcrypt.hashpw(b'deputy-pass-1', bcrypt.gensalt()).decode()
     db_pool.execute_dml(
         "INSERT INTO app_user (username, password_hash, role) VALUES (%s, %s, 'admin')",
         ('deputy', digest))
     user_id = db_pool.execute_query("SELECT user_id FROM app_user WHERE username = 'deputy'", fetch='val')
     try:
-        blocked = app.test_client().post('/api/auth/login', json={
+        waiting = app.test_client().post('/api/auth/login', json={
             'username': 'deputy', 'password': 'deputy-pass-1'})
-        assert blocked.status_code == 403
-        assert blocked.get_json()['code'] == 'owner_blocked'
+        assert waiting.status_code == 403
+        assert waiting.get_json()['code'] == 'approval_required'
+        assert [item['username'] for item in owner.pending_requests()] == ['deputy']
     finally:
+        db_pool.execute_dml("DELETE FROM admin_access_request WHERE LOWER(username) = 'deputy'")
         db_pool.execute_dml("DELETE FROM app_user WHERE user_id = %s", (user_id,))
 
 
 def test_students_and_faculty_never_need_a_code(app):
-    """The gate applies to administrators only."""
+    """The gate applies to administrators only, even when it is switched on."""
     import bcrypt
     owner.set_master_key(MASTER)
+    owner.set_code_required(True)
     digest = bcrypt.hashpw(b'gate-check-pass', bcrypt.gensalt()).decode()
     student_id = db_pool.execute_query(
         "SELECT student_id FROM student WHERE status = 'Active' LIMIT 1", fetch='val')
@@ -265,14 +289,14 @@ def test_lockdown_signs_out_every_other_administrator(app):
     assert other.get('/dashboard').status_code == 200
 
     mine = client_for(app, 'admin', access_approved=True)
-    assert mine.get('/admin-access').status_code == 200
+    assert mine.get('/owner').status_code == 200
 
-    locked = mine.post('/admin-access/lockdown', data={'master_key': MASTER})
+    locked = mine.post('/owner/lockdown', data={'master_key': MASTER})
     assert locked.status_code == 302
 
     # The owner keeps working...
     assert mine.get('/dashboard').status_code == 200
-    assert mine.get('/admin-access').status_code == 200
+    assert mine.get('/owner').status_code == 200
     # ...everybody else is out, on their very next request.
     thrown_out = other.get('/dashboard')
     assert thrown_out.status_code == 302
@@ -285,7 +309,7 @@ def test_lockdown_needs_the_master_key(app):
     owner.set_master_key(MASTER)
     before = owner.epoch()
     mine = client_for(app, 'admin', access_approved=True)
-    response = mine.post('/admin-access/lockdown', data={'master_key': 'not-the-key'})
+    response = mine.post('/owner/lockdown', data={'master_key': 'not-the-key'})
     assert response.status_code == 302
     assert owner.epoch() == before
     assert mine.get('/dashboard').status_code == 200
@@ -316,25 +340,25 @@ def test_api_requests_get_a_json_refusal(app):
 # ---------------------------------------------------------------------------
 def test_only_the_owner_can_open_the_page(app):
     owner.set_master_key(MASTER)
-    assert second_admin_client(app, 'deputy').get('/admin-access').status_code == 403
-    assert client_for(app, 'faculty', 'faculty', faculty_id=1).get('/admin-access').status_code == 403
-    assert client_for(app, 'student', 'student', student_id=1).get('/admin-access').status_code == 403
-    assert app.test_client().get('/admin-access').status_code == 302
+    assert second_admin_client(app, 'deputy').get('/owner').status_code == 403
+    assert client_for(app, 'faculty', 'faculty', faculty_id=1).get('/owner').status_code == 403
+    assert client_for(app, 'student', 'student', student_id=1).get('/owner').status_code == 403
+    assert app.test_client().get('/owner').status_code == 302
 
 
 def test_page_shows_key_state_and_requests(app):
     mine = client_for(app, 'admin', access_approved=True)
-    empty = mine.get('/admin-access')
+    empty = mine.get('/owner')
     assert empty.status_code == 200
     assert b'Create master key' in empty.data
 
     owner.set_master_key(MASTER)
     owner.request_access('deputy', user_id=99)
-    page = mine.get('/admin-access')
+    page = mine.get('/owner')
     assert page.status_code == 200
     assert b'Sign out everyone else' in page.data
     assert b'deputy' in page.data
-    assert b'Issue one-time code' in page.data
+    assert b'Issue code' in page.data
     assert MASTER.encode() not in page.data
     assert b'$2b$' not in page.data
 
@@ -343,28 +367,28 @@ def test_owner_issues_a_code_through_the_page(app):
     owner.set_master_key(MASTER)
     request_id = owner.request_access('deputy', user_id=99)
     mine = client_for(app, 'admin', access_approved=True)
-    response = mine.post('/admin-access/issue', data={'master_key': MASTER, 'request_id': request_id})
+    response = mine.post('/owner/issue', data={'master_key': MASTER, 'request_id': request_id})
     assert response.status_code == 302
-    shown = mine.get('/admin-access')
+    shown = mine.get('/owner')
     assert b'Access code for' in shown.data
     assert b'deputy' in shown.data
 
-    wrong = mine.post('/admin-access/issue', data={'master_key': 'nope', 'request_id': request_id})
+    wrong = mine.post('/owner/issue', data={'master_key': 'nope', 'request_id': request_id})
     assert wrong.status_code == 302
 
 
 def test_owner_can_create_and_rotate_the_master_key_through_the_page(app):
     mine = client_for(app, 'admin', access_approved=True)
-    created = mine.post('/admin-access/master-key', data={'new_key': 'first-master-key'})
+    created = mine.post('/owner/master-key', data={'new_key': 'first-master-key'})
     assert created.status_code == 302
     assert owner.verify_master_key('first-master-key')
 
     # Rotation requires the current key.
-    refused = mine.post('/admin-access/master-key', data={'master_key': 'wrong', 'new_key': 'second-master-key'})
+    refused = mine.post('/owner/master-key', data={'master_key': 'wrong', 'new_key': 'second-master-key'})
     assert refused.status_code == 302
     assert owner.verify_master_key('first-master-key')
 
-    rotated = mine.post('/admin-access/master-key', data={'master_key': 'first-master-key',
+    rotated = mine.post('/owner/master-key', data={'master_key': 'first-master-key',
                                                           'new_key': 'second-master-key'})
     assert rotated.status_code == 302
     assert owner.verify_master_key('second-master-key')
@@ -373,6 +397,6 @@ def test_owner_can_create_and_rotate_the_master_key_through_the_page(app):
 
 def test_navigation_link_is_only_for_the_owner(app):
     owner.set_master_key(MASTER)
-    assert b'/admin-access' in client_for(app, 'admin', access_approved=True).get('/dashboard').data
-    assert b'/admin-access' not in second_admin_client(app, 'deputy').get('/dashboard').data
-    assert b'/admin-access' not in client_for(app, 'faculty', 'faculty', faculty_id=1).get('/dashboard').data
+    assert b'/owner' in client_for(app, 'admin', access_approved=True).get('/dashboard').data
+    assert b'/owner' not in second_admin_client(app, 'deputy').get('/dashboard').data
+    assert b'/owner' not in client_for(app, 'faculty', 'faculty', faculty_id=1).get('/dashboard').data

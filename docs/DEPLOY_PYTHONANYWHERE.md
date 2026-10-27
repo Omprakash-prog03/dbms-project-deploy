@@ -156,19 +156,42 @@ Type the username (`omprakash`), then the new password twice. Sign in at `https:
 
 The demo shortcuts on the local/development preview (`admin` / `admin123`, etc.) belong to a **separate local database** and do not work on the deployed site.
 
-## Updating an existing published site (branding, reports, passwords)
+## Updating an existing published site
 
-Your first installation is on the old branch. Switch the checkout to the current one, keeping `.env` and `instance/hogwards.db` untouched:
+Switch the checkout to the branch you want to run, keeping `.env` and
+`instance/hogwards.db` untouched (both are ignored by git, so they survive the
+switch):
 
 ```bash
 cd ~/hogwards-student-management-system
-git fetch --depth 1 origin arena/0586f7b8-dbms-project-deploy
+git fetch --depth 1 origin arena/40e568c8-dbms-project-deploy   # or: main
 git checkout -B deployed FETCH_HEAD
 .venv/bin/python -m pip install --no-cache-dir -r requirements-runtime.txt
 .venv/bin/python scripts/check_production.py
 ```
 
-Then click **Reload** in the Web tab. The portal now reads **NIST University Portal Management**; your administrator account, password, and all records stay as they were.
+Then click **Reload** in the Web tab. Your administrator account, password, and
+all records stay as they were; the new tables (`owner_guard`,
+`admin_access_request`, `admin_session`, and the two append-only registers
+`login_history` and `staff_activity`) are created automatically on the first
+request after the reload. Nothing has to be migrated or reseeded, and the registers
+start empty — they record from the reload onward, so no fabricated history appears.
+
+### What is new since the first deployment
+
+- The portal reads **NIST University Portal Management**.
+- **Reports & PDF**, **Raw data** and the **SQL console** (`/raw-data/query`).
+- **Supreme control** (owner only, `/owner`): live administrator roster, single
+  and global sign-out, the administrator sign-in switch, per-account blocks,
+  one-time access codes, password resets, removals, and the owner activity trail.
+- Administrator sign-in is back to **username and password**. The supreme page also
+  shows a rotating six-digit number, new every ten minutes, and one switch that
+  requires it at sign-in if you ever want that.
+- **Two append-only registers** on the supreme page: the sign-in history (every
+  sign-in and sign-out, all roles, with IST times) and the change log (what each
+  administrator and faculty member changed, detected automatically), each with
+  **CSV** and **PDF** downloads. Triggers in the database make them impossible to
+  edit or delete, and the SQL console refuses to touch them.
 
 ### Set an exact password in one command
 
@@ -241,33 +264,72 @@ Download and retain private backups regularly; free accounts do not provide the 
 The original internal database identifier `sims_db`, old CSS class names, and the historical ZIP are retained for compatibility. They are not the portal's displayed name and are not used to seed this private installation.
 
 
-## Owner controls: master key and administrator access codes
+## The supreme administrator and the administrator codes
 
-`instance/hogwards.db` gains two small tables automatically (`owner_guard`,
-`admin_access_request`); there is no migration to run.
+`instance/hogwards.db` gains three small tables automatically (`owner_guard`,
+`admin_access_request`, `admin_session`); there is no migration to run.
 
-1. **Set the master key once.** In a Bash console:
+**Two doors.** Everyone on campus signs in at `/login`. The supreme administrator
+signs in at **`/supreme`** with their own username and password — that page refuses
+every other account, and `/login` sends the supreme account here if they try it.
 
-   ```bash
-   cd ~/hogwards-student-management-system
-   source .venv/bin/activate
-   python scripts/owner_key.py --generate
-   ```
+### 1. Create the accounts (once)
 
-   It prints the key once and stores only its hash. Copy it somewhere safe.
-   To use a key you chose instead: `python scripts/owner_key.py --set 'your long key'`.
-   Lost it? Run `--generate` again — the old key stops working immediately.
+In a Bash console:
 
-2. **Name the owner explicitly** (recommended). In `.env`:
+```bash
+cd ~/hogwards-student-management-system
+source .venv/bin/activate
+python scripts/setup_admins.py            # dry run — shows what would be created
+python scripts/setup_admins.py --apply    # writes the accounts
+```
 
-   ```
-   OWNER_USERNAME=omprakash
-   ```
+That creates:
 
-   Without it, the first administrator account is treated as the owner.
+| Account | Password | Where | Code needed? |
+| --- | --- | --- | --- |
+| `om-2026` | `Superadmin123` | `/supreme` | — |
+| `omprakash` | `OmAdmin123` | `/login` | no |
+| `swaruppradhan` | `Adminpradhan123` | `/login` | no |
+| `avashbadatya` | `Adminavash123` | `/login` | no |
+| `aryandash` | `Adminaryan123` | `/login` | no |
 
-3. **Sign in as the owner**, open **Admin access** in the sidebar, and use it to
-   end other administrator sessions or to issue their access codes.
+Everyone signs in with just their username and password. The supreme page also
+shows a **rotating six-digit number** (new every ten minutes); if you ever want
+administrators to type it as a second factor, press *Require a code at sign-in*
+there, and *Switch codes off (password only)* to go back.
 
-Note: if no master key is set, other administrator accounts cannot sign in at
-all (students and faculty are unaffected). Set the key right after deploying.
+Passwords are hashed with bcrypt; nothing is printed back. Re-running the script is
+safe and idempotent — it also puts the passwords above back on accounts that already
+exist, so an existing `omprakash` keeps working with `OmAdmin123`. Add
+`--keep-passwords` if you would rather leave existing passwords alone. Change any of
+these later with `python scripts/reset_password.py --username NAME`.
+
+### 2. `.env`
+
+```
+OWNER_USERNAME=om-2026
+OTP_EXEMPT_ADMINS=omprakash
+```
+
+`OWNER_USERNAME` is the supreme account (the setup script corrects a stale value for
+you). `OTP_EXEMPT_ADMINS` lists administrators who sign in with a password only —
+everyone else listed as an admin must also type a code.
+
+### 3. Reload and use it
+
+Click **Reload** in the Web tab, then:
+
+1. Open **`/supreme`** and sign in as `om-2026`.
+2. When another administrator signs in with their password, their request appears
+   under **Access codes** on the dashboard. Press **Issue code** and read them the
+   six digits — it works once, for 15 minutes.
+3. **Sign out** ends that administrator's session immediately; **Remove admin**
+   deletes the account; **Close administrator sign-in** refuses all of them at once.
+
+The **master key** is optional. Set one and every action on the dashboard asks for it
+again; until you do, the supreme password alone is enough. Recover or replace it from
+a console with `python scripts/owner_key.py --generate`.
+
+Note: students and faculty are unaffected by any of this — they sign in with their
+password only, at `/login`.

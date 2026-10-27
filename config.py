@@ -17,9 +17,17 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY') or (None if APP_ENV == 'production' else secrets.token_hex(32))
     RATELIMIT_ENABLED = APP_ENV == 'production'
     TRUSTED_PROXY_HOPS = int(os.getenv('TRUSTED_PROXY_HOPS', '0'))
-    # The supreme administrator. Leave blank to treat the first admin account as
-    # the owner; set it explicitly (OWNER_USERNAME=omprakash) to be certain.
-    OWNER_USERNAME = os.getenv('OWNER_USERNAME', '').strip().lower()
+    # The supreme administrator: their own account, used only on the supreme
+    # sign-in page. If that account does not exist, the first admin account is
+    # treated as the owner so an installation can never lock itself out.
+    OWNER_USERNAME = os.getenv('OWNER_USERNAME', 'om-2026').strip().lower()
+    # Administrators who sign in with a password only. Everyone else listed as an
+    # admin must also type a one-time code the supreme administrator issues.
+    # Comma separated, case-insensitive.
+    OTP_EXEMPT_ADMINS = os.getenv('OTP_EXEMPT_ADMINS', 'omprakash').strip().lower()
+    # The rotating six-digit code shown on the supreme page: it changes by itself
+    # every this many minutes and any administrator who needs a code can use it.
+    ROTATING_CODE_MINUTES = int(os.getenv('ROTATING_CODE_MINUTES', '10'))
     DB_ENGINE = os.getenv('DB_ENGINE', 'auto').lower()
     SQLITE_PATH = str((BASE_DIR / os.getenv('SQLITE_PATH', 'sims_embedded.db')).resolve())
     DB_HOST = os.getenv('DB_HOST', '127.0.0.1')

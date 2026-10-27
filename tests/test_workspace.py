@@ -62,12 +62,21 @@ def test_login_fails_closed_for_invalid_hash(monkeypatch):
     with client.session_transaction() as session:
         assert 'user_id' not in session
 
-def test_csrf_and_token_rotation():
+def test_csrf_and_token_rotation(monkeypatch):
+    # A dedicated administrator, exempt from the code so the test stays about CSRF.
+    import bcrypt as _bcrypt
+    from config import Config as _Config
+    from repositories.db_pool import db_pool as _pool
+    monkeypatch.setattr(_Config, 'OTP_EXEMPT_ADMINS', 'csrf-admin')
+    _pool.execute_dml("DELETE FROM app_user WHERE username = 'csrf-admin'")
+    _pool.execute_dml(
+        "INSERT INTO app_user (username, password_hash, role) VALUES ('csrf-admin', %s, 'admin')",
+        (_bcrypt.hashpw(b'csrf-pass-1', _bcrypt.gensalt()).decode(),))
     client = create_app({'TESTING':True,'CSRF_ENABLED':True,'SECRET_KEY':'csrf-tests'}).test_client()
     client.get('/login')
     with client.session_transaction() as session:
         token = session['csrf_token']
-    payload = {'username':'admin','password':'admin123'}
+    payload = {'username':'csrf-admin','password':'csrf-pass-1'}
     assert client.post('/api/auth/login',json=payload).status_code == 400
     assert client.post('/api/auth/login',json=payload,headers={'X-CSRF-Token':'wrong'}).status_code == 400
     assert client.post('/api/auth/login',json=payload,headers={'X-CSRF-Token':token}).status_code == 200

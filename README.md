@@ -64,14 +64,98 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 - Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
 - PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
 
-### Owner controls (master key, lockdown, access codes)
+### Two doors: the campus sign-in and the supreme dashboard
 
-- The **owner** is the supreme administrator: the first admin account, or the one named in `OWNER_USERNAME`. Only the owner sees **Admin access** in the sidebar.
-- **Master key** — set one on the Admin access page or with `python scripts/owner_key.py --generate`. It is stored as a bcrypt hash only, so it is printed exactly once; `scripts/owner_key.py --check 'key'` verifies it later.
-- **One-tap lockdown** — enter the master key and every *other* administrator session ends on its next click. The owner's own session survives; the lock is a counter (`epoch`) kept in the database, so it works across restarts and worker processes.
-- **Administrator access codes** — with a master key set, any **other** administrator needs a six-digit code from the owner on top of their password. Their attempt opens a request the owner sees at **Admin access**; the owner issues a one-time code valid for 15 minutes (five wrong tries and it is revoked). Codes are stored as bcrypt hashes and shown once.
-- **Closed by default** — if no master key exists, non-owner admin logins are refused rather than let through. Students and faculty are unaffected.
-- Every lock, code and revocation is written to `audit_log`.
+There are **two sign-in pages**, and they are not interchangeable.
+
+**`/login` — staff, students and faculty.** Username and password is all anyone
+needs: students, faculty and administrators alike. As a second factor you can switch
+on, the supreme page shows a **rotating six-digit code** that changes every ten
+minutes; while it is on, the page shows an access-code box labelled "administrators
+only", and every administrator types that number after their password. Personal
+one-time codes still work, and the page polls `/api/auth/access-status` so a waiting
+administrator is told what is happening instead of failing blindly.
+
+**`/supreme` — the supreme administrator alone.** A separate page with its own
+username and password (`om-2026` by default, created by
+`scripts/setup_admins.py`). The supreme account is refused on `/login` and sent
+here, and this page refuses every other account. Everything below lives behind it.
+
+#### Who the accounts are
+
+| Account | Where they sign in | Code needed? |
+| --- | --- | --- |
+| `om-2026` (supreme) | `/supreme` | — (their own password) |
+| `omprakash`, `swaruppradhan`, `avashbadatya`, `aryandash` | `/login` | no — username and password only |
+
+`scripts/setup_admins.py` creates exactly these accounts:
+
+```bash
+python scripts/setup_admins.py                 # dry run: show what would happen
+python scripts/setup_admins.py --apply         # create or update the accounts
+python scripts/setup_admins.py --apply --keep-passwords
+```
+
+Passwords are stored as bcrypt hashes and never printed back. Running it twice is
+safe and idempotent: it re-applies the passwords above to existing accounts (so a
+pre-existing `omprakash` ends up on `OmAdmin123`), `--keep-passwords` opts out, and a
+stale `OWNER_USERNAME` in `.env` is corrected to the supreme account.
+
+#### Administrator sign-in: username and password
+
+Administrators sign in the normal way, at `/login`, with their username and
+password. No code is asked for by default — that is the whole rule.
+
+If you ever want a second factor without extra work, the supreme page holds a
+**rotating code**: one six-digit number for the whole campus that changes by
+itself every ten minutes (lasts exactly as long as it says, and the previous
+number is accepted for the moment it takes to type it). One click requires it at
+sign-in and one click removes it again; every administrator then types the number
+from your screen after their password. Nothing is issued, nothing is remembered,
+and the number cannot be guessed from a previous one.
+
+#### The supreme dashboard (`/owner`)
+
+- **Live roster**: every administrator with signed in / signed out / blocked, last
+  activity and sign-in count. **Sign out** ends one administrator's session on their
+  next click; **Sign out everyone else** ends all of them and never the supreme
+  session itself. **Remove admin** deletes the account, so they cannot return.
+- **Access codes**: every waiting request, one code each (six digits, 15 minutes,
+  single use, five wrong tries and it is revoked), plus **Close request**.
+- **Administrator sign-in switch**: closing it refuses every other administrator even
+  with a valid code, and signs the signed-in ones out.
+- **Per-account block**: refuses one administrator's logins while leaving the rest.
+- **Administrator sign-in code**: the rotating six-digit number with its countdown,
+  and the switch that asks administrators for a code after their password (off by
+  default — password only). Turning it on makes the access-code box appear on
+  `/login`; turning it off returns the page to username + password.
+- **Master key (optional step-up)**: set one and every action on the page asks for it
+  again; leave it unset and the supreme password alone unlocks the page. The key is
+  stored as a bcrypt hash, shown once, and `scripts/owner_key.py` can recover it.
+- **Owner activity**: every lock, code, block, reset and removal, newest first.
+- **Sign-in history**: every sign-in and sign-out on the portal — administrators,
+  the supreme account, faculty and students — with the time in IST, the address and
+  a note when the supreme administrator ended the session. Filter by username, role
+  or event, and download the whole register as **CSV** or **PDF**.
+- **Change log**: what administrators and faculty actually changed, recorded
+  automatically on every screen (including the SQL console): username first, then the
+  action, the table and the fields that were sent. Filter by username, role or action,
+  and download it as **CSV** or **PDF**.
+
+#### The two registers cannot be edited
+
+`login_history` and `staff_activity` are append-only, and that is enforced three
+times over, not promised in prose:
+
+1. no application path updates or deletes a row;
+2. database triggers abort any `UPDATE` or `DELETE` (SQLite `RAISE(ABORT)`, MySQL
+   `SIGNAL`), so even a client outside the portal cannot rewrite history;
+3. the SQL console refuses every statement that writes to either table, and the
+   raw-data viewer shows them read-only.
+
+Both tables are created automatically on first start, so updating a live site needs
+no migration. The change log covers **administrators and faculty only**, as asked;
+the sign-in history covers every role.
 
 ### Who can do what
 
@@ -84,6 +168,8 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 | Exams, marks/results                            | Yes           | Yes, for their own offerings                                         | Read own results    |
 | Fees and payments                               | Yes           | No                                                                   | Own fee summary     |
 | Password resets, database tables, SQL inspector | Yes           | No                                                                   | No                  |
+| Sign-in history and change log                  | No (supreme only) | No                                                               | No                  |
+| Rotating sign-in code and its switch            | No (supreme only) | No                                                               | No                  |
 
 A faculty account only sees classes where they are the instructor. If the Attendance page says "No class assigned yet", an administrator needs to create a course offering with that faculty member as the instructor.
 
