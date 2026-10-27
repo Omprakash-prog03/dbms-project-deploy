@@ -53,7 +53,8 @@ def create_app(test_config=None):
     from routes.rawdata import rawdata_bp
     from routes.owner import owner_bp
     from routes.workshop import workshop_bp
-    for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp, reports_bp, rawdata_bp, owner_bp, workshop_bp):
+    from routes.studio import studio_bp
+    for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp, reports_bp, rawdata_bp, owner_bp, workshop_bp, studio_bp):
         app.register_blueprint(blueprint)
 
     # The guard and the session registry are additive tables; create them up front

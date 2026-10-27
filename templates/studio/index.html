@@ -1,0 +1,509 @@
+{% extends 'base.html' %}
+{% from 'components/icons.html' import icon %}
+
+{% block title %}SQL Studio · {{ portal_name }}{% endblock %}
+{% block body_class %}studio-page{% endblock %}
+{% block breadcrumb %}SQL Studio{% endblock %}
+{% block page_header %}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/studio.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="st-app" id="studioApp"
+     data-run-url="{{ url_for('studio.run_statement') }}"
+     data-script-url="{{ url_for('studio.run_script') }}"
+     data-explain-url="{{ url_for('studio.explain') }}"
+     data-describe-url="{{ url_for('studio.describe', name='__object__') }}"
+     data-connection="{{ connection.name }}">
+
+  {# ---------------------------------------------------------------- title #}
+  <div class="st-titlebar">
+    <div class="st-brand">
+      <span class="st-brand-mark">{{ icon('terminal', 17) }}</span>
+      <span class="st-brand-text">
+        <strong>SQL Studio</strong>
+        <span>{{ portal_name }} · {{ connection.counts.tables }} tables · {{ connection.counts.views }} views</span>
+      </span>
+    </div>
+
+    <div class="st-connection">
+      <label for="stConnectionSelect">Connection</label>
+      <div class="st-select">
+        <select id="stConnectionSelect" aria-label="Active connection">
+          <option>{{ connection.name }} · {{ connection.engine }} {{ connection.version }}</option>
+        </select>
+      </div>
+      <span class="st-ro-chip" title="Statements that change data are prepared and declined">{{ icon('lock', 12) }} Read-only session</span>
+    </div>
+
+    <div class="st-title-actions">
+      <a class="st-quiet-link" href="{{ url_for('workshop.index') }}">Database workshop</a>
+      <a class="st-quiet-link" href="{{ url_for('rawdata.query_console') }}">SQL console</a>
+    </div>
+  </div>
+
+  {# ----------------------------------------------------------------- menus #}
+  <nav class="st-menubar" aria-label="Studio menus" id="stMenuBar">
+    {% for label, items in menus %}
+    <div class="st-menu">
+      <button type="button" class="st-menu-button" data-menu-button aria-haspopup="true" aria-expanded="false">{{ label }}</button>
+      <div class="st-menu-list" role="menu" aria-label="{{ label }} menu" hidden>
+        {% for item in items %}
+        {% if item %}
+        <button type="button" role="menuitem" class="st-menu-item" data-action="{{ item[2] }}">
+          <span>{{ item[0] }}</span>
+          {% if item[1] %}<kbd>{{ item[1] }}</kbd>{% endif %}
+        </button>
+        {% else %}
+        <div class="st-menu-sep" role="separator"></div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <span class="st-menubar-note">{{ current_user.username }}@{{ connection.name }}</span>
+  </nav>
+
+  {# --------------------------------------------------------------- toolbar #}
+  <div class="st-toolbar" role="toolbar" aria-label="Studio toolbar">
+    <button type="button" class="st-tool" data-action="new-worksheet" title="New worksheet (Ctrl+T)" aria-label="New worksheet">{{ icon('plus', 15) }}</button>
+    <span class="st-tool-sep" aria-hidden="true"></span>
+
+    <button type="button" class="st-tool st-tool-run" data-action="run-statement" title="Run the statement under the cursor (F9)">
+      {{ icon('play', 13) }}<span>Run statement</span><kbd>F9</kbd>
+    </button>
+    <button type="button" class="st-tool" data-action="run-script" title="Run every statement in the worksheet (F5)">
+      {{ icon('play', 13) }}<span>Run script</span><kbd>F5</kbd>
+    </button>
+    <button type="button" class="st-tool" data-action="explain" title="Show the execution plan (F10)">
+      {{ icon('chart', 14) }}<span>Explain</span><kbd>F10</kbd>
+    </button>
+    <span class="st-tool-sep" aria-hidden="true"></span>
+
+    <button type="button" class="st-tool is-dim" data-action="commit" title="Commit — disabled in a read-only session">
+      {{ icon('check', 14) }}<span>Commit</span>
+    </button>
+    <button type="button" class="st-tool is-dim" data-action="rollback" title="Roll back — nothing is pending in a read-only session">
+      {{ icon('arrow-right', 14) }}<span>Roll back</span>
+    </button>
+    <span class="st-tool-sep" aria-hidden="true"></span>
+
+    <button type="button" class="st-tool" data-action="format" title="Format the worksheet">Format</button>
+    <button type="button" class="st-tool" data-action="comment" title="Comment the selected lines (Ctrl+/)">Comment</button>
+    <button type="button" class="st-tool" data-action="clear" title="Clear the worksheet">Clear</button>
+
+    <span class="st-tool-grow"></span>
+    <button type="button" class="st-tool" data-action="snippets" aria-haspopup="true" aria-expanded="false" title="Ready-made statements">Snippets</button>
+    <button type="button" class="st-tool" data-action="history" aria-haspopup="true" aria-expanded="false" title="Statements you have run">{{ icon('clock', 14) }}<span>History</span></button>
+    <button type="button" class="st-tool st-tool-tour" data-action="tour" title="Watch the studio being used, step by step">{{ icon('sparkles', 14) }}<span>Tour</span></button>
+  </div>
+
+  {# ------------------------------------------------------------------ body #}
+  <div class="st-body">
+
+    {# navigator #}
+    <aside class="st-navigator" aria-label="Connections navigator" id="stNavigator">
+      <div class="st-nav-head">
+        <span>Connections</span>
+        <button type="button" class="st-nav-collapse" data-action="collapse-tree" title="Collapse all">Collapse</button>
+      </div>
+      <div class="st-filter">
+        {{ icon('search', 13) }}
+        <input type="search" id="stObjectFilter" placeholder="Filter objects" aria-label="Filter objects by name" autocomplete="off">
+      </div>
+
+      <div class="st-tree" id="stTree">
+        <div class="st-node is-open" data-node>
+          <button type="button" class="st-node-row st-node-root" data-tree-toggle aria-expanded="true">
+            <span class="st-caret" aria-hidden="true"></span>
+            {{ icon('database', 14) }}
+            <span class="st-node-label">{{ connection.name }}</span>
+            <span class="st-node-note">{{ connection.engine }}</span>
+          </button>
+
+          <div class="st-node-children">
+            {# ---- tables ---- #}
+            <div class="st-node" data-node data-group="tables">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('grid', 13) }}
+                <span class="st-node-label">Tables</span>
+                <span class="st-node-count">{{ table_count }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for table in catalogue.tables %}
+                <div class="st-node" data-node data-object-row>
+                  <button type="button" class="st-node-row st-object" data-tree-toggle aria-expanded="false"
+                          data-object-type="table" data-object-name="{{ table.name }}"
+                          title="{{ table.name }} · {{ '{:,}'.format(table.rows) }} rows">
+                    <span class="st-caret" aria-hidden="true"></span>
+                    <span class="st-node-label">{{ table.name }}</span>
+                    <span class="st-node-meta">{{ '{:,}'.format(table.rows) }}</span>
+                  </button>
+                  <div class="st-node-children" hidden>
+                    {% for column in table.columns %}
+                    <button type="button" class="st-leaf st-leaf-column" data-column="{{ column.name }}" data-object-name="{{ table.name }}" title="Double-click to insert the column name">
+                      <span class="st-leaf-name">{{ column.name }}</span>
+                      <span class="st-leaf-type">{{ column.type }}{% if column.pk %} · PK{% elif not column.nullable %} · NN{% endif %}</span>
+                    </button>
+                    {% endfor %}
+                    {% for fk in table.foreign_keys %}
+                    <button type="button" class="st-leaf st-leaf-fk" data-column="{{ fk.column_name }}" title="Double-click to insert the column name">
+                      <span class="st-leaf-name">{{ fk.column_name }}</span>
+                      <span class="st-leaf-type">→ {{ fk.ref_table }}.{{ fk.ref_column }}</span>
+                    </button>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- views ---- #}
+            <div class="st-node" data-node data-group="views">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('eye', 13) }}
+                <span class="st-node-label">Views</span>
+                <span class="st-node-count">{{ view_count }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for view in catalogue.views %}
+                <div class="st-node" data-node data-object-row>
+                  <button type="button" class="st-node-row st-object" data-tree-toggle aria-expanded="false"
+                          data-object-type="view" data-object-name="{{ view.name }}"
+                          title="{{ view.purpose }}">
+                    <span class="st-caret" aria-hidden="true"></span>
+                    <span class="st-node-label">{{ view.name }}</span>
+                    <span class="st-node-meta">{{ '{:,}'.format(view.rows) }}</span>
+                  </button>
+                  <div class="st-node-children" hidden>
+                    {% for column in view.columns %}
+                    <button type="button" class="st-leaf st-leaf-column" data-column="{{ column.name }}" data-object-name="{{ view.name }}" title="Double-click to insert the column name">
+                      <span class="st-leaf-name">{{ column.name }}</span>
+                      <span class="st-leaf-type">{{ column.type }}</span>
+                    </button>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- indexes ---- #}
+            <div class="st-node" data-node data-group="indexes">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('layers', 13) }}
+                <span class="st-node-label">Indexes</span>
+                <span class="st-node-count">{{ index_count }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for index in catalogue.indexes %}
+                <button type="button" class="st-leaf" data-object-type="index" data-object-name="{{ index.name }}"
+                        title="{{ index.name }} on {{ index.table }} ({{ index.columns|join(', ') }})">
+                  <span class="st-leaf-name">{{ index.name }}</span>
+                  <span class="st-leaf-type">{{ index.table }}{% if index.unique %} · unique{% endif %}</span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- triggers ---- #}
+            <div class="st-node" data-node data-group="triggers">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('shield', 13) }}
+                <span class="st-node-label">Triggers</span>
+                <span class="st-node-count">{{ trigger_count }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for trigger in catalogue.triggers %}
+                <button type="button" class="st-leaf" data-object-type="trigger" data-object-name="{{ trigger.name }}"
+                        title="{{ trigger.rule or trigger.message }}">
+                  <span class="st-leaf-name">{{ trigger.name }}</span>
+                  <span class="st-leaf-type">{{ trigger.timing }} {{ trigger.event }} · {{ trigger.table }}</span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- procedures ---- #}
+            <div class="st-node" data-node data-group="procedures">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('terminal', 13) }}
+                <span class="st-node-label">Procedures</span>
+                <span class="st-node-count">{{ catalogue.procedures|length }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for procedure in catalogue.procedures %}
+                <button type="button" class="st-leaf" data-object-type="procedure" data-object-name="{{ procedure.name }}"
+                        title="{{ procedure.purpose }}">
+                  <span class="st-leaf-name">{{ procedure.name }}</span>
+                  <span class="st-leaf-type">{{ procedure.params|length }} parameter{{ '' if procedure.params|length == 1 else 's' }}</span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ---- functions ---- #}
+            <div class="st-node" data-node data-group="functions">
+              <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                <span class="st-caret" aria-hidden="true"></span>
+                {{ icon('sparkles', 13) }}
+                <span class="st-node-label">Functions</span>
+                <span class="st-node-count">{{ catalogue.functions|length }}</span>
+              </button>
+              <div class="st-node-children" hidden>
+                {% for function in catalogue.functions %}
+                <button type="button" class="st-leaf" data-object-type="function" data-object-name="{{ function.name }}"
+                        title="{{ function.purpose }}">
+                  <span class="st-leaf-name">{{ function.name }}</span>
+                  <span class="st-leaf-type">→ {{ function.returns }}</span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="st-nav-foot" id="stSelection">
+        <span class="st-nav-foot-label">Selection</span>
+        <span class="st-nav-foot-value" id="stSelectionValue">Nothing selected</span>
+      </div>
+    </aside>
+
+    {# workbench #}
+    <section class="st-work" aria-label="Worksheet">
+      <div class="st-ws-tabs">
+        <div class="st-ws-tablist" role="tablist" aria-label="Worksheets" id="stWorksheetTabs">
+          <button type="button" role="tab" class="st-ws-tab is-active" data-worksheet="1" aria-selected="true" aria-controls="stEditorBox">
+            <span class="st-ws-name" data-ws-name>Worksheet 1</span>
+            <span class="st-ws-close" data-ws-close role="presentation" title="Close worksheet">×</span>
+          </button>
+        </div>
+        <button type="button" class="st-ws-add" data-action="new-worksheet" aria-label="New worksheet" title="New worksheet (Ctrl+T)">{{ icon('plus', 13) }}</button>
+        <span class="st-ws-hint">right-click a worksheet to rename</span>
+      </div>
+
+      <div class="st-editor-area">
+        <div class="st-editor-gutter" id="stGutter" aria-hidden="true">1</div>
+        <div class="st-editor-box" id="stEditorBox">
+          <pre class="st-highlight" id="stHighlight" aria-hidden="true"></pre>
+          <textarea id="stSql" class="st-sql" spellcheck="false" autocapitalize="off"
+                    autocomplete="off" wrap="off" aria-label="SQL worksheet"
+                    aria-describedby="stEditorHelp">{{ starter }}</textarea>
+        </div>
+        <p class="sr-only" id="stEditorHelp">Press Control Enter to run the statement under the cursor, or F5 to run the whole script. The session is read-only.</p>
+      </div>
+
+      <div class="st-results">
+        <div class="st-results-tabs">
+          <div class="st-rtablist" role="tablist" aria-label="Result panels">
+          <button type="button" role="tab" class="st-rtab is-active" data-pane="results" aria-selected="true" id="stTabResults" aria-controls="pane-results">
+            Results <span class="st-rtab-count" id="stResultBadge"></span>
+          </button>
+          <button type="button" role="tab" class="st-rtab" data-pane="output" aria-selected="false" id="stTabOutput" aria-controls="pane-output">
+            Script output <span class="st-rtab-count" id="stOutputBadge"></span>
+          </button>
+          <button type="button" role="tab" class="st-rtab" data-pane="plan" aria-selected="false" id="stTabPlan" aria-controls="pane-plan">Explain</button>
+          <button type="button" role="tab" class="st-rtab" data-pane="messages" aria-selected="false" id="stTabMessages" aria-controls="pane-messages">
+            Messages <span class="st-rtab-count is-alert" id="stMessageBadge" hidden></span>
+          </button>
+          </div>
+          <span class="st-tool-grow"></span>
+          <button type="button" class="st-rtab-export" data-action="copy-csv" title="Copy the grid as CSV">{{ icon('copy', 13) }}<span>Copy</span></button>
+          <button type="button" class="st-rtab-export" data-action="download-csv" title="Save the grid as CSV">{{ icon('download', 13) }}<span>CSV</span></button>
+        </div>
+
+        <div class="st-pane is-active" id="pane-results" role="tabpanel" aria-labelledby="stTabResults">
+          <div class="st-empty" id="stResultEmpty">
+            <div class="st-empty-mark">{{ icon('grid', 26) }}</div>
+            <h2>No statement has run yet</h2>
+            <p>Press <kbd>F9</kbd> to run the statement under the cursor, or <kbd>F5</kbd> to run the whole worksheet. Reads execute against the live database; data changes are prepared and declined.</p>
+            <button type="button" class="st-empty-action" data-action="run-statement">{{ icon('play', 13) }} Run the worksheet</button>
+            <button type="button" class="st-empty-tour" data-action="tour">or take the guided tour</button>
+          </div>
+          <div class="st-grid-scroll" id="stGridScroll" hidden>
+            <table class="st-grid" id="stGrid">
+              <thead id="stGridHead"></thead>
+              <tbody id="stGridBody"></tbody>
+            </table>
+          </div>
+          <div class="st-grid-note" id="stGridNote" hidden></div>
+        </div>
+
+        <div class="st-pane" id="pane-output" role="tabpanel" aria-labelledby="stTabOutput" hidden>
+          <div class="st-log" id="stLog" aria-live="polite">
+            <p class="st-log-line"><span class="st-log-time">session</span><span class="st-log-text">Connected to {{ connection.name }} as {{ current_user.username }}. The session is read-only.</span></p>
+            <p class="st-log-line"><span class="st-log-time">session</span><span class="st-log-text">Run a script with F5 to see one line per statement here.</span></p>
+          </div>
+        </div>
+
+        <div class="st-pane" id="pane-plan" role="tabpanel" aria-labelledby="stTabPlan" hidden>
+          <div class="st-empty" id="stPlanEmpty">
+            <div class="st-empty-mark">{{ icon('chart', 26) }}</div>
+            <h2>No plan yet</h2>
+            <p>Put the cursor on a statement and press <kbd>F10</kbd>. The plan comes from the engine's own optimiser, not from a picture of one.</p>
+          </div>
+          <div class="st-plan" id="stPlan" hidden></div>
+        </div>
+
+        <div class="st-pane" id="pane-messages" role="tabpanel" aria-labelledby="stTabMessages" hidden>
+          <div class="st-messages" id="stMessages">
+            <div class="st-facts">
+              <div><span>Connection</span><strong>{{ connection.name }}</strong></div>
+              <div><span>Engine</span><strong>{{ connection.engine }} {{ connection.version }}</strong></div>
+              <div><span>Database</span><strong>{{ connection.database }}</strong></div>
+              <div><span>Schema</span><strong>{{ connection.schema }}</strong></div>
+              <div><span>Size on disk</span><strong>{{ connection.size }}</strong></div>
+              <div><span>Page size</span><strong>{{ connection.page_size }}</strong></div>
+              <div><span>Journal</span><strong>{{ connection.journal }}</strong></div>
+              <div><span>Foreign keys</span><strong>{{ connection.foreign_keys }}</strong></div>
+              <div><span>Isolation</span><strong>{{ connection.isolation }}</strong></div>
+              <div><span>Autocommit</span><strong>{{ connection.autocommit }}</strong></div>
+              <div><span>Character set</span><strong>{{ connection.charset }}</strong></div>
+              <div><span>Mode</span><strong>Read-only simulation</strong></div>
+            </div>
+            <p class="st-message-note">Errors and notices from this worksheet appear here, newest first.</p>
+            <div class="st-message-log" id="stMessageLog" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  {# ------------------------------------------------------------- statusbar #}
+  <footer class="st-statusbar">
+    <span class="st-status-item st-status-conn"><i class="st-status-dot" aria-hidden="true"></i>{{ current_user.username }}@{{ connection.name }}</span>
+    <span class="st-status-item" id="stStatusPosition">Ln 1, Col 1</span>
+    <span class="st-status-item" id="stStatusRows">No statement run</span>
+    <span class="st-status-item" id="stStatusTime">—</span>
+    <span class="st-tool-grow"></span>
+    <span class="st-status-item st-status-mode">{{ icon('lock', 11) }} Read-only</span>
+    <span class="st-status-item">{{ connection.engine }} {{ connection.version }}</span>
+    <span class="st-status-item">{{ connection.charset }}</span>
+  </footer>
+
+  {# ----------------------------------------------------------- overlays #}
+  <div class="st-popover" id="stSnippetPopover" hidden role="dialog" aria-label="Snippets">
+    <div class="st-popover-head"><span>Snippets</span><button type="button" data-popover-close aria-label="Close">×</button></div>
+    <div class="st-popover-list">
+      {% for snippet in snippets %}
+      <button type="button" class="st-snippet" data-snippet="{{ snippet.sql }}">
+        <strong>{{ snippet.label }}</strong>
+        <code>{{ snippet.sql.split('\n')[0] }}{% if snippet.sql.split('\n')|length > 1 %} …{% endif %}</code>
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="st-popover" id="stHistoryPopover" hidden role="dialog" aria-label="Statement history">
+    <div class="st-popover-head"><span>Statement history</span><button type="button" data-popover-close aria-label="Close">×</button></div>
+    <div class="st-popover-list" id="stHistoryList">
+      <p class="st-popover-empty">Nothing has run in this browser yet.</p>
+    </div>
+  </div>
+
+  <div class="st-context" id="stContextMenu" hidden role="menu" aria-label="Object actions">
+    <button type="button" role="menuitem" class="st-context-item" data-context="query">Query data</button>
+    <button type="button" role="menuitem" class="st-context-item" data-context="query-50">Query first 50 rows</button>
+    <button type="button" role="menuitem" class="st-context-item" data-context="select-columns">Select every column</button>
+    <div class="st-menu-sep" role="separator"></div>
+    <button type="button" role="menuitem" class="st-context-item" data-context="describe">Object details</button>
+    <button type="button" role="menuitem" class="st-context-item" data-context="copy-name">Copy name</button>
+    <button type="button" role="menuitem" class="st-context-item" data-context="insert">Insert into worksheet</button>
+  </div>
+
+  <div class="st-tour" id="stTour" hidden>
+    <div class="st-tour-ring" id="stTourRing" aria-hidden="true"></div>
+    <div class="st-tour-card" role="dialog" aria-modal="false" aria-labelledby="stTourTitle" aria-describedby="stTourText">
+      <div class="st-tour-step" id="stTourStep">Step 1 of 6</div>
+      <h2 id="stTourTitle">The tour</h2>
+      <p id="stTourText"></p>
+      <div class="st-tour-actions">
+        <button type="button" class="st-tour-quiet" data-tour="end">End tour</button>
+        <span class="st-tool-grow"></span>
+        <button type="button" class="st-tour-quiet" data-tour="back">Back</button>
+        <button type="button" class="st-tour-primary" data-tour="next">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="st-dialog-layer" id="stAboutDialog" hidden>
+    <div class="st-dialog" role="dialog" aria-modal="true" aria-labelledby="stAboutTitle">
+      <div class="st-dialog-head">
+        <h2 id="stAboutTitle">About SQL Studio</h2>
+        <button type="button" class="st-dialog-close" data-dialog-close aria-label="Close">×</button>
+      </div>
+      <div class="st-dialog-body">
+        <div class="st-about-head">
+          <span class="st-brand-mark">{{ icon('terminal', 20) }}</span>
+          <div><strong>SQL Studio</strong><span>Version 1.0 · {{ portal_name }}</span></div>
+        </div>
+        <p class="st-dialog-text">A read-only worksheet against the live portal database, built to be used the way a desktop client is used: a navigator on the left, worksheets in the middle, results underneath, and a status bar that tells you what just happened.</p>
+        <dl class="st-dialog-facts">
+          <div><dt>Engine</dt><dd>{{ connection.engine }} {{ connection.version }}</dd></div>
+          <div><dt>Connection</dt><dd>{{ connection.name }}</dd></div>
+          <div><dt>Database</dt><dd>{{ connection.database }}</dd></div>
+          <div><dt>Session</dt><dd>Read-only · nothing is committed</dd></div>
+          <div><dt>Objects</dt><dd>{{ table_count }} tables · {{ view_count }} views · {{ index_count }} indexes · {{ trigger_count }} triggers</dd></div>
+        </dl>
+      </div>
+      <div class="st-dialog-foot"><button type="button" class="st-dialog-primary" data-dialog-close>Close</button></div>
+    </div>
+  </div>
+
+  <div class="st-dialog-layer" id="stShortcutDialog" hidden>
+    <div class="st-dialog" role="dialog" aria-modal="true" aria-labelledby="stShortcutTitle">
+      <div class="st-dialog-head">
+        <h2 id="stShortcutTitle">Keyboard shortcuts</h2>
+        <button type="button" class="st-dialog-close" data-dialog-close aria-label="Close">×</button>
+      </div>
+      <div class="st-dialog-body">
+        <dl class="st-shortcuts">
+          <div><dt><kbd>F9</kbd> or <kbd>Ctrl</kbd> + <kbd>Enter</kbd></dt><dd>Run the statement under the cursor</dd></div>
+          <div><dt><kbd>F5</kbd></dt><dd>Run every statement in the worksheet</dd></div>
+          <div><dt><kbd>F10</kbd></dt><dd>Explain the statement under the cursor</dd></div>
+          <div><dt><kbd>Ctrl</kbd> + <kbd>T</kbd></dt><dd>New worksheet</dd></div>
+          <div><dt><kbd>Ctrl</kbd> + <kbd>W</kbd></dt><dd>Close the current worksheet</dd></div>
+          <div><dt><kbd>Ctrl</kbd> + <kbd>/</kbd></dt><dd>Comment or uncomment the selected lines</dd></div>
+          <div><dt><kbd>Ctrl</kbd> + <kbd>Space</kbd></dt><dd>Open the snippet list</dd></div>
+          <div><dt><kbd>F1</kbd></dt><dd>This list</dd></div>
+          <div><dt><kbd>Esc</kbd></dt><dd>Close a menu, popover or dialog</dd></div>
+        </dl>
+      </div>
+      <div class="st-dialog-foot"><button type="button" class="st-dialog-primary" data-dialog-close>Close</button></div>
+    </div>
+  </div>
+
+  <div class="st-dialog-layer" id="stReadOnlyDialog" hidden>
+    <div class="st-dialog" role="dialog" aria-modal="true" aria-labelledby="stReadOnlyTitle">
+      <div class="st-dialog-head">
+        <h2 id="stReadOnlyTitle">Why this session is read-only</h2>
+        <button type="button" class="st-dialog-close" data-dialog-close aria-label="Close">×</button>
+      </div>
+      <div class="st-dialog-body">
+        <p class="st-dialog-text">A database client that can run anything is a database client that can break anything. This one is a teaching simulation, so the rules are drawn where they keep the portal safe:</p>
+        <ul class="st-dialog-list">
+          <li><strong>SELECT, WITH, VALUES, TABLE, EXPLAIN</strong> run for real, against the live rows.</li>
+          <li><strong>INSERT, UPDATE, DELETE</strong> are compiled by the engine and reported as prepared, then declined — you see whether the statement is valid without changing a row.</li>
+          <li><strong>DROP, ALTER, CREATE, PRAGMA, COMMIT, ROLLBACK</strong> and the rest are refused, because a typo there would damage the schema or the session.</li>
+          <li>The two append-only registers — sign-in history and the change log — cannot be written from any client, including this one.</li>
+        </ul>
+        <p class="st-dialog-text">To change data, use the portal screens, or the SQL console at <code>/raw-data/query</code>, which runs data changes and commits them.</p>
+      </div>
+      <div class="st-dialog-foot">
+        <a class="st-dialog-link" href="{{ url_for('rawdata.query_console') }}">Open the SQL console</a>
+        <button type="button" class="st-dialog-primary" data-dialog-close>Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/studio.js') }}"></script>
+{% endblock %}

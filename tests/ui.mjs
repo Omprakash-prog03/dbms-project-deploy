@@ -206,6 +206,25 @@ try {
   await page.waitForSelector(".ws-proof-inner .ws-proof-verdict");
   assert.match(await page.locator(".ws-proof-inner .ws-proof-verdict").first().innerText(), /refused/i);
 
+  // SQL Studio: a database client — navigator, worksheet, run, grid.
+  await visit("/studio");
+  await noOverflow();
+  await page.locator('[data-group="tables"] > [data-tree-toggle]').click();
+  assert.ok((await page.locator(".st-object").count()) > 5, "navigator tables");
+  await page.fill("#stSql", "SELECT roll_no, status FROM student ORDER BY roll_no LIMIT 5;");
+  await page.evaluate(() => {
+    const editor = document.querySelector("#stSql");
+    editor.focus();
+    editor.setSelectionRange(0, 0);
+  });
+  await page.keyboard.press("F9");
+  await page.waitForSelector("#stGridBody tr");
+  assert.equal(await page.locator("#stGridBody tr").count(), 5, "studio grid rows");
+  await page.locator("[data-pane='plan']").click().catch(() => {});
+  await page.keyboard.press("F10");
+  await page.waitForSelector("#pane-plan .st-plan-step");
+  assert.ok((await page.locator("#pane-plan .st-plan-step").count()) >= 1, "plan steps");
+
   // Supreme control: the master key, the live roster, and the owner's own
   // session surviving a lockdown. A key may exist from an earlier run.
   await visit("/owner");
