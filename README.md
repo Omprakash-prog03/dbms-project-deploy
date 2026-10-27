@@ -64,6 +64,11 @@ For a fresh private installation, use `python scripts/init_production.py` in a n
 - Administrators can export any table to CSV; the `password_hash` and photo columns are never included, and formula-prefixed text is neutralised.
 - PDFs are generated server-side without a native library, so the free host's 512 MiB quota is unaffected. Text is Latin-1: non-Latin characters appear as `?` in PDFs (the web UI and CSV retain full Unicode).
 
+### Database workshop and SQL Studio
+
+- **Database workshop** (`/database`, administrator only) is a read-only console for how the schema and the engine work: seven live join demonstrations, the five views with their DDL and a preview, the three procedures walked through step by step, the three functions evaluated on real rows, all 25 triggers with ten "try to break it" proofs that roll back, `EXPLAIN` plans for every demonstration, and the full schema, index and storage catalogue — plus a printable PDF handout of the whole thing.
+- **SQL Studio** (`/studio`, administrator only) is a simulated desktop database client: a connections navigator over the live catalogue, up to eight persistent worksheets, a line-numbered editor with syntax colour and `F9`/`F5`/`F10`, a sortable result grid with CSV export, script output, execution plans, messages, a status bar, and a guided tour that demonstrates the software being used. See [docs/SQL_STUDIO.md](docs/SQL_STUDIO.md). The session is deliberately read-only: reads execute, data changes are prepared and declined, schema and transaction statements are refused, and the two append-only registers cannot be written from any client.
+
 ### Two doors: the campus sign-in and the supreme dashboard
 
 There are **two sign-in pages**, and they are not interchangeable.
