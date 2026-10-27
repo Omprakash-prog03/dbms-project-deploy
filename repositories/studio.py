@@ -16,6 +16,8 @@ from decimal import Decimal
 
 from repositories import rawdata
 from repositories import workshop
+from repositories import dialect
+from repositories.oracle import pseudocolumn_label
 from repositories.db_pool import db_pool
 
 MAX_ROWS = 300
@@ -341,9 +343,10 @@ def _grid(cursor_rows, columns, elapsed):
     masked = [[hidden if column in rawdata.HIDDEN_COLUMNS else _cell(value)
                for column, value in zip(columns, row)] for row in values]
     shown = masked[:MAX_ROWS]
+    labels = [pseudocolumn_label(column) for column in columns]
     return {
-        'columns': [{'name': column, 'numeric': numeric[position]}
-                    for position, column in enumerate(columns)],
+        'columns': [{'name': label, 'numeric': numeric[position]}
+                    for position, label in enumerate(labels)],
         'rows': [{'number': number, 'cells': row}
                  for number, row in enumerate(shown, start=1)],
         'row_count': len(masked),
@@ -394,13 +397,15 @@ def run(sql):
                     'error': str(exc).strip() or 'The engine rejected that statement.'}
 
     try:
+        engine_sql, notes = dialect.to_engine(statement)
         table = db_pool.execute_query(statement, fetch='table')
         elapsed = round((time.perf_counter() - started) * 1000, 1)
         payload = _grid(table['rows'] or [], list(table['columns']), elapsed)
         return {**base, 'ok': True, **payload,
                 'message': f'{payload["row_count"]:,} row'
                            f'{"" if payload["row_count"] == 1 else "s"} fetched.',
-                'note': ''}
+                'translated': engine_sql if engine_sql != statement else None,
+                'notes': notes, 'note': ''}
     except Exception as exc:  # the engine's own message is the most useful feedback
         elapsed = round((time.perf_counter() - started) * 1000, 1)
         return {**base, 'ok': False, 'elapsed_ms': elapsed, 'code': 'STUDIO-006',

@@ -18,15 +18,20 @@ type names in ``DESCRIBE``, ``ORA-00942``-style errors, and the classic messages
 (``Table created.``, ``1 row created.``). The translated statement is returned
 with every result so the translation is never hidden from the reader.
 """
+import json
 import os
 import re
+import shutil
 import sqlite3
 import time
+import uuid
 from datetime import datetime, timezone
 
 from config import Config, BASE_DIR
 
 CONNECTION_NAME = 'ORACLE_XE'
+JOURNAL_LIMIT = 12
+JOURNAL_DIR = 'instance/studio_oracle_journal'
 PRODUCT = 'Oracle Database 21c Express Edition'
 USER = 'STUDIO'
 MAX_ROWS = 300
@@ -170,8 +175,193 @@ def reset():
         connection.execute('DELETE FROM _sequence')
         connection.execute('DELETE FROM _comment')
         connection.commit()
+    clear_journal()
     ensure_schema()
     return {'ok': True, 'message': 'Practice schema reset.', 'tables': len(catalogue()['tables'])}
+
+
+# ---------------------------------------------------------------------------
+# the change journal: every writable statement can be undone
+# ---------------------------------------------------------------------------
+_WRITABLE = {'CREATE', 'DROP', 'ALTER', 'TRUNCATE', 'COMMENT', 'RENAME',
+             'INSERT', 'UPDATE', 'DELETE'}
+
+
+def journal_path():
+    """The snapshots live beside the practice file, never beside the portal's."""
+    directory = os.path.join(os.path.dirname(path()), os.path.basename(JOURNAL_DIR))
+    os.makedirs(directory, exist_ok=True)
+    return directory
+
+
+def _journal_read():
+    """The journal index: an undo stack and a redo stack of file snapshots."""
+    try:
+        with open(os.path.join(journal_path(), 'index.json'), 'r', encoding='utf-8') as handle:
+            state = json.load(handle)
+    except (OSError, ValueError):
+        state = {}
+    clean = {'undo': [], 'redo': []}
+    for stack in ('undo', 'redo'):
+        for item in state.get(stack) or []:
+            if isinstance(item, dict) and item.get('file'):
+                clean[stack].append({
+                    'file': str(item['file']),
+                    'label': str(item.get('label') or 'a statement'),
+                    'verb': str(item.get('verb') or ''),
+                    'at': str(item.get('at') or ''),
+                })
+    return clean
+
+
+def _journal_write(state):
+    try:
+        with open(os.path.join(journal_path(), 'index.json'), 'w', encoding='utf-8') as handle:
+            json.dump(state, handle)
+    except OSError:
+        pass
+
+
+def _journal_remove(item):
+    try:
+        os.remove(os.path.join(journal_path(), item['file']))
+    except OSError:
+        pass
+
+
+def _journal_copy():
+    """Freeze the practice file as it stands, and return the snapshot's name."""
+    name = f'{uuid.uuid4().hex}.db'
+    ensure_schema()
+    shutil.copy2(path(), os.path.join(journal_path(), name))
+    return name
+
+
+def _journal_label(sql):
+    text = ' '.join((sql or '').split())
+    return text if len(text) <= 90 else text[:89] + '…'
+
+
+def _journal_record(sql, verb):
+    """Keep the state a statement is about to replace. Called before it runs."""
+    if verb not in _WRITABLE:
+        return
+    try:
+        state = _journal_read()
+        state['undo'].append({'file': _journal_copy(), 'label': _journal_label(sql),
+                              'verb': verb, 'at': datetime.now().strftime('%H:%M:%S')})
+        for forgotten in state['redo']:
+            _journal_remove(forgotten)
+        state['redo'] = []
+        while len(state['undo']) > JOURNAL_LIMIT:
+            _journal_remove(state['undo'].pop(0))
+        _journal_write(state)
+    except (OSError, sqlite3.Error):
+        pass
+
+
+def _journal_forget():
+    """Drop the newest snapshot: the statement it guarded never landed."""
+    try:
+        state = _journal_read()
+        if state['undo']:
+            _journal_remove(state['undo'].pop())
+            _journal_write(state)
+    except OSError:
+        pass
+
+
+def journal_state():
+    state = _journal_read()
+    undo = state['undo']
+    redo = state['redo']
+    return {
+        'can_undo': bool(undo), 'can_redo': bool(redo),
+        'undo_label': undo[-1]['label'] if undo else '',
+        'redo_label': redo[-1]['label'] if redo else '',
+        'undo_verb': undo[-1]['verb'] if undo else '',
+        'redo_verb': redo[-1]['verb'] if redo else '',
+        'depth': len(undo),
+        'history': [{'label': item['label'], 'verb': item['verb'], 'at': item['at']}
+                    for item in reversed(undo[-8:])],
+    }
+
+
+def undo():
+    """Put the practice schema back exactly as it was before the last change."""
+    state = _journal_read()
+    if not state['undo']:
+        return {'ok': False, 'error': 'There is no change to undo in this practice schema.',
+                'journal': journal_state()}
+    entry = state['undo'][-1]
+    frozen = os.path.join(journal_path(), entry['file'])
+    if not os.path.exists(frozen):
+        state['undo'].pop()
+        _journal_write(state)
+        return {'ok': False, 'error': 'That snapshot is gone; nothing to undo.',
+                'journal': journal_state()}
+    try:
+        current = _journal_copy()
+    except (OSError, sqlite3.Error):
+        return {'ok': False, 'error': 'The practice schema is busy; try again.',
+                'journal': journal_state()}
+    state['undo'].pop()
+    state['redo'].append({'file': current, 'label': entry['label'], 'verb': entry['verb'],
+                          'at': datetime.now().strftime('%H:%M:%S')})
+    while len(state['redo']) > JOURNAL_LIMIT:
+        _journal_remove(state['redo'].pop(0))
+    _journal_write(state)
+    try:
+        shutil.copy2(frozen, path())
+    except OSError:
+        return {'ok': False, 'error': 'The practice file could not be restored.',
+                'journal': journal_state()}
+    _journal_remove(entry)
+    return {'ok': True, 'message': f'Undone: {entry["label"]}',
+            'label': entry['label'], 'verb': entry['verb'],
+            'catalogue': catalogue(), 'journal': journal_state()}
+
+
+def redo():
+    """Replay the change that undo took back."""
+    state = _journal_read()
+    if not state['redo']:
+        return {'ok': False, 'error': 'There is no undone change to replay.',
+                'journal': journal_state()}
+    entry = state['redo'][-1]
+    frozen = os.path.join(journal_path(), entry['file'])
+    if not os.path.exists(frozen):
+        state['redo'].pop()
+        _journal_write(state)
+        return {'ok': False, 'error': 'That snapshot is gone; nothing to replay.',
+                'journal': journal_state()}
+    try:
+        current = _journal_copy()
+    except (OSError, sqlite3.Error):
+        return {'ok': False, 'error': 'The practice schema is busy; try again.',
+                'journal': journal_state()}
+    state['redo'].pop()
+    state['undo'].append({'file': current, 'label': entry['label'], 'verb': entry['verb'],
+                          'at': datetime.now().strftime('%H:%M:%S')})
+    while len(state['undo']) > JOURNAL_LIMIT:
+        _journal_remove(state['undo'].pop(0))
+    _journal_write(state)
+    try:
+        shutil.copy2(frozen, path())
+    except OSError:
+        return {'ok': False, 'error': 'The practice file could not be restored.',
+                'journal': journal_state()}
+    _journal_remove(entry)
+    return {'ok': True, 'message': f'Restored: {entry["label"]}',
+            'label': entry['label'], 'verb': entry['verb'],
+            'catalogue': catalogue(), 'journal': journal_state()}
+
+
+def clear_journal():
+    state = _journal_read()
+    for item in state['undo'] + state['redo']:
+        _journal_remove(item)
+    _journal_write({'undo': [], 'redo': []})
 
 
 # ---------------------------------------------------------------------------
@@ -476,17 +666,25 @@ def _call(name, args):
     return None
 
 
-def translate(sql):
-    """Return ``(sqlite_sql, notes)`` for a single Oracle statement."""
+def translate(sql, user=None, sequences=True):
+    """Return ``(sqlite_sql, notes)`` for a single Oracle statement.
+
+    ``user`` is what Oracle's USER pseudo-column should report, and ``sequences``
+    says whether NEXTVAL/CURRVAL may reach into this practice schema. The portal
+    uses the same translator with ``user`` set to the signed-in account and
+    ``sequences`` off, so Oracle syntax works on every screen without a screen
+    being able to advance a sequence it does not own.
+    """
     notes = []
     text = sql.strip().rstrip(';').strip()
     upper = re.sub(r'--[^\n]*', ' ', text).upper()
 
     # Sequences are resolved before translation: Oracle's NEXTVAL is a side effect.
-    text = re.sub(r'\b([A-Za-z0-9_$#]+)\s*\.\s*NEXTVAL\b',
-                  lambda match: str(_next_value(match.group(1))), text, flags=re.I)
-    text = re.sub(r'\b([A-Za-z0-9_$#]+)\s*\.\s*CURRVAL\b',
-                  lambda match: str(_current_value(match.group(1))), text, flags=re.I)
+    if sequences:
+        text = re.sub(r'\b([A-Za-z0-9_$#]+)\s*\.\s*NEXTVAL\b',
+                      lambda match: str(_next_value(match.group(1))), text, flags=re.I)
+        text = re.sub(r'\b([A-Za-z0-9_$#]+)\s*\.\s*CURRVAL\b',
+                      lambda match: str(_current_value(match.group(1))), text, flags=re.I)
 
     verb = _verb(text)
     if verb == 'DESCRIBE':
@@ -526,7 +724,7 @@ def translate(sql):
     text = re.sub(r'\bSYSDATE\b', "datetime('now')", text, flags=re.I)
     text = re.sub(r'\bCURRENT_DATE\b', "date('now')", text, flags=re.I)
     text = re.sub(r'\bCURRENT_TIMESTAMP\b', "datetime('now')", text, flags=re.I)
-    text = re.sub(r'\bUSER\b', f"'{USER}'", text)
+    text = re.sub(r'\bUSER\b', f"'{user or USER}'", text)
     text = re.sub(r'\bMINUS\b', 'EXCEPT', text, flags=re.I)
     text = re.sub(r'\bFROM\s+DUAL\b', 'FROM (SELECT 1 AS DUMMY)', text, flags=re.I)
     text = re.sub(r'\bROWNUM\b', 'ROW_NUMBER() OVER ()', text, flags=re.I)
@@ -968,6 +1166,31 @@ def _grid(rows, columns, elapsed):
     }
 
 
+def column_label(name):
+    """The Oracle name of a column in the practice schema (identifiers fold up)."""
+    return _upper_name(name)
+
+
+def pseudocolumn_label(name, user=None):
+    """Name an engine expression the way Oracle would, without changing case.
+
+    The portal keeps its own column names (`roll_no` stays `roll_no`); only the
+    spellings the translator invented — datetime('now'), 'PORTAL' — are renamed.
+    """
+    text = (name or '').strip()
+    if text.startswith("datetime('now')") or text.startswith('CURRENT_TIMESTAMP'):
+        return 'SYSDATE'
+    if text.startswith("date('now')"):
+        return 'CURRENT_DATE'
+    if len(text) >= 2 and text[0] == text[-1] == "'":
+        literal = text[1:-1]
+        if user and literal == user:
+            return 'USER'
+        if literal in {USER, 'PORTAL'}:
+            return 'USER'
+    return name
+
+
 def _upper_name(name):
     """Oracle folds unquoted identifiers to upper case; a quoted mixed-case one survives."""
     if name == "'STUDIO'":
@@ -1042,6 +1265,10 @@ def run(sql, seeding=False):
                 'error': 'Use EXPLAIN PLAN FOR <statement>, or press F10.'}
 
     started = time.perf_counter()
+    journaled = False
+    if not seeding and verb in _WRITABLE:
+        _journal_record(statement, verb)
+        journaled = verb in _WRITABLE and journal_state()['can_undo']
     try:
         if verb == 'DESCRIBE':
             return _describe_result(statement, base, started)
@@ -1082,12 +1309,17 @@ def run(sql, seeding=False):
             return {**base, 'ok': True, 'kind': 'ddl' if structure else 'write',
                     'translated': translated, 'notes': notes, 'message': message,
                     'elapsed_ms': elapsed, 'affected': outcome.get('affected', 0),
-                    'row_count': None, 'columns': [], 'rows': [], 'shown': 0, 'truncated': 0}
+                    'row_count': None, 'columns': [], 'rows': [], 'shown': 0, 'truncated': 0,
+                    'journal': journal_state() if journaled else None}
     except OracleError as problem:
+        if journaled:
+            _journal_forget()
         elapsed = round((time.perf_counter() - started) * 1000, 1)
         return {**base, 'ok': False, 'code': problem.code,
                 'error': problem.text(), 'elapsed_ms': elapsed}
     except sqlite3.Error as problem:
+        if journaled:
+            _journal_forget()
         elapsed = round((time.perf_counter() - started) * 1000, 1)
         mapped = _ora_error(problem)
         return {**base, 'ok': False, 'code': mapped.code,

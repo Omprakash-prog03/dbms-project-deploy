@@ -22,6 +22,9 @@
      data-oracle-explain-url="{{ url_for('studio.oracle_explain') }}"
      data-oracle-tree-url="{{ url_for('studio.oracle_tree') }}"
      data-oracle-reset-url="{{ url_for('studio.oracle_reset') }}"
+     data-oracle-undo-url="{{ url_for('studio.oracle_undo') }}"
+     data-oracle-redo-url="{{ url_for('studio.oracle_redo') }}"
+     data-oracle-journal="{{ oracle_journal|tojson|forceescape }}"
      data-oracle-starter="{{ oracle_starter|e }}">
 
   {# ---------------------------------------------------------------- title #}
@@ -94,6 +97,14 @@
     </button>
     <button type="button" class="st-tool is-dim" data-action="rollback" title="Roll back — nothing is pending in a read-only session">
       {{ icon('arrow-right', 14) }}<span>Roll back</span>
+    </button>
+    <span class="st-tool-sep" aria-hidden="true"></span>
+
+    <button type="button" class="st-tool st-tool-undo" data-action="undo" id="stUndoTool" title="Undo the last edit (Ctrl+Z)" disabled>
+      {{ icon('arrow-right', 13) }}<span>Undo</span>
+    </button>
+    <button type="button" class="st-tool st-tool-undo is-flipped" data-action="redo" id="stRedoTool" title="Redo the edit that undo took back (Ctrl+Shift+Z)" disabled>
+      {{ icon('arrow-right', 13) }}<span>Redo</span>
     </button>
     <span class="st-tool-sep" aria-hidden="true"></span>
 
@@ -600,6 +611,10 @@
           <div><dt><kbd>F10</kbd></dt><dd>Explain the statement under the cursor</dd></div>
           <div><dt><kbd>Ctrl</kbd> + <kbd>T</kbd></dt><dd>New worksheet</dd></div>
           <div><dt><kbd>Ctrl</kbd> + <kbd>W</kbd></dt><dd>Close the current worksheet</dd></div>
+          <div><dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Undo the last edit in the worksheet</dd></div>
+          <div><dt><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> or <kbd>Ctrl</kbd> + <kbd>Y</kbd></dt><dd>Redo the edit undo took back</dd></div>
+          <div><dt><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Z</kbd></dt><dd>Undo the last change to the Oracle practice schema</dd></div>
+          <div><dt><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Y</kbd></dt><dd>Redo that practice-schema change</dd></div>
           <div><dt><kbd>Ctrl</kbd> + <kbd>/</kbd></dt><dd>Comment or uncomment the selected lines</dd></div>
           <div><dt><kbd>Ctrl</kbd> + <kbd>Space</kbd></dt><dd>Open the snippet list</dd></div>
           <div><dt><kbd>F1</kbd></dt><dd>This list</dd></div>

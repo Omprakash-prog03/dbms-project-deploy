@@ -93,6 +93,10 @@
   <aside class="sql-side">
     <div class="sims-card">
       <div class="panel-heading" style="margin-bottom:10px"><div><h2>Start from an example</h2><p>Fits this schema. Edit before running.</p></div></div>
+      <p class="sql-dialect-note">Oracle SQL is understood here and on every other screen:
+        <code>ROWNUM</code>, <code>DUAL</code>, <code>NVL</code>, <code>DECODE</code>,
+        <code>TO_CHAR</code>, <code>SYSDATE</code>, <code>FETCH FIRST n ROWS ONLY</code>,
+        <code>MINUS</code> and <code>LISTAGG</code>. Ordinary SQL still runs untouched.</p>
       <div class="sql-examples">
         {% for example in examples %}
         <button type="button" class="sql-chip" data-sql="{{ example.sql }}">{{ example.label }}</button>

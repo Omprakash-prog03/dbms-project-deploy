@@ -8,7 +8,7 @@ import re
 import time
 from decimal import Decimal
 
-from repositories import rawdata
+from repositories import oracle, rawdata
 from repositories.db_pool import db_pool
 
 READ_VERBS = {'SELECT', 'WITH', 'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN', 'TABLE', 'VALUES'}
@@ -126,14 +126,15 @@ def run(statement, allow_full_write=False):
 
         payload = db_pool.execute_query(sql, fetch='table')
         elapsed = (time.perf_counter() - started) * 1000
-        columns = list(payload['columns'])
+        originals = list(payload['columns'])
+        columns = [oracle.pseudocolumn_label(name) for name in originals]
         records = payload['rows'] or []
-        values = [[row[column] for column in columns] for row in records]
+        values = [[row[name] for name in originals] for row in records]
         numeric = [_is_numeric([row[position] for row in values]) for position in range(len(columns))]
         masked = []
         for row, record in enumerate(values):
             masked.append([
-                _PLACEHOLDER if columns[position] in rawdata.HIDDEN_COLUMNS else _cell(record[position])
+                _PLACEHOLDER if originals[position] in rawdata.HIDDEN_COLUMNS else _cell(record[position])
                 for position in range(len(columns))
             ])
         shown = masked[:MAX_ROWS]
@@ -175,6 +176,13 @@ def remember(session, outcome):
 def examples():
     """Statements that actually fit this schema, ready to edit and run."""
     return [
+        {'label': 'Oracle: five rows with ROWNUM', 'sql': (
+            "SELECT roll_no, first_name, status\nFROM student\nWHERE ROWNUM <= 5;")},
+        {'label': 'Oracle: NVL and DECODE', 'sql': (
+            "SELECT dept_code, NVL(hod_faculty_id, 0) AS hod,\n"
+            "       DECODE(status, 'Active', 'Enrolled', 'Elsewhere') AS band,\n"
+            "       COUNT(*) AS total\nFROM department JOIN student USING (dept_id)\n"
+            "GROUP BY dept_code ORDER BY total DESC;")},
         {'label': 'Add a department', 'sql': (
             "INSERT INTO department (dept_code, dept_name, hod_faculty_id, established_year)\n"
             "VALUES ('CSE', 'Computer Science & Engineering', NULL, 2001);")},
