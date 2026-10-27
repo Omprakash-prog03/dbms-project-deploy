@@ -16,7 +16,13 @@
      data-script-url="{{ url_for('studio.run_script') }}"
      data-explain-url="{{ url_for('studio.explain') }}"
      data-describe-url="{{ url_for('studio.describe', name='__object__') }}"
-     data-connection="{{ connection.name }}">
+     data-connection="{{ connection.name }}"
+     data-oracle-run-url="{{ url_for('studio.oracle_run') }}"
+     data-oracle-script-url="{{ url_for('studio.oracle_script') }}"
+     data-oracle-explain-url="{{ url_for('studio.oracle_explain') }}"
+     data-oracle-tree-url="{{ url_for('studio.oracle_tree') }}"
+     data-oracle-reset-url="{{ url_for('studio.oracle_reset') }}"
+     data-oracle-starter="{{ oracle_starter|e }}">
 
   {# ---------------------------------------------------------------- title #}
   <div class="st-titlebar">
@@ -32,10 +38,11 @@
       <label for="stConnectionSelect">Connection</label>
       <div class="st-select">
         <select id="stConnectionSelect" aria-label="Active connection">
-          <option>{{ connection.name }} · {{ connection.engine }} {{ connection.version }}</option>
+          <option value="portal">{{ connection.name }} · {{ connection.engine }} {{ connection.version }} · read-only</option>
+          <option value="oracle">{{ oracle_connection.name }} · Oracle 21c XE · practice schema</option>
         </select>
       </div>
-      <span class="st-ro-chip" title="Statements that change data are prepared and declined">{{ icon('lock', 12) }} Read-only session</span>
+      <span class="st-ro-chip" id="stSessionChip" data-mode="portal" title="Statements that change data are prepared and declined">{{ icon('lock', 12) }}<span id="stSessionChipText">Read-only session</span></span>
     </div>
 
     <div class="st-title-actions">
@@ -63,7 +70,7 @@
       </div>
     </div>
     {% endfor %}
-    <span class="st-menubar-note">{{ current_user.username }}@{{ connection.name }}</span>
+    <span class="st-menubar-note" id="stMenuConnection">{{ current_user.username }}@{{ connection.name }}</span>
   </nav>
 
   {# --------------------------------------------------------------- toolbar #}
@@ -97,6 +104,7 @@
     <span class="st-tool-grow"></span>
     <button type="button" class="st-tool" data-action="snippets" aria-haspopup="true" aria-expanded="false" title="Ready-made statements">Snippets</button>
     <button type="button" class="st-tool" data-action="history" aria-haspopup="true" aria-expanded="false" title="Statements you have run">{{ icon('clock', 14) }}<span>History</span></button>
+    <button type="button" class="st-tool" data-action="oracle-reset" title="Drop everything in the practice schema and seed EMP/DEPT again">{{ icon('arrow-right', 14) }}<span>Reset practice schema</span></button>
     <button type="button" class="st-tool st-tool-tour" data-action="tour" title="Watch the studio being used, step by step">{{ icon('sparkles', 14) }}<span>Tour</span></button>
   </div>
 
@@ -115,6 +123,7 @@
       </div>
 
       <div class="st-tree" id="stTree">
+        <div id="stTreePortal">
         <div class="st-node is-open" data-node>
           <button type="button" class="st-node-row st-node-root" data-tree-toggle aria-expanded="true">
             <span class="st-caret" aria-hidden="true"></span>
@@ -269,6 +278,103 @@
             </div>
           </div>
         </div>
+        </div>
+
+        {# ---- the Oracle practice connection ---------------------------------- #}
+        <div id="stTreeOracle" hidden>
+          <div class="st-node is-open" data-node>
+            <button type="button" class="st-node-row st-node-root" data-tree-toggle aria-expanded="true">
+              <span class="st-caret" aria-hidden="true"></span>
+              {{ icon('database', 14) }}
+              <span class="st-node-label">{{ oracle_connection.name }}</span>
+              <span class="st-node-note">Oracle</span>
+            </button>
+            <div class="st-node-children">
+              <div class="st-node is-open" data-node data-group="oracle-tables">
+                <button type="button" class="st-node-row" data-tree-toggle aria-expanded="true">
+                  <span class="st-caret" aria-hidden="true"></span>
+                  {{ icon('grid', 13) }}
+                  <span class="st-node-label">Tables</span>
+                  <span class="st-node-count" id="stOracleTableCount">{{ oracle_tables }}</span>
+                </button>
+                <div class="st-node-children" id="stOracleTables">
+                  {% for table in oracle_catalogue.tables %}
+                  <div class="st-node" data-node data-object-row>
+                    <button type="button" class="st-node-row st-object" data-tree-toggle aria-expanded="false"
+                            data-object-type="table" data-object-name="{{ table.name }}"
+                            title="{{ table.comment or table.name }}">
+                      <span class="st-caret" aria-hidden="true"></span>
+                      <span class="st-node-label">{{ table.name }}</span>
+                      <span class="st-node-meta">{{ '{:,}'.format(table.rows) }}</span>
+                    </button>
+                    <div class="st-node-children" hidden>
+                      {% for column in table.columns %}
+                      <button type="button" class="st-leaf st-leaf-column" data-column="{{ column.name }}" data-object-name="{{ table.name }}" title="Double-click to insert the column name">
+                        <span class="st-leaf-name">{{ column.name }}</span>
+                        <span class="st-leaf-type">{{ column.type }}{% if column.pk %} · PK{% endif %}</span>
+                      </button>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div class="st-node" data-node data-group="oracle-sequences">
+                <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                  <span class="st-caret" aria-hidden="true"></span>
+                  {{ icon('arrow-up-right', 13) }}
+                  <span class="st-node-label">Sequences</span>
+                  <span class="st-node-count" id="stOracleSequenceCount">{{ oracle_sequences }}</span>
+                </button>
+                <div class="st-node-children" id="stOracleSequences" hidden>
+                  {% for sequence in oracle_catalogue.sequences %}
+                  <button type="button" class="st-leaf" data-object-type="sequence" data-object-name="{{ sequence.name }}"
+                          title="NEXTVAL would return {{ sequence.next }}">
+                    <span class="st-leaf-name">{{ sequence.name }}</span>
+                    <span class="st-leaf-type">next {{ sequence.next }}</span>
+                  </button>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div class="st-node" data-node data-group="oracle-views">
+                <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                  <span class="st-caret" aria-hidden="true"></span>
+                  {{ icon('eye', 13) }}
+                  <span class="st-node-label">Views</span>
+                  <span class="st-node-count" id="stOracleViewCount">{{ oracle_views }}</span>
+                </button>
+                <div class="st-node-children" id="stOracleViews" hidden>
+                  {% for view in oracle_catalogue.views %}
+                  <button type="button" class="st-leaf" data-object-type="view" data-object-name="{{ view.name }}">
+                    <span class="st-leaf-name">{{ view.name }}</span>
+                    <span class="st-leaf-type">{{ view.columns|length }} column{{ '' if view.columns|length == 1 else 's' }}</span>
+                  </button>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div class="st-node" data-node data-group="oracle-indexes">
+                <button type="button" class="st-node-row" data-tree-toggle aria-expanded="false">
+                  <span class="st-caret" aria-hidden="true"></span>
+                  {{ icon('layers', 13) }}
+                  <span class="st-node-label">Indexes</span>
+                  <span class="st-node-count" id="stOracleIndexCount">{{ oracle_catalogue.indexes|length }}</span>
+                </button>
+                <div class="st-node-children" id="stOracleIndexes" hidden>
+                  {% for index in oracle_catalogue.indexes %}
+                  <button type="button" class="st-leaf" data-object-type="index" data-object-name="{{ index.name }}"
+                          title="{{ index.table }} ({{ index.columns|join(', ') }})">
+                    <span class="st-leaf-name">{{ index.name }}</span>
+                    <span class="st-leaf-type">{{ index.table }}</span>
+                  </button>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="st-nav-foot" id="stSelection">
@@ -335,11 +441,12 @@
             </table>
           </div>
           <div class="st-grid-note" id="stGridNote" hidden></div>
+          <div class="st-command" id="stCommand" hidden></div>
         </div>
 
         <div class="st-pane" id="pane-output" role="tabpanel" aria-labelledby="stTabOutput" hidden>
           <div class="st-log" id="stLog" aria-live="polite">
-            <p class="st-log-line"><span class="st-log-time">session</span><span class="st-log-text">Connected to {{ connection.name }} as {{ current_user.username }}. The session is read-only.</span></p>
+            <p class="st-log-line" id="stSessionBanner"><span class="st-log-time">session</span><span class="st-log-text" id="stSessionBannerText">Connected to {{ connection.name }} as {{ current_user.username }}. The session is read-only.</span></p>
             <p class="st-log-line"><span class="st-log-time">session</span><span class="st-log-text">Run a script with F5 to see one line per statement here.</span></p>
           </div>
         </div>
@@ -355,7 +462,7 @@
 
         <div class="st-pane" id="pane-messages" role="tabpanel" aria-labelledby="stTabMessages" hidden>
           <div class="st-messages" id="stMessages">
-            <div class="st-facts">
+            <div class="st-facts" id="stFactsPortal">
               <div><span>Connection</span><strong>{{ connection.name }}</strong></div>
               <div><span>Engine</span><strong>{{ connection.engine }} {{ connection.version }}</strong></div>
               <div><span>Database</span><strong>{{ connection.database }}</strong></div>
@@ -369,6 +476,20 @@
               <div><span>Character set</span><strong>{{ connection.charset }}</strong></div>
               <div><span>Mode</span><strong>Read-only simulation</strong></div>
             </div>
+            <div class="st-facts" id="stFactsOracle" hidden>
+              <div><span>Connection</span><strong>{{ oracle_connection.name }}</strong></div>
+              <div><span>Engine</span><strong>{{ oracle_connection.engine }} {{ oracle_connection.version }}</strong></div>
+              <div><span>Database</span><strong>{{ oracle_connection.database }}</strong></div>
+              <div><span>Schema</span><strong>{{ oracle_connection.user }}</strong></div>
+              <div><span>Size on disk</span><strong>{{ oracle_connection.size }}</strong></div>
+              <div><span>Page size</span><strong>{{ oracle_connection.page_size }}</strong></div>
+              <div><span>Redo</span><strong>{{ oracle_connection.journal }}</strong></div>
+              <div><span>Foreign keys</span><strong>{{ oracle_connection.foreign_keys }}</strong></div>
+              <div><span>Isolation</span><strong>{{ oracle_connection.isolation }}</strong></div>
+              <div><span>Autocommit</span><strong>{{ oracle_connection.autocommit }}</strong></div>
+              <div><span>Character set</span><strong>{{ oracle_connection.charset }}</strong></div>
+              <div><span>Mode</span><strong>Practice schema · writable (simulated Oracle)</strong></div>
+            </div>
             <p class="st-message-note">Errors and notices from this worksheet appear here, newest first.</p>
             <div class="st-message-log" id="stMessageLog" aria-live="polite"></div>
           </div>
@@ -379,21 +500,29 @@
 
   {# ------------------------------------------------------------- statusbar #}
   <footer class="st-statusbar">
-    <span class="st-status-item st-status-conn"><i class="st-status-dot" aria-hidden="true"></i>{{ current_user.username }}@{{ connection.name }}</span>
+    <span class="st-status-item st-status-conn"><i class="st-status-dot" aria-hidden="true"></i><span id="stStatusConnection">{{ current_user.username }}@{{ connection.name }}</span></span>
     <span class="st-status-item" id="stStatusPosition">Ln 1, Col 1</span>
     <span class="st-status-item" id="stStatusRows">No statement run</span>
     <span class="st-status-item" id="stStatusTime">—</span>
     <span class="st-tool-grow"></span>
-    <span class="st-status-item st-status-mode">{{ icon('lock', 11) }} Read-only</span>
-    <span class="st-status-item">{{ connection.engine }} {{ connection.version }}</span>
-    <span class="st-status-item">{{ connection.charset }}</span>
+    <span class="st-status-item st-status-mode" id="stStatusMode">{{ icon('lock', 11) }} <span>Read-only</span></span>
+    <span class="st-status-item" id="stStatusEngine">{{ connection.engine }} {{ connection.version }}</span>
+    <span class="st-status-item" id="stStatusCharset">{{ connection.charset }}</span>
   </footer>
 
   {# ----------------------------------------------------------- overlays #}
   <div class="st-popover" id="stSnippetPopover" hidden role="dialog" aria-label="Snippets">
     <div class="st-popover-head"><span>Snippets</span><button type="button" data-popover-close aria-label="Close">×</button></div>
-    <div class="st-popover-list">
+    <div class="st-popover-list" id="stSnippetPortal">
       {% for snippet in snippets %}
+      <button type="button" class="st-snippet" data-snippet="{{ snippet.sql }}">
+        <strong>{{ snippet.label }}</strong>
+        <code>{{ snippet.sql.split('\n')[0] }}{% if snippet.sql.split('\n')|length > 1 %} …{% endif %}</code>
+      </button>
+      {% endfor %}
+    </div>
+    <div class="st-popover-list" id="stSnippetOracle" hidden>
+      {% for snippet in oracle_snippets %}
       <button type="button" class="st-snippet" data-snippet="{{ snippet.sql }}">
         <strong>{{ snippet.label }}</strong>
         <code>{{ snippet.sql.split('\n')[0] }}{% if snippet.sql.split('\n')|length > 1 %} …{% endif %}</code>
@@ -478,6 +607,29 @@
         </dl>
       </div>
       <div class="st-dialog-foot"><button type="button" class="st-dialog-primary" data-dialog-close>Close</button></div>
+    </div>
+  </div>
+
+  <div class="st-dialog-layer" id="stOracleDialog" hidden>
+    <div class="st-dialog" role="dialog" aria-modal="true" aria-labelledby="stOracleTitle">
+      <div class="st-dialog-head">
+        <h2 id="stOracleTitle">The Oracle practice schema</h2>
+        <button type="button" class="st-dialog-close" data-dialog-close aria-label="Close">×</button>
+      </div>
+      <div class="st-dialog-body">
+        <p class="st-dialog-text">The second connection is a <strong>writable Oracle session</strong>. You can create tables, insert rows, update them, drop them and run sequences — the statements really execute, and the portal's own records are never touched.</p>
+        <ul class="st-dialog-list">
+          <li><strong>What runs for real:</strong> <code>SELECT</code> with <code>DUAL</code>, <code>NVL</code>, <code>DECODE</code>, <code>TO_CHAR</code>, <code>ROWNUM</code>, <code>FETCH FIRST</code> and <code>LISTAGG</code>; <code>CREATE / DROP / ALTER TABLE</code>; <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>; <code>CREATE SEQUENCE</code> with <code>NEXTVAL</code> / <code>CURRVAL</code>; <code>CREATE VIEW</code>, <code>CREATE INDEX</code>, <code>COMMENT ON</code> and <code>DESCRIBE</code>.</li>
+          <li><strong>What is translated:</strong> each statement is rewritten for an embedded engine and executed there. The <em>translated SQL</em> is printed under every result, so nothing is hidden.</li>
+          <li><strong>What is explained instead:</strong> PL/SQL blocks, stored procedures and triggers, <code>CONNECT BY</code>, <code>MERGE</code> and <code>PIVOT</code>. Those live in <code>db/</code> and on the Database workshop page.</li>
+          <li><strong>Errors are Oracle errors:</strong> <code>ORA-00942</code>, <code>ORA-00904</code>, <code>ORA-00001</code>, <code>ORA-01400</code>, <code>ORA-02291</code>.</li>
+        </ul>
+        <p class="st-dialog-text">The schema starts as the classic SCOTT demonstration: <code>EMP</code>, <code>DEPT</code> and <code>EMP_SEQ</code>. <strong>Reset practice schema</strong> in the toolbar drops everything you made and seeds it again.</p>
+        <p class="st-dialog-text">This is a simulation of Oracle on a host that cannot run Oracle: the free PythonAnywhere tier has no Oracle server and no route to one. The <em>dialect</em> is faithful; the <em>server</em> is not Oracle's.</p>
+      </div>
+      <div class="st-dialog-foot">
+        <button type="button" class="st-dialog-primary" data-dialog-close>Close</button>
+      </div>
     </div>
   </div>
 
