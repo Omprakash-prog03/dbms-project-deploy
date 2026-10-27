@@ -190,6 +190,22 @@ try {
   assert.match(await page.locator(".sql-error").innerText(), /not allowed/);
   assert.equal(await page.locator(".sql-history-item").count() > 0, true);
 
+  // Database workshop: every topic renders, a join runs live, and a trigger
+  // refuses the statement it is meant to refuse.
+  for (const tab of ["overview", "joins", "views", "procedures", "functions", "triggers", "plans", "schema"]) {
+    await visit(`/database?tab=${tab}`);
+    await noOverflow();
+  }
+  await visit("/database?tab=joins");
+  await page.locator("[data-ws-run]").first().click();
+  await page.waitForSelector("#wsResult .ws-statusbar");
+  assert.match(await page.locator("#wsResult .ws-statusbar").innerText(), /rows? selected/);
+  assert.ok((await page.locator("#wsResult .ws-grid tbody tr").count()) > 0);
+  await visit("/database?tab=triggers");
+  await page.locator("[data-ws-prove]").first().click();
+  await page.waitForSelector(".ws-proof-inner .ws-proof-verdict");
+  assert.match(await page.locator(".ws-proof-inner .ws-proof-verdict").first().innerText(), /refused/i);
+
   // Supreme control: the master key, the live roster, and the owner's own
   // session surviving a lockdown. A key may exist from an earlier run.
   await visit("/owner");
