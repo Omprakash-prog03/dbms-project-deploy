@@ -29,6 +29,9 @@ class Config:
     # every this many minutes and any administrator who needs a code can use it.
     ROTATING_CODE_MINUTES = int(os.getenv('ROTATING_CODE_MINUTES', '10'))
     DB_ENGINE = os.getenv('DB_ENGINE', 'auto').lower()
+    # 'oracle' accepts Oracle SQL on every screen (ROWNUM, DUAL, NVL, SYSDATE…);
+    # 'native' turns the translation layer off and runs raw engine SQL only.
+    DB_DIALECT = os.getenv('DB_DIALECT', 'oracle').lower()
     SQLITE_PATH = str((BASE_DIR / os.getenv('SQLITE_PATH', 'sims_embedded.db')).resolve())
     DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
     DB_PORT = int(os.getenv('DB_PORT', 3306))

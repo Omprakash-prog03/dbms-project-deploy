@@ -6,6 +6,7 @@ import datetime
 import threading
 from contextlib import contextmanager
 from config import Config
+from repositories import dialect
 
 # Global variable to store last executed SQL query + params for "Show SQL" inspection
 _thread_local = threading.local()
@@ -579,8 +580,12 @@ class DatabasePool:
             # Format query for engine
             final_sql = sql
             if not self.is_mysql:
+                # Oracle syntax is accepted here, then spelled the way the
+                # embedded engine expects it. Anything already portable passes
+                # through untouched.
+                final_sql, _notes = dialect.to_engine(sql)
                 # Replace %s with ? for SQLite
-                final_sql = re.sub(r'%s', '?', sql)
+                final_sql = re.sub(r'%s', '?', final_sql)
 
             try:
                 cur.execute(final_sql, params)
@@ -620,7 +625,8 @@ class DatabasePool:
             cur = conn.cursor()
             final_sql = sql
             if not self.is_mysql:
-                final_sql = re.sub(r'%s', '?', sql)
+                final_sql, _notes = dialect.to_engine(sql)
+                final_sql = re.sub(r'%s', '?', final_sql)
             try:
                 cur.execute(final_sql, params)
                 if commit:

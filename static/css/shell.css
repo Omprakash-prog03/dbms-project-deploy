@@ -2791,6 +2791,17 @@ select option {
   position: sticky;
   top: 16px;
 }
+.sql-dialect-note {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted, #8b93a7);
+}
+.sql-dialect-note code {
+  font-family: "SF Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--text-soft, #c8cede);
+}
 .sql-examples {
   display: flex;
   flex-direction: column;

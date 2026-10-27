@@ -50,6 +50,8 @@ MENUS = [
         ('Object details', '', 'describe'),
         ('Connection information', '', 'connection-info'),
         ('Oracle practice schema', '', 'oracle-info'),
+        ('Undo practice change', 'Ctrl+Alt+Z', 'oracle-undo'),
+        ('Redo practice change', 'Ctrl+Alt+Y', 'oracle-redo'),
         ('Collapse navigator', '', 'collapse-tree'),
         ('Expand navigator', '', 'expand-tree'),
     ]),
@@ -93,6 +95,7 @@ def workspace():
         oracle_tables=len(practice['tables']),
         oracle_views=len(practice['views']),
         oracle_sequences=len(practice['sequences']),
+        oracle_journal=oracle.journal_state(),
     )
 
 
@@ -188,7 +191,26 @@ def oracle_explain():
 def oracle_tree():
     """The navigator after DDL: the practice schema, as it stands now."""
     _skip_activity()
-    return jsonify(ok=True, catalogue=oracle.catalogue(), connection=oracle.connection())
+    return jsonify(ok=True, catalogue=oracle.catalogue(), connection=oracle.connection(),
+                   journal=oracle.journal_state())
+
+
+@studio_bp.route('/studio/oracle/undo', methods=['POST'])
+@login_required
+@role_required('admin')
+def oracle_undo():
+    """Put the practice schema back the way it was before the last change."""
+    _skip_activity()
+    return jsonify(oracle.undo())
+
+
+@studio_bp.route('/studio/oracle/redo', methods=['POST'])
+@login_required
+@role_required('admin')
+def oracle_redo():
+    """Replay the change that undo took back."""
+    _skip_activity()
+    return jsonify(oracle.redo())
 
 
 @studio_bp.route('/studio/oracle/reset', methods=['POST'])

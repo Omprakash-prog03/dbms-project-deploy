@@ -28,6 +28,8 @@
       explain: app.dataset.oracleExplainUrl,
       tree: app.dataset.oracleTreeUrl,
       reset: app.dataset.oracleResetUrl,
+      undo: app.dataset.oracleUndoUrl,
+      redo: app.dataset.oracleRedoUrl,
     },
   };
   const oracleStarter = app.dataset.oracleStarter || "";
@@ -75,6 +77,14 @@
   const state = {
     connection: "portal",
     memory: { portal: null, oracle: null },
+    journal: (() => {
+      try {
+        return JSON.parse(app.dataset.oracleJournal || "{}");
+      } catch (error) {
+        return {};
+      }
+    })(),
+    busySchema: false,
     worksheets: [],
     activeId: 1,
     nextId: 2,
@@ -142,12 +152,47 @@
   const activeWorksheet = () =>
     state.worksheets.find((worksheet) => worksheet.id === state.activeId) || state.worksheets[0];
 
+  // A worksheet is saved with the tail of its undo stack, so a reload does not
+  // lose the ability to take back what was typed before it.
+  const packWorksheet = ({ id, name, sql, history }) => {
+    if (!history || !Array.isArray(history.entries) || history.entries.length < 2) {
+      return { id, name, sql };
+    }
+    const entries = history.entries.slice(-20).map((entry) => ({
+      text: String(entry.text ?? ""),
+      start: Number(entry.start) || 0,
+      end: Number(entry.end) || 0,
+    }));
+    const offset = history.entries.length - entries.length;
+    return {
+      id,
+      name,
+      sql,
+      history: { entries, index: Math.max(0, Math.min((history.index ?? 0) - offset, entries.length - 1)) },
+    };
+  };
+
+  const unpackHistory = (worksheet, saved) => {
+    if (!saved || !Array.isArray(saved.entries) || !saved.entries.length) return null;
+    const entries = saved.entries
+      .filter((entry) => entry && typeof entry.text === "string")
+      .slice(-20)
+      .map((entry) => ({
+        text: entry.text,
+        start: Number(entry.start) || 0,
+        end: Number(entry.end) || 0,
+      }));
+    if (!entries.length) return null;
+    const index = Math.max(0, Math.min(Number(saved.index) || 0, entries.length - 1));
+    return { entries, index };
+  };
+
   const saveState = () => {
     try {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          worksheets: state.worksheets.map(({ id, name, sql }) => ({ id, name, sql })),
+          worksheets: state.worksheets.map(packWorksheet),
           activeId: state.activeId,
         }),
       );
@@ -168,11 +213,16 @@
       state.worksheets = restored.worksheets
         .filter((worksheet) => typeof worksheet.sql === "string")
         .slice(0, MAX_WORKSHEETS)
-        .map((worksheet, position) => ({
-          id: Number(worksheet.id) || position + 1,
-          name: String(worksheet.name || `Worksheet ${position + 1}`),
-          sql: worksheet.sql,
-        }));
+        .map((worksheet, position) => {
+          const restoredWorksheet = {
+            id: Number(worksheet.id) || position + 1,
+            name: String(worksheet.name || `Worksheet ${position + 1}`),
+            sql: worksheet.sql,
+          };
+          const history = unpackHistory(restoredWorksheet, worksheet.history);
+          if (history) restoredWorksheet.history = history;
+          return restoredWorksheet;
+        });
       state.activeId =
         state.worksheets.find((worksheet) => worksheet.id === restored.activeId)?.id ||
         state.worksheets[0].id;
@@ -321,6 +371,129 @@
     updateCaret();
   };
 
+  /* ------------------------------------------------------- undo and redo ---
+     Every worksheet keeps its own stack of {text, caret} snapshots, so undo
+     follows the worksheet you are looking at and survives a reload. Typing is
+     coalesced on a short timer; Format, Comment, Clear, snippet inserts and a
+     connection switch are recorded as single steps. */
+  const HISTORY_STEPS = 60;
+  const HISTORY_CHAR_BUDGET = 80000;
+  let historyTimer = null;
+
+  const historyOf = (worksheet) => {
+    if (!worksheet) return null;
+    if (!worksheet.history || !Array.isArray(worksheet.history.entries)) {
+      worksheet.history = { entries: [], index: -1 };
+    }
+    const history = worksheet.history;
+    if (!history.entries.length) {
+      history.entries = [{ text: worksheet.sql || "", start: 0, end: 0 }];
+      history.index = 0;
+    }
+    return history;
+  };
+
+  const trimHistory = (history) => {
+    while (history.entries.length > HISTORY_STEPS) history.entries.shift();
+    let total = history.entries.reduce((sum, entry) => sum + (entry.text || "").length, 0);
+    while (history.entries.length > 2 && total > HISTORY_CHAR_BUDGET) {
+      total -= (history.entries.shift().text || "").length;
+    }
+    history.index = Math.max(0, Math.min(history.index, history.entries.length - 1));
+  };
+
+  const updateHistoryButtons = () => {
+    const history = historyOf(activeWorksheet());
+    const canUndo = Boolean(history) && history.index > 0;
+    const canRedo = Boolean(history) && history.index < history.entries.length - 1;
+    const undoButton = $("#stUndoTool");
+    const redoButton = $("#stRedoTool");
+    if (undoButton) {
+      undoButton.disabled = !canUndo;
+      undoButton.title = canUndo
+        ? "Undo the last edit (Ctrl+Z)"
+        : "Nothing to undo in this worksheet yet";
+    }
+    if (redoButton) {
+      redoButton.disabled = !canRedo;
+      redoButton.title = canRedo
+        ? "Redo the edit undo took back (Ctrl+Shift+Z)"
+        : "Nothing to redo";
+    }
+    const menuUndo = $("[data-action='undo']");
+    const menuRedo = $("[data-action='redo']");
+    if (menuUndo && menuUndo.tagName === "BUTTON" && !menuUndo.classList.contains("st-tool")) {
+      menuUndo.disabled = !canUndo;
+    }
+    if (menuRedo && menuRedo.tagName === "BUTTON" && !menuRedo.classList.contains("st-tool")) {
+      menuRedo.disabled = !canRedo;
+    }
+    return { canUndo, canRedo };
+  };
+
+  const recordHistory = () => {
+    historyTimer = null;
+    const worksheet = activeWorksheet();
+    if (!worksheet) return;
+    const history = historyOf(worksheet);
+    const snapshot = { text: el.sql.value, start: el.sql.selectionStart, end: el.sql.selectionEnd };
+    const current = history.entries[history.index];
+    if (current && current.text === snapshot.text) {
+      current.start = snapshot.start;
+      current.end = snapshot.end;
+      return;
+    }
+    history.entries = history.entries.slice(0, history.index + 1);
+    history.entries.push(snapshot);
+    history.index = history.entries.length - 1;
+    trimHistory(history);
+    updateHistoryButtons();
+    saveState();
+  };
+
+  const scheduleHistory = () => {
+    clearTimeout(historyTimer);
+    historyTimer = setTimeout(recordHistory, 320);
+  };
+
+  const flushHistory = () => {
+    if (historyTimer) {
+      clearTimeout(historyTimer);
+      historyTimer = null;
+      recordHistory();
+    }
+  };
+
+  const stepHistory = (delta) => {
+    flushHistory();
+    const worksheet = activeWorksheet();
+    if (!worksheet) return;
+    const history = historyOf(worksheet);
+    const next = history.index + delta;
+    if (next < 0 || next >= history.entries.length) {
+      toast(delta < 0 ? "Nothing left to undo" : "Nothing left to redo");
+      return false;
+    }
+    history.index = next;
+    const entry = history.entries[next];
+    const text = entry.text || "";
+    el.sql.value = text;
+    const start = Math.max(0, Math.min(entry.start ?? text.length, text.length));
+    const end = Math.max(start, Math.min(entry.end ?? start, text.length));
+    el.sql.selectionStart = start;
+    el.sql.selectionEnd = end;
+    worksheet.sql = text;
+    paintEditor();
+    updateCaret();
+    updateHistoryButtons();
+    saveState();
+    el.sql.focus();
+    return true;
+  };
+
+  const undoEdit = () => stepHistory(-1);
+  const redoEdit = () => stepHistory(1);
+
   /* ------------------------------------------------- statements in the editor */
   const statementSpans = (text) => {
     const spans = [];
@@ -422,6 +595,7 @@
     el.sql.selectionEnd = caret;
     el.sql.focus();
     commitEditor();
+    recordHistory();
   };
 
   /* --------------------------------------------------------------- worksheets */
@@ -446,12 +620,14 @@
   const showWorksheet = (id) => {
     const worksheet = state.worksheets.find((item) => item.id === id);
     if (!worksheet) return;
+    flushHistory();
     state.activeId = id;
     el.sql.value = worksheet.sql;
     renderTabs();
     paintEditor();
     updateCaret();
     saveState();
+    updateHistoryButtons();
     el.sql.focus();
   };
 
@@ -557,6 +733,7 @@
 
   /* --------------------------------------------------------------- formatting */
   const formatSql = () => {
+    flushHistory();
     const text = el.sql.value;
     let formatted = "";
     let index = 0;
@@ -613,6 +790,7 @@
       .trim();
     el.sql.value = `${formatted}\n`;
     commitEditor();
+    recordHistory();
     toast("Worksheet formatted");
   };
 
@@ -627,6 +805,7 @@
   };
 
   const commentLines = (remove) => {
+    flushHistory();
     const { lineStart, lineEnd } = selectedLineRange();
     const before = el.sql.value.slice(0, lineStart);
     const block = el.sql.value.slice(lineStart, lineEnd);
@@ -644,6 +823,7 @@
     el.sql.selectionStart = lineStart;
     el.sql.selectionEnd = lineStart + next.length;
     commitEditor();
+    recordHistory();
     toast(remove || commented ? "Comment removed" : "Comment added");
   };
 
@@ -873,12 +1053,26 @@
       el.resultBadge.textContent = "";
       const panel = $("#stCommand");
       panel.hidden = false;
+      const journal = payload.journal || null;
+      const undoRow = journal
+        ? `<div class="st-command-actions">
+             <button type="button" class="st-command-button" data-action="oracle-undo"${
+               journal.can_undo ? "" : " disabled"
+             }>Undo this change</button>
+             <button type="button" class="st-command-button" data-action="oracle-redo"${
+               journal.can_redo ? "" : " disabled"
+             }>Redo</button>
+             <span class="st-command-hint">Ctrl+Alt+Z · Ctrl+Alt+Y</span>
+           </div>`
+        : "";
       panel.innerHTML = `<div class="st-command-card">
           <div class="st-command-verdict">${escapeHtml(payload.message || "Statement completed.")}</div>
           <p class="st-command-meta">${escapeHtml(payload.verb || "")} · ${payload.elapsed_ms} ms · ${
             payload.connection === "oracle" ? "committed to the practice schema" : "prepared, not committed"
           }</p>
+          ${undoRow}
         </div>${translatedNote(payload)}`;
+      if (journal) setJournal(journal);
       activatePane("results");
       el.statusRows.textContent = payload.message || "Command completed";
       el.statusTime.textContent = `${payload.elapsed_ms} ms`;
@@ -1308,8 +1502,10 @@
     comment: () => commentLines(false),
     uncomment: () => commentLines(true),
     clear: () => {
+      flushHistory();
       el.sql.value = "-- Cleared worksheet\n\n";
       commitEditor();
+      recordHistory();
       toast("Worksheet cleared");
     },
     commit: () => {
@@ -1334,16 +1530,10 @@
       }
       activatePane("messages");
     },
-    undo: () => {
-      el.sql.focus();
-      document.execCommand("undo");
-      commitEditor();
-    },
-    redo: () => {
-      el.sql.focus();
-      document.execCommand("redo");
-      commitEditor();
-    },
+    undo: () => undoEdit(),
+    redo: () => redoEdit(),
+    "oracle-undo": () => schemaStep("undo"),
+    "oracle-redo": () => schemaStep("redo"),
     "select-all": () => {
       el.sql.focus();
       el.sql.select();
@@ -1558,13 +1748,37 @@
   // editor
   el.sql.addEventListener("input", () => {
     commitEditor();
+    scheduleHistory();
     updateCaret();
   });
+  el.sql.addEventListener("blur", flushHistory);
   el.sql.addEventListener("scroll", syncEditorScroll);
   el.sql.addEventListener("click", updateCaret);
   el.sql.addEventListener("keyup", updateCaret);
   el.sql.addEventListener("keydown", (event) => {
     const { selectionStart, selectionEnd, value } = el.sql;
+    const command = event.ctrlKey || event.metaKey;
+    if (command && event.altKey && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      schemaStep("undo");
+      return;
+    }
+    if (command && event.altKey && event.key.toLowerCase() === "y") {
+      event.preventDefault();
+      schemaStep("redo");
+      return;
+    }
+    if (command && !event.altKey && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      if (event.shiftKey) redoEdit();
+      else undoEdit();
+      return;
+    }
+    if (command && !event.altKey && event.key.toLowerCase() === "y") {
+      event.preventDefault();
+      redoEdit();
+      return;
+    }
     if (event.key === "Tab") {
       event.preventDefault();
       el.sql.setRangeText("    ", selectionStart, selectionEnd, "end");
@@ -1787,6 +2001,7 @@
 
   const switchConnection = (mode) => {
     if (mode === state.connection) return;
+    flushHistory();
     state.memory[state.connection] = el.sql.value;
     state.connection = mode;
     setChip(mode);
@@ -1815,6 +2030,9 @@
       mode === "oracle"
         ? "EMP, DEPT and EMP_SEQ are loaded. Press F9 to run the statement under the cursor — CREATE, INSERT, UPDATE and DELETE really work here."
         : "Press F9 to run the statement under the cursor, or F5 to run the whole worksheet. Reads execute against the live database; data changes are prepared and declined.";
+    recordHistory();
+    updateHistoryButtons();
+    updateSchemaButtons();
     el.statusRows.textContent = "No statement run";
     el.statusTime.textContent = "—";
     message(
@@ -1894,10 +2112,86 @@
       const payload = await response.json();
       if (payload.ok) {
         renderOracleTree(payload.catalogue);
+        if (payload.journal) setJournal(payload.journal);
         if (el.filter?.value.trim()) el.filter.dispatchEvent(new Event("input"));
       }
     } catch (error) {
       /* the navigator simply keeps the last known schema */
+    }
+  };
+
+  // ---------------------------------------------------- undoing real changes
+  const setJournal = (journal) => {
+    if (journal) state.journal = journal;
+    updateSchemaButtons();
+  };
+
+  const updateSchemaButtons = () => {
+    const journal = state.journal || {};
+    const oracle = state.connection === "oracle";
+    $$("[data-action='oracle-undo']").forEach((button) => {
+      button.disabled = !oracle || !journal.can_undo;
+      button.title = journal.can_undo ? `Undo: ${journal.undo_label}` : "No change to undo";
+    });
+    $$("[data-action='oracle-redo']").forEach((button) => {
+      button.disabled = !oracle || !journal.can_redo;
+      button.title = journal.can_redo ? `Redo: ${journal.redo_label}` : "Nothing to redo";
+    });
+  };
+
+  const schemaStep = async (direction) => {
+    if (state.connection !== "oracle") {
+      toast("Switch to the Oracle connection first");
+      return;
+    }
+    if (state.busySchema) return;
+    state.busySchema = true;
+    try {
+      const response = await fetch(endpoints()[direction], {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRF-Token": CSRF },
+        credentials: "same-origin",
+        body: "{}",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!payload) {
+        toast("The studio could not reach the server");
+        return;
+      }
+      if (!payload.ok) {
+        setJournal(payload.journal);
+        toast(payload.error || "Nothing to do");
+        message(direction === "undo" ? "note" : "note",
+                direction === "undo" ? "Nothing to undo" : "Nothing to redo",
+                payload.error || "The journal is empty.");
+        return;
+      }
+      if (payload.catalogue) renderOracleTree(payload.catalogue);
+      setJournal(payload.journal);
+      const command = $("#stCommand");
+      if (command) {
+        command.hidden = true;
+        command.innerHTML = "";
+      }
+      state.payload = null;
+      renderGrid();
+      el.resultEmpty.hidden = false;
+      el.resultEmpty.querySelector("h2").textContent =
+        direction === "undo" ? "Change undone" : "Change replayed";
+      el.resultEmpty.querySelector("p").textContent =
+        `${payload.message}. The navigator and the practice schema agree again.`;
+      logLine("ok", `${direction === "undo" ? "UNDO" : "REDO"} · ${payload.message}`);
+      message(
+        "note",
+        direction === "undo" ? "Practice schema restored" : "Practice schema replayed",
+        `${payload.message}. Undo reaches back twelve changes; Reset practice schema starts the demonstration over.`,
+      );
+      el.statusRows.textContent = payload.message;
+      el.statusTime.textContent = "—";
+      activatePane("results");
+      toast(payload.message);
+    } finally {
+      state.busySchema = false;
     }
   };
 
@@ -1918,6 +2212,7 @@
       return;
     }
     await refreshOracleTree();
+    setJournal({ can_undo: false, can_redo: false });
     logLine("note", `Practice schema reset · ${payload.tables} tables · SCOTT seed restored`);
     message("note", "Practice schema reset", "Every object you created was dropped and EMP/DEPT/EMP_SEQ were seeded again.");
     toast("Practice schema reset");
@@ -2084,6 +2379,8 @@
 
   /* -------------------------------------------------------------------- boot */
   loadState();
+  updateHistoryButtons();
+  updateSchemaButtons();
   el.sql.value = activeWorksheet().sql;
   renderTabs();
   paintEditor();

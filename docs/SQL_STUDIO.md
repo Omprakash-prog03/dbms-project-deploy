@@ -151,6 +151,29 @@ own database, so a bad setting cannot point the writable session at live rows.
    (`SELECT nope FROM project`) and show `ORA-00904`.
 5. **Reset practice schema** to put the demonstration back for the next person.
 
+## Undo, redo — and taking back a real change
+
+**In the worksheet.** Every worksheet keeps its own stack of edits: text *and*
+caret position. The toolbar's **Undo** / **Redo** buttons, `Ctrl` + `Z`,
+`Ctrl` + `Shift` + `Z` (or `Ctrl` + `Y`) and the Edit menu all step through it.
+Typing is coalesced on a short timer, so one press takes back a burst rather
+than a single character; **Format**, **Comment**, **Clear**, a snippet insert and
+a connection switch are each recorded as one step. The stack belongs to the
+worksheet, so switching tabs does not mix them, and its tail is saved with the
+worksheet — reload the page and you can still undo what you typed before it.
+
+**In the practice schema.** A statement that changes `ORACLE_XE` can be taken
+back for real. Before every writable statement the studio freezes the practice
+file (it is about 60 KB, so the snapshot is cheap); **Undo this change** appears
+on the card under the result, and **Tools → Undo practice change**
+(`Ctrl` + `Alt` + `Z`) walks back up to twelve changes. **Redo practice change**
+(`Ctrl` + `Alt` + `Y`) replays the one you took back, and a new statement clears
+the redo stack, the way any editor does. Reads never take a snapshot, a
+statement that fails leaves none, and **Reset practice schema** clears the
+journal. Restoring works at the file level, so a dropped table, a deleted row
+and a new index all come back exactly as they were — metadata, sequences and
+comments included.
+
 ## The safety model
 
 A client that can run anything can break anything. This one draws the line
@@ -176,11 +199,13 @@ demonstrating the tool never fabricates an audit trail.
 
 | File | Purpose |
 | --- | --- |
-| `routes/studio.py` | Blueprint: the page, the four portal JSON endpoints (`/studio/run`, `/studio/script`, `/studio/explain`, `/studio/describe/<object>`), the five practice endpoints (`/studio/oracle/run`, `/script`, `/explain`, `/tree`, `/reset`) and the menu definitions. |
+| `routes/studio.py` | Blueprint: the page, the four portal JSON endpoints (`/studio/run`, `/studio/script`, `/studio/explain`, `/studio/describe/<object>`), the seven practice endpoints (`/studio/oracle/run`, `/script`, `/explain`, `/tree`, `/reset`, `/undo`, `/redo`) and the menu definitions. |
 | `repositories/studio.py` | Connection facts, the catalogue for the navigator, statement classification, the read-only runner, the script splitter, the plan tree and the object describer. |
 | `templates/studio/index.html` | The window: title bar, menus, toolbar, navigator tree, worksheets, editor, four result panes, status bar, popovers, context menu, tour and dialogs. |
 | `static/css/studio.css` | The client theme (tokens, panes, grid, plan, tour). |
 | `static/js/studio.js` | Editor highlighting and gutter, worksheet state, menus, popovers, grid sorting, CSV export, plan rendering, history, tour, shortcuts. |
 | `repositories/oracle.py` | The Oracle practice connection: seed, translation, error mapping, sequences, `DESCRIBE`, plans, catalogue, reset. |
 | `tests/test_studio.py` | 24 tests: access, reads, masking, prepared writes, refusals, script splitting, plans, describe, change-log isolation. |
+| `repositories/dialect.py` | Oracle SQL on every screen: recognises an Oracle-only statement, translates it with the studio's translator, passes anything else through untouched. |
+| `tests/test_dialect.py` | 23 tests: `ROWNUM`, `DUAL`, `NVL`, `DECODE`, `TO_CHAR`, `FETCH FIRST`, `MINUS`, `LISTAGG` on the portal tables, passthrough, the switch, the journal, undo/redo over HTTP and access control. |
 | `tests/test_oracle.py` | 31 tests: the seeded schema, reads and functions, DDL/DML round trips, sequences, `DESCRIBE`, Oracle error codes, refusals, the starter script, reset, the HTTP endpoints and access control. |
