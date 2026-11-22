@@ -54,7 +54,8 @@ def create_app(test_config=None):
     from routes.owner import owner_bp
     from routes.workshop import workshop_bp
     from routes.studio import studio_bp
-    for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp, reports_bp, rawdata_bp, owner_bp, workshop_bp, studio_bp):
+    from routes.universe import universe_bp
+    for blueprint in (auth_bp, dashboard_bp, student_bp, academics_bp, operations_bp, fee_bp, admissions_bp, insights_bp, reports_bp, rawdata_bp, owner_bp, workshop_bp, studio_bp, universe_bp):
         app.register_blueprint(blueprint)
 
     # The guard and the session registry are additive tables; create them up front
@@ -150,7 +151,7 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_globals():
         is_owner = session.get('role') == 'admin' and owner_guard.is_owner(session.get('username'))
-        names = {'dashboard':'Overview', 'students':'Students', 'faculty':'Faculty', 'departments':'Departments', 'courses':'Courses', 'offerings':'Course offerings', 'enrollments':'Enrollments', 'attendance':'Attendance', 'results':'Results', 'fees':'Fees & payments', 'admissions':'Admissions', 'insights':'Database insights', 'reports':'Reports & PDF', 'raw-data':'Raw data', 'admin-access':'Supreme control', 'owner':'Supreme control'}
+        names = {'dashboard':'Overview', 'students':'Students', 'faculty':'Faculty', 'departments':'Departments', 'courses':'Courses', 'offerings':'Course offerings', 'enrollments':'Enrollments', 'attendance':'Attendance', 'results':'Results', 'fees':'Fees & payments', 'admissions':'Admissions', 'insights':'Database insights', 'reports':'Reports & PDF', 'raw-data':'Raw data', 'admin-access':'Supreme control', 'owner':'Supreme control', 'universe':'Marvel & DC Universe'}
         pending_count = 0
         if session.get('role') in ('admin', 'faculty'):
             pending_count = db_pool.execute_query("SELECT COUNT(*) FROM admission_application WHERE status='Pending'", fetch='val') or 0

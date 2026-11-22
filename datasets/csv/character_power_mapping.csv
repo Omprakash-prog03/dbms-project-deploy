@@ -1,0 +1,1253 @@
+mapping_id,character_id,power_id,proficiency_level,limitations
+1,1,50,Master,The suit needs power; a drained reactor leaves him mortal.
+2,1,38,Master,Solved only by a better engineer or a device he did not design.
+3,1,17,Expert,Repulsor output is capped by the reactor he carries.
+4,1,6,Expert,Sustained flight drains the suit faster than ground combat.
+5,1,40,Master,None notable.
+6,2,2,Expert,"He is the serum peak of human capability, not superhuman."
+7,2,7,Master,None notable.
+8,2,58,Master,None notable.
+9,2,97,Expert,None notable.
+10,2,68,Master,His certainty can become rigidity in a divided team.
+11,3,1,Master,Mjolnir only answers to the worthy.
+12,3,29,Master,None notable.
+13,3,6,Master,The hammer must be in hand.
+14,3,3,Expert,Magic and Asgardian weapons bypass it.
+15,3,15,Master,"He ages, but over millennia."
+16,4,1,Master,"Anger is the trigger and the ceiling: the calmer he is, the weaker."
+17,4,3,Master,Adamantium and cosmic force can cut him.
+18,4,4,Master,Sustained damage past his healing rate can still kill him.
+19,4,25,Expert,Output is uncontrolled while he is enraged.
+20,4,91,Master,He cannot choose a target once the rage takes over.
+21,5,2,Expert,Around ten tonnes; well short of Thor or the Hulk.
+22,5,12,Master,Requires bare skin contact.
+23,5,7,Master,None notable.
+24,5,8,Master,None notable.
+25,5,34,Trained,The spider-sense warns but does not identify the threat.
+26,6,43,Master,Every spell has a cost in energy or consequence.
+27,6,44,Master,He must know the target realm to open it.
+28,6,45,Master,Requires a focus and a clear destination.
+29,6,37,Master,His body is defenceless while he is out of it.
+30,6,71,Master,None notable.
+31,7,43,Master,Her spells are emotion-driven and can misfire catastrophically.
+32,7,77,Expert,Large rewrites are unstable and rebound on her.
+33,7,31,Expert,None notable.
+34,7,16,Expert,None notable.
+35,7,33,Trained,Her mind has been broken by others more than once.
+36,8,11,Master,"He cannot copy powers, only form."
+37,8,36,Master,Illusions break on firm physical contact.
+38,8,43,Expert,Below Strange and Wanda in raw power.
+39,8,30,Trained,None notable.
+40,8,38,Expert,His plans assume he is the cleverest person present.
+41,9,1,Master,None notable while unarmed; the gauntlet multiplies it.
+42,9,75,Master,Needs the gauntlet or a cosmic cube for full output.
+43,9,3,Master,Cosmic-level force and Adamantium can still hurt him.
+44,9,38,Master,His arrogance is the reliable fault line.
+45,9,80,Expert,Only with an Infinity Stone in hand.
+46,10,4,Master,"He heals from anything short of total incineration, and it hurts."
+47,10,14,Expert,A curse from Death keeps him from dying at all.
+48,10,58,Expert,Distracted by conversation mid-fight.
+49,10,56,Expert,None notable.
+50,10,7,Trained,None notable.
+51,11,4,Master,Adamantium poisoning slows him; the healing is not unlimited.
+52,11,87,Master,Blades that cannot cut what is stronger than Adamantium.
+53,11,9,Master,"Overload in smoke, gas or sonics."
+54,11,15,Master,"Ages extremely slowly, still mortal."
+55,11,91,Master,He loses judgement and sometimes allies.
+56,12,28,Master,Non-metallic targets need indirect force.
+57,12,19,Master,Sustained defence costs concentration.
+58,12,6,Expert,Depends on available metal.
+59,12,38,Expert,None notable.
+60,12,68,Expert,His cause splits his own followers.
+61,13,2,Expert,"The herb grants peak-human, not superhuman, force."
+62,13,7,Master,None notable.
+63,13,58,Master,None notable.
+64,13,38,Expert,None notable.
+65,13,39,Expert,"He plans for the nation, not just the fight."
+66,14,67,Master,Trust is his scarcest resource.
+67,14,68,Master,None notable.
+68,14,57,Expert,None notable.
+69,14,39,Expert,He is often working from incomplete intelligence.
+70,14,72,Expert,None notable.
+71,15,2,Trained,Stronger only under a full moon.
+72,15,7,Expert,None notable.
+73,15,58,Expert,None notable.
+74,15,4,Trained,Dependent on Khonshu favour.
+75,15,100,Trained,Khonshu may withdraw it at will.
+76,16,10,Master,Shrinking below insect scale is disorienting.
+77,16,6,Expert,Wings need open air.
+78,16,17,Expert,Bio-blasts tire her quickly.
+79,16,68,Expert,None notable.
+80,16,38,Trained,None notable.
+81,17,10,Master,Extreme shrink requires a sealed helmet.
+82,17,40,Master,His inventions are frequently weaponised against him.
+83,17,38,Master,Emotionally his weakest ground.
+84,17,58,Trained,None notable.
+85,17,68,Trained,His judgement under pressure has failed the team.
+86,18,16,Master,Her strongest output briefly burns out her powers.
+87,18,6,Master,None notable in atmosphere or vacuum.
+88,18,1,Master,None notable.
+89,18,3,Expert,Sustained binary output drains it.
+90,18,76,Trained,None notable.
+91,19,6,Expert,The harness needs fuel and altitude.
+92,19,35,Expert,Limited to birds in most depictions.
+93,19,68,Expert,None notable.
+94,19,58,Trained,None notable.
+95,19,67,Trained,None notable.
+96,20,51,Master,The arm is a target and a tracking beacon.
+97,20,57,Master,None notable.
+98,20,67,Master,Memory conditioning can be triggered against him.
+99,20,58,Expert,None notable.
+100,20,2,Trained,Peak-human plus the arm.
+101,21,60,Master,Arrows are finite; he runs out.
+102,21,57,Master,None notable.
+103,21,58,Trained,None notable.
+104,21,39,Trained,None notable.
+105,21,63,Expert,None notable.
+106,22,67,Master,None notable.
+107,22,58,Master,None notable.
+108,22,57,Master,None notable.
+109,22,72,Master,None notable.
+110,22,64,Trained,None notable.
+111,23,50,Master,The suit needs maintenance only Stark can supply.
+112,23,57,Expert,None notable.
+113,23,55,Master,None notable.
+114,23,17,Expert,Heavy weapons drain the reactor fast.
+115,23,68,Trained,None notable.
+116,24,13,Master,Extreme density slows him; intangibility drains power.
+117,24,17,Expert,The solar gem limits output.
+118,24,6,Expert,None notable.
+119,24,38,Expert,His logic can be hacked at the source.
+120,24,53,Expert,None notable.
+121,25,2,Expert,None notable.
+122,25,12,Master,Requires skin contact.
+123,25,7,Master,None notable.
+124,25,34,Trained,"Warns, does not identify."
+125,25,58,Trained,None notable.
+126,26,2,Trained,Less experienced than Parker.
+127,26,12,Trained,Requires skin contact.
+128,26,17,Novice,The venom strike can overload him.
+129,26,61,Trained,Camouflage fails on thermal sensors.
+130,26,7,Trained,None notable.
+131,27,11,Master,Copying a person does not copy powers or memory.
+132,27,58,Expert,None notable.
+133,27,67,Master,None notable.
+134,27,15,Expert,None notable.
+135,27,4,Trained,Slow compared to Wolverine.
+136,28,4,Expert,Slower than Wolverine.
+137,28,87,Master,Which cannot cut Adamantium.
+138,28,9,Master,Vulnerable to sensory overload.
+139,28,2,Master,None notable.
+140,28,91,Expert,None notable.
+141,29,30,Master,His body is paralysed and needs Cerebro for long-range work.
+142,29,32,Expert,Ethically self-limited; he has broken that limit.
+143,29,38,Expert,None notable.
+144,29,68,Master,None notable.
+145,29,82,Trained,Only with Cerebro amplification.
+146,30,29,Master,Emotional control is required; fear disrupts it.
+147,30,6,Expert,"Riding wind, not self-propelled flight."
+148,30,68,Master,None notable.
+149,30,17,Expert,Lightning is her most direct weapon.
+150,30,8,Trained,None notable.
+151,31,17,Master,The beam cannot be switched off; the visor controls it.
+152,31,39,Master,None notable.
+153,31,68,Master,None notable.
+154,31,58,Trained,None notable.
+155,31,55,Expert,None notable.
+156,32,30,Master,The Phoenix makes her power hard to bound.
+157,32,31,Master,None notable.
+158,32,98,Expert,None notable.
+159,32,33,Expert,None notable.
+160,32,81,Trained,None notable.
+161,33,38,Master,None notable.
+162,33,40,Master,None notable.
+163,33,2,Expert,None notable.
+164,33,7,Expert,None notable.
+165,33,9,Trained,None notable.
+166,34,18,Master,Skin contact; she cannot switch it off.
+167,34,1,Expert,"Borrowed, and temporary."
+168,34,6,Expert,Borrowed from Ms. Marvel and permanent.
+169,34,3,Trained,"Borrowed, temporary."
+170,34,58,Trained,None notable.
+171,35,26,Master,Needs chargeable objects at hand.
+172,35,16,Expert,None notable.
+173,35,7,Expert,None notable.
+174,35,58,Expert,None notable.
+175,35,62,Expert,None notable.
+176,36,1,Master,None notable.
+177,36,3,Master,Not in human form and not against magic.
+178,36,58,Trained,None notable.
+179,36,68,Trained,None notable.
+180,37,45,Master,Range is about two miles per jump.
+181,37,7,Master,None notable.
+182,37,59,Expert,None notable.
+183,37,12,Expert,None notable.
+184,37,61,Expert,None notable.
+185,38,30,Master,Her diamond form blocks her own telepathy.
+186,38,32,Expert,None notable.
+187,38,3,Expert,"Only in diamond form, which is brittle."
+188,38,38,Expert,None notable.
+189,38,68,Expert,None notable.
+190,39,13,Master,She must hold her breath while phased inside matter.
+191,39,38,Expert,None notable.
+192,39,58,Trained,None notable.
+193,39,55,Trained,None notable.
+194,39,68,Trained,None notable.
+195,40,9,Master,Loud noise and strong smell disable him.
+196,40,8,Master,None notable.
+197,40,58,Master,None notable.
+198,40,69,Expert,None notable.
+199,40,42,Expert,"Hears a heartbeat, not the truth of a careful liar."
+200,41,57,Master,Ammunition is his real limit.
+201,41,39,Master,None notable.
+202,41,56,Master,None notable.
+203,41,58,Expert,None notable.
+204,41,73,Expert,None notable.
+205,42,58,Master,None notable.
+206,42,59,Master,None notable.
+207,42,61,Master,None notable.
+208,42,56,Expert,None notable.
+209,42,7,Expert,None notable.
+210,43,2,Expert,Enormous but purely human force.
+211,43,38,Expert,His empire is the real weapon.
+212,43,39,Expert,None notable.
+213,43,68,Master,None notable.
+214,43,58,Trained,None notable.
+215,44,2,Expert,None notable.
+216,44,4,Trained,None notable.
+217,44,38,Expert,None notable.
+218,44,65,Expert,Mostly pumpkin bombs and gliders.
+219,44,6,Trained,Glider-only.
+220,45,51,Master,The arms are physically attached and can be disabled.
+221,45,38,Master,None notable.
+222,45,40,Master,None notable.
+223,45,2,Trained,"The arms, not his body."
+224,45,68,Expert,Control of his allies is always temporary.
+225,46,1,Expert,None notable.
+226,46,11,Expert,Fire and extreme sonics hurt the symbiote.
+227,46,4,Expert,None notable.
+228,46,12,Expert,None notable.
+229,46,9,Trained,None notable.
+230,47,11,Master,"Rain, water and vacuum disperse him."
+231,47,1,Expert,None notable.
+232,47,13,Expert,None notable.
+233,47,4,Expert,Needs sand nearby to reform.
+234,47,10,Trained,None notable.
+235,48,22,Master,Grounding and insulators neutralise him.
+236,48,18,Expert,Overload is a real risk.
+237,48,6,Trained,"Rides current, not true flight."
+238,48,5,Trained,Along power lines only.
+239,48,8,Trained,None notable.
+240,49,36,Master,Technology-based; destroyed hardware breaks the trick.
+241,49,65,Master,None notable.
+242,49,38,Expert,None notable.
+243,49,64,Trained,None notable.
+244,50,2,Expert,None notable.
+245,50,9,Expert,None notable.
+246,50,7,Master,None notable.
+247,50,58,Expert,None notable.
+248,50,56,Expert,None notable.
+249,51,57,Master,Needs an object to throw.
+250,51,56,Expert,None notable.
+251,51,58,Expert,None notable.
+252,51,7,Trained,None notable.
+253,51,61,Trained,None notable.
+254,52,38,Expert,None notable.
+255,52,68,Master,None notable.
+256,52,39,Expert,None notable.
+257,52,57,Trained,None notable.
+258,52,67,Expert,None notable.
+259,53,38,Master,Its logic is rigid and can be turned against it.
+260,53,53,Master,None notable.
+261,53,25,Expert,Requires a reactor or a host body.
+262,53,17,Expert,None notable.
+263,53,54,Master,None notable.
+264,54,14,Master,Celestial technology maintains him.
+265,54,11,Master,None notable.
+266,54,80,Expert,None notable.
+267,54,1,Master,None notable.
+268,54,38,Expert,None notable.
+269,55,40,Master,None notable.
+270,55,38,Master,None notable.
+271,55,4,Expert,Depends on cloned bodies.
+272,55,30,Trained,None notable.
+273,55,15,Master,None notable.
+274,56,79,Master,Must feed; hunger is the governing constraint.
+275,56,80,Master,None notable.
+276,56,76,Master,None notable.
+277,56,10,Master,None notable.
+278,56,16,Master,None notable.
+279,57,79,Master,Bound to his board and to Galactus service.
+280,57,76,Master,None notable.
+281,57,6,Master,Aboard the board.
+282,57,3,Master,None notable.
+283,57,16,Master,None notable.
+284,58,83,Master,He is the planet; destroying it destroys him.
+285,58,80,Master,On his own surface only.
+286,58,76,Expert,None notable.
+287,58,17,Master,None notable.
+288,58,54,Expert,None notable.
+289,59,43,Master,Cannot leave the Dark Dimension unaided.
+290,59,44,Master,None notable.
+291,59,49,Master,None notable.
+292,59,14,Master,None notable.
+293,59,32,Expert,None notable.
+294,60,93,Master,None notable.
+295,60,1,Master,None notable.
+296,60,14,Expert,Her realm anchors her.
+297,60,56,Master,None notable.
+298,60,48,Expert,None notable.
+299,61,1,Master,Magic can stop him; nothing physical can.
+300,61,3,Master,Only mystical force reliably cuts it.
+301,61,97,Master,None notable.
+302,61,99,Trained,"His power is borrowed, not his own."
+303,61,91,Expert,None notable.
+304,62,49,Master,Innocents are immune to the Penance Stare.
+305,62,14,Expert,The host can still be hurt.
+306,62,1,Expert,None notable.
+307,62,48,Expert,None notable.
+308,62,4,Expert,None notable.
+309,63,2,Expert,None notable.
+310,63,4,Expert,Needs blood intake.
+311,63,58,Master,None notable.
+312,63,56,Master,Silver and garlic still work on him badly.
+313,63,9,Expert,None notable.
+314,64,6,Expert,"Gliding, not powered flight."
+315,64,2,Expert,None notable.
+316,64,4,Expert,Requires blood.
+317,64,9,Master,Sunlight and sonar disorient him.
+318,64,85,Trained,None notable.
+319,65,45,Expert,"Through the Darkforce, which drains him."
+320,65,44,Expert,None notable.
+321,65,61,Expert,None notable.
+322,65,2,Trained,None notable.
+323,65,95,Trained,None notable.
+324,66,23,Master,Her light is also a drug antidote.
+325,66,17,Expert,None notable.
+326,66,6,Trained,Gliding on light.
+327,66,4,Trained,"Healing others, not herself."
+328,66,35,Trained,None notable.
+329,67,57,Expert,None notable.
+330,67,39,Trained,His plans are improvised.
+331,67,55,Expert,None notable.
+332,67,68,Trained,None notable.
+333,67,65,Trained,None notable.
+334,68,58,Master,None notable.
+335,68,2,Expert,None notable.
+336,68,7,Master,None notable.
+337,68,59,Master,None notable.
+338,68,4,Trained,Thanos-era augmentation.
+339,69,1,Master,None notable.
+340,69,3,Expert,None notable.
+341,69,56,Master,None notable.
+342,69,6,Trained,None notable.
+343,69,17,Trained,None notable.
+344,70,65,Master,None notable.
+345,70,57,Master,None notable.
+346,70,66,Master,None notable.
+347,70,39,Expert,None notable.
+348,70,55,Expert,None notable.
+349,71,1,Expert,None notable.
+350,71,4,Master,He must be regrown from surviving tissue.
+351,71,11,Expert,"Wood growth, not true shape-shifting."
+352,71,3,Trained,Fire is his weakness.
+353,71,10,Expert,None notable.
+354,72,35,Master,"Emotion is information, not control."
+355,72,58,Master,None notable.
+356,72,30,Trained,None notable.
+357,72,34,Trained,None notable.
+358,72,86,Expert,None notable.
+359,73,51,Master,Hardware can be hacked or destroyed.
+360,73,57,Expert,None notable.
+361,73,39,Expert,None notable.
+362,73,55,Expert,None notable.
+363,73,17,Trained,None notable.
+364,74,50,Expert,None notable.
+365,74,17,Expert,The whips need line of sight.
+366,74,40,Expert,None notable.
+367,74,66,Master,None notable.
+368,74,58,Trained,None notable.
+369,75,50,Expert,None notable.
+370,75,17,Expert,None notable.
+371,75,66,Trained,None notable.
+372,75,6,Trained,None notable.
+373,75,1,Trained,None notable.
+374,76,90,Master,"He copies moves, not powers or the strength behind them."
+375,76,58,Master,None notable.
+376,76,56,Master,None notable.
+377,76,57,Expert,None notable.
+378,76,39,Expert,None notable.
+379,77,27,Master,Needs the stone.
+380,77,6,Expert,None notable.
+381,77,2,Expert,None notable.
+382,77,30,Trained,None notable.
+383,77,4,Trained,None notable.
+384,78,44,Expert,None notable.
+385,78,18,Expert,None notable.
+386,78,13,Trained,None notable.
+387,78,61,Expert,None notable.
+388,78,1,Trained,None notable.
+389,79,17,Expert,He must reassemble between blasts.
+390,79,11,Trained,None notable.
+391,79,4,Trained,None notable.
+392,79,25,Novice,None notable.
+393,79,14,Novice,Unknown limits.
+394,80,23,Master,Mirrors and prisms can redirect him.
+395,80,17,Master,None notable.
+396,80,5,Expert,None notable.
+397,80,6,Expert,None notable.
+398,80,95,Trained,None notable.
+399,81,64,Trained,"She is a researcher, not an engineer."
+400,81,40,Trained,Career in progress.
+401,81,67,Novice,None notable.
+402,82,67,Expert,None notable.
+403,82,68,Expert,None notable.
+404,82,39,Trained,None notable.
+405,82,57,Trained,None notable.
+406,82,74,Expert,None notable.
+407,83,58,Master,He is still only human.
+408,83,69,Master,None notable.
+409,83,70,Master,None notable.
+410,83,65,Master,Equipment must be prepared in advance.
+411,83,38,Master,None notable.
+412,83,61,Master,None notable.
+413,84,1,Master,Weakens under a red sun or after sustained exertion.
+414,84,3,Master,"Kryptonite, magic and force he has never met can cut it."
+415,84,6,Master,None notable.
+416,84,5,Master,None notable.
+417,84,20,Master,None notable.
+418,85,1,Master,None notable.
+419,85,6,Expert,None notable.
+420,85,56,Master,None notable.
+421,85,58,Master,None notable.
+422,85,14,Expert,She can still be killed.
+423,86,5,Master,He needs the Speed Force; severing it stops him completely.
+424,86,8,Master,None notable.
+425,86,4,Expert,Accelerated healing only.
+426,86,78,Expert,Time travel risks the timeline.
+427,86,96,Expert,None notable.
+428,87,16,Master,The ring needs willpower and a charge; yellow was once a flaw.
+429,87,6,Master,None notable.
+430,87,19,Master,None notable.
+431,87,55,Master,None notable.
+432,87,68,Expert,None notable.
+433,88,1,Master,None notable.
+434,88,3,Expert,None notable out of water.
+435,88,89,Master,None notable.
+436,88,30,Expert,Marine life only.
+437,88,56,Master,None notable.
+438,89,51,Master,None notable.
+439,89,53,Master,None notable.
+440,89,17,Expert,None notable.
+441,89,38,Expert,None notable.
+442,89,64,Master,None notable.
+443,90,11,Master,Fire is a psychological and physical weakness.
+444,90,30,Master,None notable.
+445,90,1,Master,None notable.
+446,90,6,Master,None notable.
+447,90,13,Expert,None notable.
+448,91,6,Expert,"Wings, not power."
+449,91,2,Trained,None notable.
+450,91,56,Master,None notable.
+451,91,4,Trained,"Reincarnation, not healing."
+452,91,58,Expert,None notable.
+453,92,24,Expert,Her throat is damaged by overuse.
+454,92,58,Master,None notable.
+455,92,68,Expert,None notable.
+456,92,7,Trained,None notable.
+457,92,39,Trained,None notable.
+458,93,60,Master,Arrows are finite.
+459,93,57,Master,None notable.
+460,93,58,Expert,None notable.
+461,93,39,Trained,None notable.
+462,93,65,Expert,None notable.
+463,94,58,Master,None notable.
+464,94,7,Master,None notable.
+465,94,68,Master,None notable.
+466,94,69,Expert,None notable.
+467,94,65,Expert,None notable.
+468,95,57,Master,None notable.
+469,95,58,Expert,None notable.
+470,95,56,Master,None notable.
+471,95,39,Expert,None notable.
+472,95,61,Expert,None notable.
+473,96,69,Master,None notable.
+474,96,58,Expert,None notable.
+475,96,70,Master,None notable.
+476,96,65,Expert,None notable.
+477,96,61,Expert,None notable.
+478,97,64,Master,None notable.
+479,97,58,Expert,None notable.
+480,97,69,Expert,None notable.
+481,97,41,Master,None notable.
+482,97,68,Expert,None notable.
+483,98,58,Expert,None notable.
+484,98,69,Expert,None notable.
+485,98,56,Expert,None notable.
+486,98,70,Trained,None notable.
+487,98,61,Expert,None notable.
+488,99,38,Expert,Unpredictability is the strategy.
+489,99,65,Expert,None notable.
+490,99,86,Trained,"Joker venom, a chemical rather than a power."
+491,99,58,Trained,None notable.
+492,99,68,Expert,None notable.
+493,100,58,Expert,None notable.
+494,100,7,Expert,None notable.
+495,100,56,Expert,None notable.
+496,100,86,Trained,None notable.
+497,100,65,Trained,None notable.
+498,101,84,Master,None notable.
+499,101,86,Master,Requires proximity and breathable air.
+500,101,94,Expert,"Plant matter, not earth or fire."
+501,101,4,Expert,None notable.
+502,101,85,Trained,"Plant toxins, not literal blood."
+503,102,58,Expert,None notable.
+504,102,61,Master,None notable.
+505,102,7,Master,None notable.
+506,102,56,Expert,None notable.
+507,102,62,Master,None notable.
+508,103,57,Expert,None notable.
+509,103,68,Expert,None notable.
+510,103,69,Expert,The coin is the decision-maker.
+511,103,58,Trained,None notable.
+512,103,42,Trained,None notable.
+513,104,38,Expert,Compulsively leaves clues.
+514,104,70,Expert,None notable.
+515,104,65,Expert,None notable.
+516,104,69,Expert,None notable.
+517,104,64,Trained,None notable.
+518,105,69,Expert,None notable.
+519,105,68,Expert,None notable.
+520,105,65,Expert,None notable.
+521,105,57,Trained,None notable.
+522,105,67,Expert,None notable.
+523,106,40,Expert,None notable.
+524,106,86,Expert,Gas masks defeat him.
+525,106,38,Expert,None notable.
+526,106,71,Trained,None notable.
+527,106,58,Novice,None notable.
+528,107,1,Master,Venom supply is his weakness; cut the tubes and he weakens.
+529,107,38,Expert,None notable.
+530,107,39,Expert,None notable.
+531,107,58,Master,None notable.
+532,107,4,Trained,Venom-assisted.
+533,108,2,Expert,None notable.
+534,108,8,Master,None notable.
+535,108,58,Master,None notable.
+536,108,57,Master,None notable.
+537,108,39,Master,None notable.
+538,109,38,Master,His ego is the consistent exploit.
+539,109,40,Master,None notable.
+540,109,39,Master,None notable.
+541,109,68,Expert,None notable.
+542,109,50,Expert,Borrowed tech only.
+543,110,1,Master,None notable.
+544,110,3,Master,Radion and divine force can wound him.
+545,110,16,Master,None notable.
+546,110,32,Expert,None notable without the equation.
+547,110,14,Master,None notable.
+548,111,5,Master,Needs the Speed Force like the Flash.
+549,111,78,Expert,None notable.
+550,111,96,Expert,None notable.
+551,111,8,Master,None notable.
+552,111,38,Expert,None notable.
+553,112,21,Master,The gun can freeze its own user.
+554,112,57,Expert,None notable.
+555,112,39,Trained,None notable.
+556,112,68,Expert,None notable.
+557,112,65,Trained,None notable.
+558,113,20,Expert,Fuel is finite.
+559,113,57,Expert,None notable.
+560,113,58,Trained,None notable.
+561,113,92,Trained,Partial only.
+562,113,68,Trained,None notable.
+563,114,7,Expert,Tied to the skates.
+564,114,61,Expert,None notable.
+565,114,65,Trained,None notable.
+566,114,62,Expert,None notable.
+567,114,58,Trained,None notable.
+568,115,16,Master,A yellow ring needs fear instead of willpower.
+569,115,19,Master,None notable.
+570,115,6,Master,None notable.
+571,115,68,Master,None notable.
+572,115,39,Expert,None notable.
+573,116,16,Master,"A red ring replaces the heart, rage or death."
+574,116,85,Master,None notable.
+575,116,1,Master,None notable.
+576,116,6,Expert,None notable.
+577,116,68,Expert,None notable.
+578,117,4,Master,Cannot regrow from nothing.
+579,117,1,Master,None notable.
+580,117,14,Expert,None notable.
+581,117,56,Expert,None notable.
+582,117,6,Trained,"Bike and hook, not self-propelled."
+583,118,1,Expert,Armour-assisted underwater.
+584,118,17,Expert,The helmet beam and its charge.
+585,118,55,Master,None notable.
+586,118,39,Trained,None notable.
+587,118,88,Expert,Suit-limited.
+588,119,1,Expert,None notable.
+589,119,89,Master,None notable.
+590,119,56,Master,None notable.
+591,119,68,Expert,None notable.
+592,119,29,Trained,Oceans only.
+593,120,57,Master,Needs a gun and a line of sight.
+594,120,56,Expert,None notable.
+595,120,69,Expert,None notable.
+596,120,61,Expert,None notable.
+597,120,8,Trained,None notable.
+598,121,58,Expert,None notable.
+599,121,56,Expert,None notable.
+600,121,65,Trained,None notable.
+601,121,7,Expert,None notable.
+602,122,1,Expert,None notable.
+603,122,4,Trained,None notable.
+604,122,9,Trained,None notable.
+605,122,87,Trained,None notable.
+606,122,88,Expert,None notable.
+607,123,11,Master,Water and cold degrade his form.
+608,123,1,Expert,None notable.
+609,123,4,Expert,Reforms only from clay.
+610,123,13,Trained,None notable.
+611,123,61,Expert,None notable.
+612,124,15,Master,Depends on the Lazarus Pit and its madness.
+613,124,58,Master,None notable.
+614,124,59,Master,None notable.
+615,124,68,Master,None notable.
+616,124,38,Expert,None notable.
+617,125,58,Master,None notable.
+618,125,59,Master,None notable.
+619,125,69,Expert,None notable.
+620,125,67,Expert,None notable.
+621,125,68,Expert,None notable.
+622,126,58,Expert,None notable.
+623,126,59,Master,None notable.
+624,126,61,Expert,None notable.
+625,126,69,Trained,None notable.
+626,126,7,Expert,None notable.
+627,127,1,Master,None notable.
+628,127,17,Master,None notable.
+629,127,6,Master,None notable.
+630,127,8,Expert,None notable.
+631,127,3,Expert,None notable.
+632,128,35,Master,Negative emotion feeds her father.
+633,128,30,Expert,None notable.
+634,128,43,Expert,None notable.
+635,128,44,Trained,None notable.
+636,128,48,Trained,None notable.
+637,129,11,Master,Animals only; the form must be familiar.
+638,129,4,Trained,None notable.
+639,129,9,Trained,Form-dependent.
+640,129,7,Trained,Form-dependent.
+641,129,86,Novice,None notable.
+642,130,51,Expert,None notable.
+643,130,53,Expert,None notable.
+644,130,17,Trained,None notable.
+645,130,64,Expert,None notable.
+646,130,39,Trained,None notable.
+647,131,5,Master,Speed Force access defines his limits.
+648,131,8,Master,None notable.
+649,131,96,Expert,None notable.
+650,131,4,Expert,None notable.
+651,131,78,Trained,None notable.
+652,132,16,Master,Ring charge and willpower.
+653,132,19,Master,None notable.
+654,132,6,Master,None notable.
+655,132,68,Master,None notable.
+656,132,57,Expert,None notable.
+657,133,10,Master,Requires the dwarf-star belt.
+658,133,38,Expert,None notable.
+659,133,40,Master,None notable.
+660,133,58,Trained,None notable.
+661,133,61,Trained,None notable.
+662,134,43,Master,"Speaks the spell aloud, backwards."
+663,134,45,Master,None notable.
+664,134,36,Expert,None notable.
+665,134,77,Expert,None notable.
+666,134,71,Expert,None notable.
+667,135,43,Master,Nabu must be obeyed; the host controls less than he thinks.
+668,135,34,Expert,None notable.
+669,135,44,Expert,None notable.
+670,135,6,Master,None notable.
+671,135,3,Expert,None notable.
+672,136,43,Expert,"Mostly ritual, bargains and tricks."
+673,136,71,Master,None notable.
+674,136,45,Trained,None notable.
+675,136,47,Expert,None notable.
+676,136,42,Expert,Specialises in the other direction.
+677,137,1,Master,None notable.
+678,137,3,Expert,None notable.
+679,137,14,Expert,"Returns, but a different man each time."
+680,137,4,Expert,None notable.
+681,137,91,Expert,None notable.
+682,138,38,Master,None notable.
+683,138,53,Master,None notable.
+684,138,10,Expert,His shrinking ray needs the ship.
+685,138,19,Master,None notable.
+686,138,40,Master,None notable.
+687,139,1,Master,None notable.
+688,139,3,Master,None notable.
+689,139,4,Master,Reconstitutes from almost total destruction.
+690,139,14,Expert,Cannot be permanently killed.
+691,139,91,Master,Cannot be reasoned with at all.
+692,140,1,Master,"Kryptonite, red sun and magic."
+693,140,3,Master,None notable.
+694,140,6,Master,None notable.
+695,140,68,Master,None notable.
+696,140,58,Expert,None notable.
+697,141,1,Expert,Kryptonite and red sun.
+698,141,3,Expert,None notable.
+699,141,6,Master,None notable.
+700,141,20,Expert,None notable.
+701,141,5,Expert,None notable.
+702,142,57,Expert,None notable.
+703,142,58,Expert,None notable.
+704,142,39,Expert,None notable.
+705,142,67,Trained,None notable.
+706,142,68,Trained,None notable.
+707,143,64,Master,None notable.
+708,143,70,Expert,None notable.
+709,143,68,Trained,None notable.
+710,143,41,Trained,None notable.
+711,143,67,Trained,None notable.
+712,144,1,Expert,None notable.
+713,144,6,Master,None notable.
+714,144,3,Expert,None notable.
+715,144,20,Expert,None notable.
+716,144,68,Trained,None notable.
+717,145,78,Expert,Needs a time ship and a fixed point.
+718,145,38,Expert,None notable.
+719,145,39,Trained,None notable.
+720,145,55,Expert,None notable.
+721,145,40,Expert,None notable.
+722,146,50,Master,Suit power and his own damaged heart.
+723,146,38,Master,None notable.
+724,146,52,Expert,Later suits only; needs a working nanite reserve.
+725,146,17,Master,None notable.
+726,146,6,Master,None notable.
+727,147,2,Expert,"Peak-human, not superhuman."
+728,147,58,Master,None notable.
+729,147,68,Master,None notable.
+730,147,7,Master,None notable.
+731,147,39,Expert,None notable.
+732,148,1,Master,None notable.
+733,148,29,Master,None notable.
+734,148,6,Master,Stormbreaker and Mjolnir.
+735,148,3,Expert,None notable.
+736,148,15,Master,"Fifteen centuries, still counting."
+737,149,1,Master,"Strength scales with rage, which Smart Hulk has traded away."
+738,149,3,Master,None notable.
+739,149,4,Master,None notable.
+740,149,38,Master,None notable.
+741,149,40,Master,None notable.
+742,150,2,Expert,None notable.
+743,150,12,Master,Needs bare hands.
+744,150,34,Trained,Warns without detail.
+745,150,7,Master,None notable.
+746,150,65,Trained,His suits are mostly Stark technology.
+747,151,43,Master,Every spell has a cost and a written rule.
+748,151,44,Master,None notable.
+749,151,46,Master,Needs the sling ring.
+750,151,34,Expert,Only through the Time Stone.
+751,151,37,Master,His body is helpless during it.
+752,152,43,Master,Chaos magic is tied to grief and emotion.
+753,152,31,Master,None notable.
+754,152,32,Expert,None notable.
+755,152,77,Expert,The Hex collapses without her.
+756,152,16,Master,None notable.
+757,153,11,Expert,"Form, not power."
+758,153,36,Master,Breaks on contact.
+759,153,43,Expert,None notable.
+760,153,38,Expert,None notable.
+761,153,61,Expert,None notable.
+762,154,1,Master,None notable.
+763,154,3,Master,None notable without cosmic force.
+764,154,75,Master,Only while he holds the stones.
+765,154,77,Expert,Only with the Reality Stone.
+766,154,39,Master,None notable.
+767,155,57,Expert,None notable.
+768,155,55,Expert,None notable.
+769,155,39,Trained,None notable.
+770,155,6,Trained,Jet boots and ship.
+771,155,68,Trained,None notable.
+772,156,58,Master,None notable.
+773,156,2,Expert,None notable.
+774,156,59,Master,None notable.
+775,156,7,Master,None notable.
+776,156,4,Trained,None notable.
+777,157,1,Master,None notable.
+778,157,3,Expert,None notable.
+779,157,56,Master,None notable.
+780,157,58,Expert,None notable.
+781,157,61,Master,Inexplicably excellent.
+782,158,65,Master,None notable.
+783,158,57,Master,None notable.
+784,158,66,Master,None notable.
+785,158,39,Expert,None notable.
+786,158,55,Expert,None notable.
+787,159,1,Expert,None notable.
+788,159,4,Master,Regrows from surviving tissue.
+789,159,11,Expert,Wood only.
+790,159,3,Trained,Fire is his weakness.
+791,159,10,Expert,None notable.
+792,160,67,Master,None notable.
+793,160,68,Master,None notable.
+794,160,39,Expert,None notable.
+795,160,57,Expert,None notable.
+796,160,64,Trained,None notable.
+797,161,58,Master,None notable.
+798,161,67,Master,None notable.
+799,161,57,Master,None notable.
+800,161,72,Master,None notable.
+801,161,7,Expert,None notable.
+802,162,60,Master,Arrows are finite.
+803,162,57,Master,None notable.
+804,162,58,Expert,None notable.
+805,162,61,Expert,None notable.
+806,162,39,Trained,None notable.
+807,163,50,Master,Suit power and maintenance.
+808,163,57,Expert,None notable.
+809,163,55,Master,None notable.
+810,163,17,Expert,None notable.
+811,163,68,Trained,None notable.
+812,164,6,Expert,The wings need altitude and power.
+813,164,58,Trained,None notable.
+814,164,68,Expert,None notable.
+815,164,57,Trained,None notable.
+816,164,55,Trained,None notable.
+817,165,51,Master,The arm is a target.
+818,165,57,Master,None notable.
+819,165,67,Master,Trigger words compromise him.
+820,165,58,Expert,None notable.
+821,165,2,Trained,None notable.
+822,166,77,Master,The Darkhold corrupts her control.
+823,166,43,Master,None notable.
+824,166,31,Master,None notable.
+825,166,32,Expert,None notable.
+826,166,6,Expert,The Hex only at first.
+827,167,2,Expert,"Moon-granted, not his own."
+828,167,4,Expert,Khonshu can revive him.
+829,167,58,Expert,None notable.
+830,167,100,Trained,Revocable at Khonshu discretion.
+831,167,61,Trained,None notable.
+832,168,2,Expert,Herb-granted.
+833,168,58,Master,None notable.
+834,168,39,Expert,None notable.
+835,168,56,Master,None notable.
+836,168,68,Expert,None notable.
+837,169,1,Master,None notable.
+838,169,56,Master,Summons blades at will.
+839,169,3,Master,Asgard sustains her.
+840,169,93,Expert,None notable.
+841,169,14,Expert,None notable.
+842,170,38,Master,"Rigid logic, exploitable."
+843,170,53,Master,None notable.
+844,170,54,Master,None notable.
+845,170,17,Expert,None notable.
+846,170,6,Expert,None notable.
+847,171,1,Master,Kryptonite and red sunlight.
+848,171,3,Master,None notable.
+849,171,6,Master,None notable.
+850,171,20,Master,None notable.
+851,171,5,Master,None notable.
+852,172,58,Master,He is human and ages.
+853,172,69,Master,None notable.
+854,172,65,Master,None notable.
+855,172,70,Master,None notable.
+856,172,68,Master,None notable.
+857,173,1,Master,None notable.
+858,173,6,Trained,Lasso and gliding; no solo flight in all films.
+859,173,56,Master,None notable.
+860,173,58,Master,None notable.
+861,173,14,Expert,She can still be killed.
+862,174,5,Expert,His speed still exhausts him.
+863,174,8,Expert,None notable.
+864,174,78,Trained,None notable.
+865,174,4,Trained,Accelerated healing.
+866,174,96,Novice,Not yet reliable.
+867,175,1,Master,None notable.
+868,175,3,Expert,None notable.
+869,175,89,Master,None notable.
+870,175,30,Trained,Marine life only.
+871,175,56,Master,None notable.
+872,176,51,Master,None notable.
+873,176,53,Master,None notable.
+874,176,17,Expert,None notable.
+875,176,64,Master,None notable.
+876,176,6,Trained,None notable.
+877,177,58,Expert,None notable.
+878,177,57,Expert,None notable.
+879,177,56,Expert,None notable.
+880,177,7,Expert,None notable.
+881,177,65,Trained,None notable.
+882,178,57,Master,Line of sight and ammunition.
+883,178,56,Expert,None notable.
+884,178,69,Expert,None notable.
+885,178,61,Trained,None notable.
+886,179,38,Expert,Unpredictability is the plan.
+887,179,68,Expert,None notable.
+888,179,65,Trained,None notable.
+889,179,58,Trained,None notable.
+890,179,86,Novice,None notable.
+891,180,68,Master,None notable.
+892,180,67,Master,None notable.
+893,180,39,Expert,None notable.
+894,180,73,Master,None notable.
+895,180,38,Expert,None notable.
+896,181,94,Master,Water nearby required.
+897,181,1,Expert,None notable.
+898,181,89,Master,None notable.
+899,181,58,Expert,None notable.
+900,181,30,Trained,Marine life only.
+901,182,1,Expert,None notable.
+902,182,89,Master,None notable.
+903,182,56,Master,None notable.
+904,182,68,Expert,None notable.
+905,182,39,Trained,None notable.
+906,183,1,Master,None notable.
+907,183,3,Master,None notable.
+908,183,56,Master,None notable.
+909,183,17,Expert,None notable.
+910,183,6,Trained,None notable.
+911,184,27,Expert,Gravity control scales with ambient light and fails underground.
+912,184,2,Trained,Peak human only.
+913,184,6,Expert,Near-surface only; no vacuum life support.
+914,184,9,Trained,"Stellar-field map, not x-ray vision."
+915,184,40,Expert,"Astrophysics specialist, not a generalist."
+916,185,52,Expert,Needs raw material and decays after a few hours.
+917,185,53,Expert,Electronics only.
+918,185,64,Expert,None notable.
+919,185,38,Expert,None notable.
+920,186,78,Expert,"Ten seconds maximum, once a day."
+921,186,61,Expert,None notable.
+922,186,69,Expert,None notable.
+923,186,8,Trained,None notable.
+924,187,28,Expert,Ferrous metal only; no flight.
+925,187,19,Trained,Metal-sourced only.
+926,187,58,Trained,None notable.
+927,187,1,Trained,Only while forming a metal limb.
+928,187,68,Trained,None notable.
+929,188,23,Expert,Pitch darkness disorients her completely.
+930,188,95,Expert,Cannot phase while carrying anything solid.
+931,188,6,Trained,"Sunlight-powered, slow."
+932,188,9,Expert,"Light-based, so blind in a dark room."
+933,188,41,Expert,None notable.
+934,189,34,Master,"Probability, never certainty; says so every time."
+935,189,76,Expert,None notable.
+936,189,78,Novice,Observation only; cannot travel.
+937,189,30,Expert,None notable.
+938,189,77,Novice,None notable.
+939,190,101,Master,Cannot stretch beyond a fixed total length.
+940,190,40,Master,None notable.
+941,190,38,Master,His certainty is the reliable flaw.
+942,190,68,Expert,None notable.
+943,190,66,Master,None notable.
+944,191,23,Master,Invisibility is light-only; sound still carries.
+945,191,19,Master,Field strength is tied to her concentration.
+946,191,68,Expert,None notable.
+947,191,17,Expert,None notable.
+948,191,39,Trained,None notable.
+949,192,20,Master,Flame is extinguished by vacuum or water.
+950,192,6,Master,None notable.
+951,192,92,Master,His own flame only.
+952,192,17,Expert,None notable.
+953,192,8,Trained,None notable.
+954,193,1,Master,None notable.
+955,193,58,Trained,Boxing rather than disciplines.
+956,193,99,Expert,Concrete and sustained impact still hurt.
+957,193,68,Trained,None notable.
+958,194,16,Master,His voice is a weapon he cannot aim safely.
+959,194,6,Expert,None notable.
+960,194,1,Expert,None notable.
+961,194,68,Master,None notable.
+962,194,17,Expert,None notable.
+963,195,101,Expert,Her hair only.
+964,195,58,Expert,None notable.
+965,195,68,Master,None notable.
+966,195,1,Trained,None notable.
+967,195,39,Trained,None notable.
+968,196,94,Master,Needs elemental matter at hand.
+969,196,6,Trained,Wind only.
+970,196,17,Expert,None notable.
+971,196,58,Trained,None notable.
+972,196,39,Trained,None notable.
+973,197,58,Master,None notable.
+974,197,69,Master,None notable.
+975,197,68,Trained,None notable.
+976,197,7,Expert,None notable.
+977,197,56,Expert,None notable.
+978,198,1,Expert,None notable.
+979,198,3,Expert,Lower body only in most depictions.
+980,198,56,Expert,None notable.
+981,198,68,Expert,None notable.
+982,198,58,Trained,None notable.
+983,199,5,Master,Sustained top speed exhausts him quickly.
+984,199,8,Master,None notable.
+985,199,7,Expert,None notable.
+986,199,39,Trained,None notable.
+987,199,58,Trained,None notable.
+988,200,1,Expert,None notable.
+989,200,3,Master,Not against magic or internal force.
+990,200,58,Trained,None notable.
+991,200,68,Expert,None notable.
+992,200,4,Trained,None notable.
+993,201,58,Master,None notable.
+994,201,16,Expert,The Iron Fist has a limited number of uses.
+995,201,8,Expert,None notable.
+996,201,102,Expert,None notable.
+997,201,68,Trained,None notable.
+998,202,2,Expert,None notable.
+999,202,6,Trained,Jumping and gliding only.
+1000,202,3,Trained,Limited.
+1001,202,70,Expert,None notable.
+1002,202,99,Trained,None notable.
+1003,203,5,Expert,Age limits his top speed now.
+1004,203,8,Expert,None notable.
+1005,203,4,Trained,Accelerated healing only.
+1006,203,68,Master,None notable.
+1007,203,69,Trained,None notable.
+1008,204,6,Expert,"Wings, not power."
+1009,204,2,Expert,None notable.
+1010,204,56,Master,None notable.
+1011,204,58,Expert,None notable.
+1012,204,4,Trained,"Reincarnation, not healing."
+1013,205,16,Expert,The Starheart ring has its own rules.
+1014,205,6,Master,None notable.
+1015,205,19,Master,Wood was once his weakness.
+1016,205,68,Master,None notable.
+1017,205,3,Trained,None notable.
+1018,206,58,Master,None notable.
+1019,206,8,Trained,None notable.
+1020,206,68,Trained,None notable.
+1021,206,2,Trained,Peak human only.
+1022,206,103,Trained,None notable.
+1023,207,57,Master,None notable.
+1024,207,58,Expert,None notable.
+1025,207,61,Expert,None notable.
+1026,207,56,Expert,None notable.
+1027,207,69,Trained,None notable.
+1028,208,5,Expert,None notable.
+1029,208,2,Expert,None notable.
+1030,208,7,Master,None notable.
+1031,208,87,Master,None notable.
+1032,208,4,Trained,None notable.
+1033,209,10,Master,Shrinking back takes time.
+1034,209,1,Master,None notable.
+1035,209,3,Expert,Only when grown.
+1036,209,40,Expert,None notable.
+1037,209,68,Trained,None notable.
+1038,210,44,Expert,Needs a reflective surface.
+1039,210,36,Expert,None notable.
+1040,210,45,Expert,Mirror-to-mirror only.
+1041,210,57,Trained,None notable.
+1042,210,64,Trained,None notable.
+1043,211,29,Master,The wand is the limit; lose it and he is a man.
+1044,211,17,Expert,Lightning only.
+1045,211,6,Trained,Wind-riding.
+1046,211,39,Trained,None notable.
+1047,211,40,Trained,None notable.
+1048,212,55,Master,None notable.
+1049,212,57,Expert,None notable.
+1050,212,67,Expert,None notable.
+1051,212,68,Expert,None notable.
+1052,212,58,Trained,None notable.
+1053,213,60,Master,Arrows are finite.
+1054,213,58,Master,None notable.
+1055,213,57,Master,None notable.
+1056,213,39,Expert,None notable.
+1057,213,61,Expert,None notable.
+1058,214,24,Expert,Her throat is the limit.
+1059,214,58,Master,None notable.
+1060,214,69,Expert,None notable.
+1061,214,68,Trained,None notable.
+1062,214,57,Trained,None notable.
+1063,215,64,Master,None notable.
+1064,215,38,Expert,None notable.
+1065,215,66,Trained,None notable.
+1066,215,39,Trained,None notable.
+1067,215,68,Trained,None notable.
+1068,216,2,Expert,Herb-granted only.
+1069,216,58,Master,None notable.
+1070,216,7,Master,None notable.
+1071,216,39,Expert,None notable.
+1072,216,38,Expert,None notable.
+1073,217,16,Master,Her binary output is self-consuming.
+1074,217,6,Master,None notable.
+1075,217,1,Master,None notable.
+1076,217,3,Expert,None notable.
+1077,217,76,Trained,None notable.
+1078,218,51,Master,Hardware can be damaged or hacked.
+1079,218,57,Expert,None notable.
+1080,218,39,Expert,None notable.
+1081,218,55,Expert,None notable.
+1082,218,58,Expert,None notable.
+1083,219,35,Master,Requires physical touch.
+1084,219,86,Expert,None notable.
+1085,219,58,Trained,None notable.
+1086,219,30,Trained,None notable.
+1087,219,8,Novice,None notable.
+1088,220,9,Master,Loud noise disables him.
+1089,220,58,Master,None notable.
+1090,220,8,Master,None notable.
+1091,220,69,Expert,None notable.
+1092,220,42,Expert,None notable.
+1093,221,2,Expert,None notable.
+1094,221,3,Trained,Partial.
+1095,221,70,Expert,None notable.
+1096,221,6,Trained,Jumping only.
+1097,221,99,Trained,None notable.
+1098,222,3,Master,Magic and internal force still work.
+1099,222,1,Expert,None notable.
+1100,222,58,Trained,None notable.
+1101,222,68,Expert,None notable.
+1102,222,4,Trained,None notable.
+1103,223,58,Master,None notable.
+1104,223,16,Expert,The fist has a limited daily use.
+1105,223,8,Expert,None notable.
+1106,223,102,Expert,None notable.
+1107,223,68,Novice,None notable.
+1108,224,31,Master,None notable.
+1109,224,30,Expert,None notable.
+1110,224,32,Expert,None notable.
+1111,224,38,Expert,None notable.
+1112,224,6,Expert,None notable.
+1113,225,1,Master,None notable.
+1114,225,3,Master,None notable.
+1115,225,56,Expert,None notable.
+1116,225,91,Expert,None notable.
+1117,225,99,Master,None notable.
+1118,226,57,Master,None notable.
+1119,226,1,Expert,None notable.
+1120,226,58,Master,None notable.
+1121,226,56,Master,None notable.
+1122,226,7,Expert,None notable.
+1123,227,56,Master,The glaive is also his lifeline.
+1124,227,1,Expert,None notable.
+1125,227,61,Expert,None notable.
+1126,227,58,Expert,None notable.
+1127,227,14,Trained,Tied to the weapon.
+1128,228,68,Master,None notable.
+1129,228,38,Expert,None notable.
+1130,228,39,Expert,None notable.
+1131,228,67,Expert,None notable.
+1132,228,57,Trained,None notable.
+1133,229,1,Expert,None notable.
+1134,229,88,Expert,None notable.
+1135,229,87,Trained,None notable.
+1136,229,4,Trained,None notable.
+1137,229,9,Trained,None notable.
+1138,230,57,Expert,Boomerangs are his only tool.
+1139,230,56,Expert,None notable.
+1140,230,61,Trained,None notable.
+1141,230,69,Novice,None notable.
+1142,230,62,Expert,None notable.
+1143,231,1,Expert,None notable.
+1144,231,89,Master,None notable.
+1145,231,56,Expert,None notable.
+1146,231,68,Master,None notable.
+1147,231,39,Trained,None notable.
+1148,232,11,Master,"Cannot copy powers, only appearance."
+1149,232,67,Master,None notable.
+1150,232,68,Master,None notable.
+1151,232,39,Expert,None notable.
+1152,232,30,Trained,None notable.
+1153,233,43,Expert,Borrowed spells and enchantment only.
+1154,233,32,Expert,Requires touch.
+1155,233,36,Expert,None notable.
+1156,233,67,Expert,None notable.
+1157,233,58,Trained,None notable.
+1158,234,1,Master,Adapts to Earth strength slowly.
+1159,234,3,Expert,None notable.
+1160,234,6,Master,None notable.
+1161,234,68,Master,None notable.
+1162,234,39,Expert,None notable.
+1163,235,78,Master,Only through TVA technology.
+1164,235,38,Master,None notable.
+1165,235,39,Master,None notable.
+1166,235,34,Expert,Knows everything up to where the timeline ends.
+1167,235,68,Master,None notable.
+1168,236,68,Master,None notable.
+1169,236,67,Master,None notable.
+1170,236,39,Expert,None notable.
+1171,236,73,Master,None notable.
+1172,236,38,Expert,None notable.
+1173,237,13,Master,None notable.
+1174,237,17,Expert,The Mind Stone is the source.
+1175,237,6,Expert,None notable.
+1176,237,38,Expert,Loyalty is his consistent override.
+1177,237,53,Expert,None notable.
+1178,238,17,Expert,The helmet beam needs a charge.
+1179,238,1,Expert,Armour-assisted.
+1180,238,55,Master,None notable.
+1181,238,39,Trained,None notable.
+1182,238,88,Expert,Suit-limited.
+1183,239,43,Master,Every portal and shield has a cost.
+1184,239,71,Master,None notable.
+1185,239,31,Expert,None notable.
+1186,239,68,Expert,None notable.
+1187,239,58,Trained,None notable.
+1188,240,60,Master,His arrow needs the fin to obey.
+1189,240,68,Master,None notable.
+1190,240,57,Expert,None notable.
+1191,240,55,Expert,None notable.
+1192,240,39,Trained,None notable.
+1193,241,16,Master,The Nova Force is finite and shared.
+1194,241,6,Master,None notable.
+1195,241,1,Expert,None notable.
+1196,241,3,Expert,None notable.
+1197,241,68,Trained,None notable.
+1198,242,68,Expert,None notable.
+1199,242,70,Expert,None notable.
+1200,242,73,Expert,None notable.
+1201,242,74,Novice,None notable.
+1202,242,38,Trained,None notable.
+1203,243,70,Expert,None notable.
+1204,243,68,Master,None notable.
+1205,243,57,Trained,None notable.
+1206,243,69,Trained,None notable.
+1207,243,73,Expert,None notable.
+1208,244,68,Master,None notable.
+1209,244,70,Expert,None notable.
+1210,244,73,Expert,None notable.
+1211,244,74,Expert,None notable.
+1212,244,69,Trained,None notable.
+1213,245,40,Master,None notable.
+1214,245,38,Master,None notable.
+1215,245,68,Trained,None notable.
+1216,245,55,Trained,None notable.
+1217,245,69,Expert,None notable.
+1218,246,68,Expert,None notable.
+1219,246,58,Expert,None notable.
+1220,246,67,Expert,None notable.
+1221,246,69,Trained,None notable.
+1222,246,4,Trained,Talons are hard to keep down.
+1223,247,40,Expert,None notable.
+1224,247,73,Master,None notable.
+1225,247,38,Expert,None notable.
+1226,247,86,Expert,None notable.
+1227,247,69,Expert,None notable.
+1228,248,43,Master,None notable.
+1229,248,71,Master,None notable.
+1230,248,44,Master,None notable.
+1231,248,34,Expert,None notable.
+1232,248,15,Master,Borrowed time has a debt.
+1233,249,6,Master,"The comic-book power set, not the film binary form."
+1234,249,1,Master,None notable.
+1235,249,18,Master,Needs an outside source worth absorbing.
+1236,249,17,Expert,None notable.
+1237,249,68,Expert,None notable.
+1238,250,16,Master,The Soul Gem does most of the work.
+1239,250,48,Master,Requires the Soul Gem.
+1240,250,4,Expert,None notable.
+1241,250,76,Expert,None notable.
+1242,250,34,Trained,Vague and self-interested.
+1243,251,94,Master,Earth and stone only.
+1244,251,1,Trained,None notable.
+1245,251,99,Trained,None notable.
+1246,251,59,Trained,Improvised stone blades only.
+1247,251,69,Trained,Her cover is the whole plan.
+1248,252,60,Master,None notable.
+1249,252,57,Master,None notable.
+1250,252,58,Master,None notable.
+1251,252,68,Master,None notable.
+1252,252,69,Expert,None notable.

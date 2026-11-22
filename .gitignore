@@ -30,3 +30,6 @@ playwright-report/
 .DS_Store
 .vscode/
 .idea/
+
+# Studio snapshots created while the app runs
+studio_portal_journal/

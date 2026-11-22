@@ -210,6 +210,68 @@ A faculty account only sees classes where they are the instructor. If the Attend
 - CGPA is credit-weighted across graded, non-dropped enrollments, combining recorded exam scores within each offering before assigning grade points. Repeated offerings each contribute independently; institution-specific retake rules are not implemented.
 - SQLite standard deviation uses a real population aggregate. Empty SQL results retain column metadata.
 
+
+## Marvel & DC Universe demonstration database
+
+The portal carries a second, self-contained database used as a DBMS demonstration:
+a fictional Marvel + DC universe in **14 tables, 7 views and 3,154 rows**. It is kept
+strictly apart from the campus tables — nothing Marvel is stored in a student, fee or
+course column.
+
+Rebuild and load it (only the 14 `uni_` tables are touched):
+
+```bash
+python scripts/build_universe_dataset.py --reset
+```
+
+On the deployed host the files under `datasets/` are already in the repository, so load
+the tables without rewriting them:
+
+```bash
+git fetch --depth 1 origin arena/820e884a-dbms-project-deploy && git checkout -B deployed FETCH_HEAD
+python scripts/build_universe_dataset.py --reset --db-only
+python scripts/remove_universe_tables.py            # to undo; add --yes to drop
+```
+
+Full update runbook: [`docs/DEPLOY_PYTHONANYWHERE.md`](docs/DEPLOY_PYTHONANYWHERE.md#updating-to-add-the-marvel--dc-universe-database).
+
+That one command assembles the data, validates it, writes every deliverable, loads it
+through the portal's own repository layer and re-reads the tables to verify:
+
+```text
+14 entities, 3,154 rows
+orphan FKs: 0 · duplicate violations: 0 · required blanks: 0 · consistency violations: 0
+row counts match: True · orphan FKs after load: 0
+```
+
+**In the portal:** sidebar → *Demonstration database* → **Marvel & DC Universe**
+(`/universe`). Twelve read-only screens (characters, teams, memberships, powers,
+films & series, comics, missions, organisations, battles, relationships), a SQL
+gallery at `/universe/sql` that runs fourteen documented queries live, and a
+verification page at `/universe/verify` showing the live row counts, foreign-key
+anti-joins, the validation report and the insertion log. Every signed-in user can
+browse; the SQL gallery, verification page and in-process rebuild are admin-only,
+matching the rest of the portal.
+
+**Deliverables** in `datasets/`:
+
+| File | Contents |
+| --- | --- |
+| `universe.xlsx` | One sheet per entity + README + row-count sheet |
+| `csv/*.csv` | 14 per-entity CSV files |
+| `sql/00_schema.sql … 14_*.sql`, `load_universe.sql` | Portable DDL + inserts |
+| `sql_demonstrations.sql` / `.md` | 14 queries, with the rows they actually returned |
+| `data_dictionary.md` | Every table, every column, type, nullability and meaning |
+| `er_diagram.md` / `.svg` | Entity-relationship diagram |
+| `validation_report.md` | PK/FK/duplicate/missing/consistency checks + known limitations |
+| `insertion_log.md` | Per-entity generated / inserted / failed / skipped ledger |
+
+The generator lives in `scripts/mdu/` (data) and `scripts/build_universe_dataset.py`
+(build, validate, export, load, verify); battle rosters are curated per battle in
+`scripts/mdu/battle_rosters.py`. `db/universe_schema.sql` and `db/universe_views.sql`
+are the shipped MySQL 8 DDL, translated to the embedded engine by
+`scripts/mdu/sqlgen.py` so the same files run on either.
+
 ## Tests
 
 ```bash
@@ -307,6 +369,8 @@ static/js/               Search, dialogs, SVG charts and workflow controllers
 static/images/           Small, locally rendered glass sculptures
 static/fonts/            Inter variable fonts and license
 scripts/                 Private setup, deployment checks, artwork and backup utilities
+scripts/mdu/              Marvel & DC dataset modules; build_universe_dataset.py builds it
+datasets/                Generated CSVs, SQL, workbook, dictionary, ER diagram, reports
 wsgi.py                  Production WSGI entry point for the selected free host
 requirements-runtime.txt Minimal SQLite runtime (no demo/test/build dependencies)
 tests/                   Isolated pytest suite and browser regression checks

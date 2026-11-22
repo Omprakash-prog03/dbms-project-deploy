@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, bar with context %}
+
+{% block title %}Powers — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Powers and abilities{% endblock %}
+{% block page_subtitle %}{{ powers | length }} powers, each with its category, a 1–10 level and the holder count.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.powers') }}
+<div class="sims-card">
+  <form method="GET" class="uni-filter-bar">
+    <select class="pill-select" name="category" onchange="this.form.submit()" aria-label="Category">
+      <option value="">All categories</option>
+      {% for c in categories %}
+      <option value="{{ c.category }}" {% if category == c.category %}selected{% endif %}>{{ c.category }}</option>
+      {% endfor %}
+    </select>
+    <span class="uni-filter-count"><strong>{{ powers | length }}</strong> powers</span>
+  </form>
+
+  <table class="sims-table">
+    <thead><tr><th>Power</th><th>Category</th><th class="num">Level</th><th class="num">Holders</th><th class="num">Heroes</th><th class="num">Villains</th><th style="width:16%">Reach</th></tr></thead>
+    <tbody>
+      {% set peak = powers | map(attribute='holders') | max %}
+      {% for p in powers %}
+      <tr>
+        <td>
+          <strong>{{ p.power_name }}</strong>
+          <div style="font-size:10.5px;color:var(--text-muted)">{{ p.description }}</div>
+        </td>
+        <td>{{ chip(p.category) }}</td>
+        <td class="num">{{ p.power_level }}</td>
+        <td class="num">{{ p.holders }}</td>
+        <td class="num">{{ p.heroes }}</td>
+        <td class="num">{{ p.villains }}</td>
+        <td>{{ bar(p.holders, peak) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="uni-note">Power level rates the ability itself. A character's proficiency in it is a
+    separate column on the mapping table, so a Master of a level-4 power is still level 4.</p>
+</div>
+{% endblock %}

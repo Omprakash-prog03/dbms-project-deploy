@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark with context %}
+
+{% block title %}Battles — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Battles{% endblock %}
+{% block page_subtitle %}{{ rows | length }} conflicts, with location, story year, winner and fictional casualties.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.battles') }}
+<div class="sims-card">
+  <form method="GET" class="uni-filter-bar">
+    <select class="pill-select" name="universe" onchange="this.form.submit()" aria-label="Universe">
+      <option value="">Both universes</option>
+      <option value="Marvel" {% if universe == 'Marvel' %}selected{% endif %}>Marvel</option>
+      <option value="DC" {% if universe == 'DC' %}selected{% endif %}>DC</option>
+    </select>
+    <span class="uni-filter-count"><strong>{{ rows | length }}</strong> battles</span>
+  </form>
+  <table class="sims-table">
+    <thead><tr><th>Battle</th><th>Location</th><th class="num">Year</th><th>Winner</th><th class="num">Combatants</th><th class="num">Casualties</th></tr></thead>
+    <tbody>
+      {% for b in rows %}
+      <tr>
+        <td><a href="{{ url_for('universe.battle', battle_id=b.battle_id) }}" style="font-weight:550">{{ b.battle_name }}</a>
+          <div style="margin-top:3px">{{ universe_mark(b.universe_name) }}</div></td>
+        <td style="font-size:11px">{{ b.location }}</td>
+        <td class="num">{{ b.year }}</td>
+        <td style="font-size:11px">{{ b.winner }}</td>
+        <td class="num">{{ b.combatants }}</td>
+        <td class="num">{{ '{:,}'.format(b.casualties) if b.casualties is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="uni-note">Casualty counts are fictional figures for fictional battles, recorded only
+    where the story gives a number. A blank cell means the source gives none.</p>
+</div>
+{% endblock %}

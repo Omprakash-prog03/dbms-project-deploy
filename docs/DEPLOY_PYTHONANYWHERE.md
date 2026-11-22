@@ -177,6 +177,79 @@ all records stay as they were; the new tables (`owner_guard`,
 request after the reload. Nothing has to be migrated or reseeded, and the registers
 start empty — they record from the reload onward, so no fabricated history appears.
 
+### Updating to add the Marvel & DC Universe database
+
+The universe module is a second, self-contained database: 14 `uni_` tables and 7 views.
+It never touches a student, fee or course table, and `.env` plus `instance/hogwards.db`
+are ignored by git, so they survive the update. Run this in a PythonAnywhere Bash
+console, one block per paste:
+
+```bash
+cd ~/hogwards-student-management-system
+git fetch --depth 1 origin arena/820e884a-dbms-project-deploy
+git checkout -B deployed FETCH_HEAD
+```
+
+```bash
+.venv/bin/python -m pip install --no-cache-dir -r requirements-runtime.txt
+```
+
+```bash
+.venv/bin/python scripts/build_universe_dataset.py --reset --db-only
+```
+
+Then click **Reload** in the Web tab and open **`/universe`**.
+
+What each command does:
+
+- `git fetch` / `checkout` brings the new files — the module, the 14 CSVs, the workbook
+  and the reports under `datasets/` — without deleting `.env` or your database.
+- `pip install -r requirements-runtime.txt` is a no-op unless something is missing; the
+  universe module adds **no new dependency**.
+- `--reset --db-only` creates and fills the 14 `uni_` tables in *your* database, then
+  re-reads every table and prints the counts. `--db-only` leaves the committed
+  `datasets/` files exactly as they are, so nothing generated shows up as modified in
+  `git status`. `--reset` drops and rebuilds only the `uni_` tables; no campus table is
+  ever dropped, altered or truncated.
+
+You should see, in order:
+
+```text
+1/5  assembling entities
+     14 entities, 3,154 rows
+2/5  validating
+     orphan FKs: 0 · duplicate violations: 0 · required blanks: 0 · consistency violations: 0
+3/5  files left untouched (--db-only)
+4/5  loading through the portal repository layer
+5/5  verifying
+     row counts match: True · orphan FKs after load: 0
+```
+
+**Before the update, take a copy of the database** — the free tier has no automatic
+backups:
+
+```bash
+.venv/bin/python scripts/backup.py
+```
+
+**Check it worked:** open `/universe` (252 characters, 3,154 rows at the top),
+`/universe/verify` (live row counts and foreign-key anti-joins, administrator only) and
+`/universe/sql?q=0` (the fourteen demonstration queries, run against your database).
+
+**If the tables are already loaded on this host** and you want them replaced with the
+current build, `--reset --db-only` is exactly the command. To load *without* replacing
+them, drop `--reset`: the loader then refuses and tells you why, rather than duplicating
+rows.
+
+**To undo the whole module** (removes only the demonstration tables):
+
+```bash
+.venv/bin/python scripts/remove_universe_tables.py
+```
+
+It refuses to run without `--yes`, prints what it will drop first, and touches nothing
+outside the `uni_` tables and their seven views.
+
 ### What is new since the first deployment
 
 - The portal reads **NIST University Portal Management**.

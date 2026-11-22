@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs with context %}
+
+{% block title %}Verification — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Verification and reports{% endblock %}
+{% block page_subtitle %}What is in the database now, checked live, plus the generated reports and dataset files.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.verify') }}
+
+<div class="sims-card" style="margin-bottom:16px">
+  <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+    <div>
+      <h2 class="uni-h2">Rebuild from the generator</h2>
+      <p class="uni-sub" style="margin:0">Re-runs <code>scripts/build_universe_dataset.py</code>
+        in-process: validate, write every file, then reload the 14 tables and re-verify.
+        Only the <code>uni_</code> tables are replaced.</p>
+    </div>
+    <button class="action-pill-btn" id="uniRebuild">Validate and reload</button>
+  </div>
+  <p class="uni-note" id="uniRebuildResult"></p>
+</div>
+
+<div class="uni-grid-2">
+  <section class="sims-card">
+    <h2 class="uni-h2">Row counts, read live</h2>
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Table</th><th>What it holds</th><th class="num">Rows</th></tr></thead>
+      <tbody>
+        {% for row in counts %}
+        <tr><td><code>{{ row.table }}</code></td><td style="font-size:11px">{{ row.label }}</td>
+          <td class="num">{{ '{:,}'.format(row.rows) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <h3 class="uni-h3">Views</h3>
+    <ul class="uni-check-list">
+      {% for v in integrity.views %}
+      <li><span><code>{{ v.view }}</code><br><span style="font-size:10.5px;color:var(--text-muted)">{{ v.label }}</span></span>
+        <span class="{{ 'uni-ok' if v.ok else 'uni-bad' }}">{{ '{:,}'.format(v.rows) if v.ok else 'error' }} rows</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">Foreign keys, checked in the database</h2>
+    <p class="uni-sub">A real anti-join per relationship: any row whose parent is missing would be counted here.</p>
+    <ul class="uni-check-list">
+      {% for c in integrity.checks %}
+      <li><span><code>{{ c.child }}.{{ c.column }}</code> → <code>{{ c.parent }}</code></span>
+        <span class="{{ 'uni-ok' if c.status == 'ok' else 'uni-bad' }}">
+          {{ c.orphans if c.status == 'ok' else c.status }}</span></li>
+      {% endfor %}
+    </ul>
+    <h3 class="uni-h3">Duplicate rules</h3>
+    <ul class="uni-check-list">
+      {% for d in integrity.duplicates %}
+      <li><span>{{ d.rule }}</span>
+        <span class="{{ 'uni-ok' if d.violations == 0 else 'uni-bad' }}">
+          {{ d.violations if d.violations is number else d.violations }}</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<section class="sims-card" style="margin-bottom:16px">
+  <h2 class="uni-h2">Dataset files</h2>
+  <p class="uni-sub">Everything the project report needs, generated from the same source as the
+    database so the files and the tables cannot disagree.</p>
+  <ul class="uni-artifact-list">
+    {% for a in artifacts %}
+    <li>
+      <span>
+        {% if a.exists %}
+        <a href="{{ url_for('universe.download', name=a.name) }}">{{ a.name }}</a>
+        {% else %}<span class="uni-missing">{{ a.name }}</span>{% endif %}
+        <span style="color:var(--text-muted)"> — {{ a.label }}</span>
+      </span>
+      <span style="color:var(--text-subtle);font-size:10.5px">
+        {{ '{:,}'.format(a.bytes) }} bytes
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% if validation %}
+<section class="sims-card" style="margin-bottom:16px">
+  <h2 class="uni-h2">Validation report</h2>
+  <p class="uni-sub">`datasets/validation_report.md`, rendered as text.</p>
+  <div class="uni-doc">{{ validation }}</div>
+</section>
+{% endif %}
+
+{% if insertion %}
+<section class="sims-card">
+  <h2 class="uni-h2">Record insertion log</h2>
+  <p class="uni-sub">`datasets/insertion_log.md`, rendered as text.</p>
+  <div class="uni-doc">{{ insertion }}</div>
+</section>
+{% endif %}
+
+<script>
+document.getElementById('uniRebuild').addEventListener('click', async function () {
+  const button = this, out = document.getElementById('uniRebuildResult');
+  button.disabled = true; out.textContent = 'Validating, writing files and reloading…';
+  try {
+    const response = await fetch('{{ url_for('universe.compile_dataset') }}', {
+      method: 'POST',
+      headers: {'X-CSRF-Token': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+      body: '{}'
+    });
+    const data = await response.json();
+    out.textContent = data.message || 'No message returned.';
+    if (data.ok) { setTimeout(function () { window.location.reload(); }, 1500); }
+  } catch (error) {
+    out.textContent = 'Request failed: ' + error;
+  } finally { button.disabled = false; }
+});
+</script>
+{% endblock %}

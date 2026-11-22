@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark with context %}
+
+{% block title %}Missions — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Missions and storylines{% endblock %}
+{% block page_subtitle %}{{ rows | length }} storylines: comic events, comic arcs, film sagas and crossovers.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.missions') }}
+<div class="sims-card">
+  <form method="GET" class="uni-filter-bar">
+    <select class="pill-select" name="universe" onchange="this.form.submit()" aria-label="Universe">
+      <option value="">Both universes</option>
+      <option value="Marvel" {% if universe == 'Marvel' %}selected{% endif %}>Marvel</option>
+      <option value="DC" {% if universe == 'DC' %}selected{% endif %}>DC</option>
+    </select>
+    <span class="uni-filter-count"><strong>{{ rows | length }}</strong> storylines</span>
+  </form>
+  <table class="sims-table">
+    <thead><tr><th>Storyline</th><th>Kind</th><th>Universe</th><th class="num">Years</th><th class="num">Participants</th><th>Outcome</th></tr></thead>
+    <tbody>
+      {% for m in rows %}
+      <tr>
+        <td><a href="{{ url_for('universe.mission', mission_id=m.mission_id) }}" style="font-weight:550">{{ m.mission_name }}</a></td>
+        <td>{{ chip(m.storyline_category) }}</td>
+        <td>{{ universe_mark(m.universe_name) }}</td>
+        <td class="num">{{ m.start_year }}{% if m.end_year and m.end_year != m.start_year %}–{{ m.end_year }}{% endif %}</td>
+        <td class="num">{{ m.participants }}</td>
+        <td style="font-size:11px;color:var(--text-muted)">{{ m.outcome }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

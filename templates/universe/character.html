@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark, uni_badge with context %}
+
+{% block title %}{{ character.alias }} — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}{{ character.alias }}{% endblock %}
+{% block page_subtitle %}{{ character.real_name if character.real_name and character.real_name != 'Unknown' else 'Real name not established' }} · {{ character.continuity }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.characters') }}
+
+<div class="sims-card" style="margin-bottom:16px">
+  <div class="uni-detail-head">
+    <div>
+      <h1 class="uni-detail-title">{{ character.alias }}</h1>
+      <p class="uni-detail-sub">{{ character.real_name if character.real_name and character.real_name != 'Unknown' else 'Real name not established' }}</p>
+      <div class="uni-detail-chips">
+        {{ universe_mark(character.universe_name) }}
+        {{ chip(character.character_type) }}
+        {{ chip(character.alignment | lower, character.alignment | lower) }}
+        {{ chip(character.species) }}
+        {{ chip(character.gender) }}
+        {{ uni_badge(character.record_origin) }}
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div class="uni-chip">{{ character.continuity }}</div>
+    </div>
+  </div>
+
+  <dl class="uni-facts">
+    <div><dt>First appearance</dt><dd>{{ character.first_appearance or 'Not established' }}</dd></div>
+    <div><dt>Current status</dt><dd>{{ character.current_status }}</dd></div>
+    <div><dt>Teams</dt><dd>{{ teams | length }}</dd></div>
+    <div><dt>Powers mapped</dt><dd>{{ powers | length }}</dd></div>
+    <div><dt>Missions</dt><dd>{{ missions | length }}</dd></div>
+    <div><dt>Battles</dt><dd>{{ battles | length }}</dd></div>
+  </dl>
+
+  <p class="uni-quote">{{ character.origin }}</p>
+  {% if character.record_origin == 'Original addition' %}
+  <p class="uni-note"><strong>Original addition.</strong> This character was written for this
+    demonstration project and is not a Marvel or DC publication. The record is labelled
+    <code>record_origin = Original addition</code> in the database so it can be filtered out.</p>
+  {% endif %}
+</div>
+
+<div class="uni-grid-2">
+  <section class="sims-card">
+    <h2 class="uni-h2">Powers and abilities</h2>
+    <p class="uni-sub">From <code>uni_character_power</code> joined to <code>uni_power</code>.</p>
+    {% if powers %}
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Power</th><th>Category</th><th class="num">Level</th><th>Proficiency</th><th>Limitation</th></tr></thead>
+      <tbody>
+        {% for p in powers %}
+        <tr>
+          <td>{{ p.power_name }}</td>
+          <td><span class="uni-chip">{{ p.category }}</span></td>
+          <td class="num">{{ p.power_level }}</td>
+          <td>{{ p.proficiency_level }}</td>
+          <td style="font-size:11px;color:var(--text-muted)">{{ p.limitations or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty-note">No powers mapped.</p>{% endif %}
+  </section>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">Team memberships</h2>
+    <p class="uni-sub">From <code>uni_membership</code>.</p>
+    {% if teams %}
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Team</th><th>Role</th><th>Joined</th><th>Left</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in teams %}
+        <tr>
+          <td>{{ t.team_name }}</td>
+          <td>{{ t.role }}</td>
+          <td>{{ t.joining_date or '—' }}</td>
+          <td>{{ t.departure_date or '—' }}</td>
+          <td>{{ chip(t.membership_status, 'good' if t.membership_status == 'Current' else '') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty-note">Not a member of any recorded team.</p>{% endif %}
+
+    {% if organizations %}
+    <h3 class="uni-h3">Leads</h3>
+    <ul class="uni-origin-list">
+      {% for o in organizations %}
+      <li><strong>{{ o.organization_name }}</strong> — {{ o.organization_type }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">Missions and storylines</h2>
+    <p class="uni-sub">From <code>uni_mission_participation</code>.</p>
+    {% if missions %}
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Storyline</th><th>Kind</th><th class="num">Years</th><th>Role</th><th>Outcome</th><th>Survived</th></tr></thead>
+      <tbody>
+        {% for m in missions %}
+        <tr>
+          <td>{{ m.mission_name }}</td>
+          <td><span class="uni-chip">{{ m.storyline_category }}</span></td>
+          <td class="num">{{ m.start_year }}{% if m.end_year and m.end_year != m.start_year %}–{{ m.end_year }}{% endif %}</td>
+          <td>{{ m.role }}</td>
+          <td style="font-size:11px">{{ m.outcome }}</td>
+          <td>{{ m.survival_status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty-note">No recorded mission participation.</p>{% endif %}
+  </section>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">Battle record</h2>
+    <p class="uni-sub">From <code>uni_battle_participation</code>.</p>
+    {% if battles %}
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Battle</th><th class="num">Year</th><th>Side</th><th>Result</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for b in battles %}
+        <tr>
+          <td>{{ b.battle_name }}<div style="font-size:10px;color:var(--text-muted)">{{ b.location }}</div></td>
+          <td class="num">{{ b.year }}</td>
+          <td style="font-size:11px">{{ b.side }}</td>
+          <td>{{ b.battle_result }}</td>
+          <td>{{ b.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty-note">No recorded battle participation.</p>{% endif %}
+  </section>
+</div>
+
+<div class="uni-grid-2">
+  <section class="sims-card">
+    <h2 class="uni-h2">Relationships</h2>
+    <p class="uni-sub">From <code>uni_relationship</code>, stored once per ordered pair.</p>
+    {% if relationships %}
+    <table class="sims-table uni-compact">
+      <thead><tr><th>With</th><th>Type</th><th>Continuity</th></tr></thead>
+      <tbody>
+        {% for r in relationships %}
+        <tr>
+          <td><a href="{{ url_for('universe.character', character_id=r.other_id) }}">{{ r.other_alias }}</a>
+            <div style="font-size:10.5px;color:var(--text-muted)">{{ r.description }}</div></td>
+          <td><span class="uni-chip">{{ r.relationship_type }}</span></td>
+          <td style="font-size:10.5px">{{ r.continuity }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty-note">No recorded relationships.</p>{% endif %}
+  </section>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">Comic issues</h2>
+    <p class="uni-sub">Issues recorded against this character.</p>
+    {% if comics %}
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Issue</th><th class="num">Year</th><th>Writer</th><th>Artist</th><th>Storyline</th></tr></thead>
+      <tbody>
+        {% for c in comics %}
+        <tr>
+          <td>{{ c.title }} #{{ c.issue_number }}</td>
+          <td class="num">{{ c.publication_year }}</td>
+          <td>{{ c.writer or '—' }}</td>
+          <td>{{ c.artist or '—' }}</td>
+          <td>{{ c.storyline or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty-note">No comic issues recorded against this character.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

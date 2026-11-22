@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark with context %}
+
+{% block title %}{{ mission.mission_name }} — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}{{ mission.mission_name }}{% endblock %}
+{% block page_subtitle %}{{ mission.storyline_category }} · {{ mission.universe_name }} · {{ mission.continuity }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.missions') }}
+<div class="sims-card" style="margin-bottom:16px">
+  <div class="uni-detail-head">
+    <div>
+      <h1 class="uni-detail-title">{{ mission.mission_name }}</h1>
+      <div class="uni-detail-chips">
+        {{ universe_mark(mission.universe_name) }}
+        {{ chip(mission.storyline_category) }}
+        {{ chip(mission.continuity) }}
+      </div>
+    </div>
+  </div>
+  <p class="uni-quote">{{ mission.description }}</p>
+  <dl class="uni-facts">
+    <div><dt>Start year</dt><dd>{{ mission.start_year }}</dd></div>
+    <div><dt>End year</dt><dd>{{ mission.end_year or 'Single year' }}</dd></div>
+    <div><dt>Participants</dt><dd>{{ participants | length }}</dd></div>
+    <div><dt>Outcome</dt><dd>{{ mission.outcome }}</dd></div>
+  </dl>
+</div>
+
+<div class="sims-card">
+  <h2 class="uni-h2">Participation</h2>
+  <p class="uni-sub">Every row from <code>uni_mission_participation</code> for this storyline.</p>
+  <table class="sims-table">
+    <thead><tr><th>Character</th><th>Type</th><th>Role</th><th>What happened</th><th>Survival</th></tr></thead>
+    <tbody>
+      {% for p in participants %}
+      <tr>
+        <td><a href="{{ url_for('universe.character', character_id=p.character_id) }}">{{ p.alias }}</a>
+          <div style="margin-top:3px">{{ chip(p.alignment | lower, p.alignment | lower) }}</div></td>
+        <td>{{ chip(p.character_type) }}</td>
+        <td>{{ p.role }}</td>
+        <td style="font-size:11px">{{ p.outcome }}</td>
+        <td>{{ chip(p.survival_status, 'evil' if p.survival_status in ('Killed', 'Presumed dead') else 'good') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

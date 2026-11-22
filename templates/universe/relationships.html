@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark with context %}
+
+{% block title %}Relationships — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Relationship network{% endblock %}
+{% block page_subtitle %}{{ rows | length }} relationships. Each unordered pair is stored once, enforced by a CHECK and a unique index.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.relationships') }}
+<div class="sims-card" style="margin-bottom:16px">
+  <form method="GET" class="uni-filter-bar">
+    <select class="pill-select" name="universe" onchange="this.form.submit()" aria-label="Universe">
+      <option value="">Both universes</option>
+      <option value="Marvel" {% if filters.universe == 'Marvel' %}selected{% endif %}>Marvel</option>
+      <option value="DC" {% if filters.universe == 'DC' %}selected{% endif %}>DC</option>
+    </select>
+    <select class="pill-select" name="type" onchange="this.form.submit()" aria-label="Relationship type">
+      <option value="">Any type</option>
+      {% for t in types %}
+      <option value="{{ t.relationship_type }}" {% if filters.type == t.relationship_type %}selected{% endif %}>{{ t.relationship_type }} ({{ t.n }})</option>
+      {% endfor %}
+    </select>
+    <span class="uni-filter-count"><strong>{{ rows | length }}</strong> pairs</span>
+  </form>
+</div>
+
+<div class="uni-grid-2">
+  <section class="sims-card">
+    <h2 class="uni-h2">Relationship types</h2>
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Type</th><th class="num">Pairs</th></tr></thead>
+      <tbody>
+        {% for t in types %}
+        <tr><td>{{ t.relationship_type }}</td><td class="num">{{ t.n }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section class="sims-card">
+    <h2 class="uni-h2">All pairs</h2>
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Pair</th><th>Type</th><th>Continuity</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>
+            <a href="{{ url_for('universe.character', character_id=r.character_1_id) }}">{{ r.character_1 }}</a>
+            <span style="color:var(--text-subtle)">↔</span>
+            <a href="{{ url_for('universe.character', character_id=r.character_2_id) }}">{{ r.character_2 }}</a>
+            <div style="font-size:10.5px;color:var(--text-muted)">{{ r.description }}</div>
+          </td>
+          <td>{{ chip(r.relationship_type) }}</td>
+          <td style="font-size:10px;color:var(--text-muted)">{{ r.continuity }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}
