@@ -1505,6 +1505,9 @@ def main():
                         help='clear the 14 uni_ tables before loading (never touches campus tables)')
     parser.add_argument('--sql-only', action='store_true',
                         help='write the SQL bundle and print the command to run on the live host')
+    parser.add_argument('--db-only', action='store_true',
+                        help='load the database only and leave datasets/ exactly as committed '
+                             '(use this on the live host, where the files are already in git)')
     args = parser.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
@@ -1524,15 +1527,23 @@ def main():
     if orphans or dupes or required_bad:
         raise SystemExit('Validation failed. Fix the source data before loading anything.')
 
-    print('3/5  writing CSVs, SQL and the workbook')
-    csvs = write_csvs(entities)
-    sql_files, combined = write_sql(entities)
-    excel = write_excel(entities)
-    dictionary = write_data_dictionary(entities, report)
-    diagram = write_er_diagram(entities, report)
-    validation = write_validation_report(entities, report, csvs, excel)
-    print(f'     {len(csvs)} CSVs · {len(sql_files) + 1} SQL scripts · '
-          f'{excel.name if excel else "no workbook"} · dictionary · diagram · report')
+    if args.db_only:
+        # The committed datasets/ files are already the ones this code produces; on the
+        # live host there is nothing to rewrite, so the loader runs on its own.
+        print('3/5  files left untouched (--db-only)')
+        combined = SQL_DIR / 'load_universe.sql'
+        csvs, excel = [], None
+        validation = OUT / 'validation_report.md'
+    else:
+        print('3/5  writing CSVs, SQL and the workbook')
+        csvs = write_csvs(entities)
+        sql_files, combined = write_sql(entities)
+        excel = write_excel(entities)
+        dictionary = write_data_dictionary(entities, report)
+        diagram = write_er_diagram(entities, report)
+        validation = write_validation_report(entities, report, csvs, excel)
+        print(f'     {len(csvs)} CSVs · {len(sql_files) + 1} SQL scripts · '
+              f'{excel.name if excel else "no workbook"} · dictionary · diagram · report')
 
     if args.no_load or args.sql_only:
         mode = 'file generation only'
@@ -1541,12 +1552,13 @@ def main():
         counts = {e: {'table': TABLE_FOR[e][0], 'expected': len(rows_for(e, entities)),
                       'actual': 0, 'ok': False} for e in LOAD_ORDER}
         verification = (counts, [], {})
-        try:
-            demo_sql, demo_md, demo_count, demo_failed = write_sql_demonstrations()
-            print(f'     {demo_md.relative_to(ROOT)} · {demo_count} queries, '
-                  f'{demo_failed} failed (run against the database currently on disk)')
-        except Exception as exc:
-            print(f'     SQL demonstration sheet skipped: {type(exc).__name__}: {exc}')
+        if not args.db_only:
+            try:
+                demo_sql, demo_md, demo_count, demo_failed = write_sql_demonstrations()
+                print(f'     {demo_md.relative_to(ROOT)} · {demo_count} queries, '
+                      f'{demo_failed} failed (run against the database currently on disk)')
+            except Exception as exc:
+                print(f'     SQL demonstration sheet skipped: {type(exc).__name__}: {exc}')
         if args.sql_only:
             print()
             print('Run this on the portal host to load the same data into the live database:')
@@ -1562,13 +1574,17 @@ def main():
         ok = all(c['ok'] for c in counts.values())
         print(f'     row counts match: {ok} · '
               f'orphan FKs after load: {sum(f["orphans"] for f in fk_checks if isinstance(f["orphans"], int))}')
-        insertion = write_insertion_log(entities, loaded, log, applied, verification,
-                                       fk_checks, views,
-                                       'local portal database (SQLite, same repository layer '
-                                       'as the deployed instance)')
-        print(f'     {insertion.relative_to(ROOT)}')
-        demo_sql, demo_md, demo_count, demo_failed = write_sql_demonstrations()
-        print(f'     {demo_md.relative_to(ROOT)} · {demo_count} queries, {demo_failed} failed')
+        target = ('the live database on this host' if args.db_only else
+                  'local portal database (SQLite, same repository layer as the deployed '
+                  'instance)')
+        if args.db_only:
+            print('     live row counts verified; datasets/ left as committed')
+        else:
+            insertion = write_insertion_log(entities, loaded, log, applied, verification,
+                                           fk_checks, views, target)
+            print(f'     {insertion.relative_to(ROOT)}')
+            demo_sql, demo_md, demo_count, demo_failed = write_sql_demonstrations()
+            print(f'     {demo_md.relative_to(ROOT)} · {demo_count} queries, {demo_failed} failed')
         if not ok:
             raise SystemExit('Post-load verification failed: row counts differ.')
     print('done. Files are in datasets/.')

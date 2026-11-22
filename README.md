@@ -224,6 +224,17 @@ Rebuild and load it (only the 14 `uni_` tables are touched):
 python scripts/build_universe_dataset.py --reset
 ```
 
+On the deployed host the files under `datasets/` are already in the repository, so load
+the tables without rewriting them:
+
+```bash
+git fetch --depth 1 origin arena/820e884a-dbms-project-deploy && git checkout -B deployed FETCH_HEAD
+python scripts/build_universe_dataset.py --reset --db-only
+python scripts/remove_universe_tables.py            # to undo; add --yes to drop
+```
+
+Full update runbook: [`docs/DEPLOY_PYTHONANYWHERE.md`](docs/DEPLOY_PYTHONANYWHERE.md#updating-to-add-the-marvel--dc-universe-database).
+
 That one command assembles the data, validates it, writes every deliverable, loads it
 through the portal's own repository layer and re-reads the tables to verify:
 
