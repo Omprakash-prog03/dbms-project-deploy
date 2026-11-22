@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Universe not loaded — {{ portal_name }}{% endblock %}
+{% block page_title %}Marvel &amp; DC Universe Database{% endblock %}
+{% block page_subtitle %}The module is installed, but this database does not have the dataset yet.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="sims-card">
+  <h2 class="uni-h2">The uni_ tables are empty or absent in this database</h2>
+  <p class="uni-sub">This is the expected state on a fresh deployment: the schema and the
+    dataset ship with the code, and are loaded by one command. Nothing is broken.</p>
+  <p class="uni-question">Run this from the project directory on the server:</p>
+  <code class="uni-code">python scripts/build_universe_dataset.py --reset</code>
+  {% if current_user.role == 'admin' %}
+  <p class="uni-sub" style="margin-top:16px">Or load it from here, in-process:</p>
+  <button class="action-pill-btn" id="uniCompile">Build and load the dataset now</button>
+  <p class="uni-note" id="uniCompileResult"></p>
+  <script>
+  document.getElementById('uniCompile').addEventListener('click', async function () {
+    const button = this, out = document.getElementById('uniCompileResult');
+    button.disabled = true; out.textContent = 'Building… this takes a few seconds.';
+    try {
+      const response = await fetch('{{ url_for('universe.compile_dataset') }}', {
+        method: 'POST',
+        headers: {'X-CSRF-Token': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: '{}'
+      });
+      const data = await response.json();
+      out.textContent = data.message || 'No message returned.';
+      if (data.ok) { setTimeout(function () { window.location.reload(); }, 1200); }
+    } catch (error) {
+      out.textContent = 'Request failed: ' + error;
+    } finally { button.disabled = false; }
+  });
+  </script>
+  {% endif %}
+</div>
+{% endblock %}

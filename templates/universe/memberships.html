@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark with context %}
+
+{% block title %}Memberships — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Character–team memberships{% endblock %}
+{% block page_subtitle %}The join table between characters and teams, with status derived from the departure date.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.memberships') }}
+<div class="sims-card">
+  <form method="GET" class="uni-filter-bar">
+    <select class="pill-select" name="universe" onchange="this.form.submit()" aria-label="Universe">
+      <option value="">Both universes</option>
+      <option value="Marvel" {% if filters.universe == 'Marvel' %}selected{% endif %}>Marvel</option>
+      <option value="DC" {% if filters.universe == 'DC' %}selected{% endif %}>DC</option>
+    </select>
+    <select class="pill-select" name="status" onchange="this.form.submit()" aria-label="Status">
+      <option value="">Current and former</option>
+      <option value="Current" {% if filters.status == 'Current' %}selected{% endif %}>Current only</option>
+      <option value="Former" {% if filters.status == 'Former' %}selected{% endif %}>Former only</option>
+    </select>
+    <span class="uni-filter-count">showing <strong>{{ rows | length }}</strong> (capped at 400)</span>
+  </form>
+
+  <table class="sims-table uni-compact">
+    <thead><tr><th>Character</th><th>Team</th><th>Universe</th><th>Role</th><th>Joined</th><th>Left</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for m in rows %}
+      <tr>
+        <td><a href="{{ url_for('universe.character', character_id=m.character_id) }}">{{ m.alias }}</a></td>
+        <td><a href="{{ url_for('universe.team', team_id=m.team_id) }}">{{ m.team_name }}</a></td>
+        <td>{{ universe_mark(m.universe_name) }}</td>
+        <td>{{ m.role }}</td>
+        <td>{{ m.joining_date or '—' }}</td>
+        <td>{{ m.departure_date or '—' }}</td>
+        <td>{{ chip(m.membership_status, 'good' if m.membership_status == 'Current' else '') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

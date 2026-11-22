@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark, bar with context %}
+
+{% block title %}Comics — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Comic issues{% endblock %}
+{% block page_subtitle %}{{ rows | length }} individual issues, each with its published credits and the arc it belongs to.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.comics') }}
+<div class="sims-card" style="margin-bottom:16px">
+  <form method="GET" class="uni-filter-bar">
+    <select class="pill-select" name="universe" onchange="this.form.submit()" aria-label="Universe">
+      <option value="">Both universes</option>
+      <option value="Marvel" {% if universe == 'Marvel' %}selected{% endif %}>Marvel</option>
+      <option value="DC" {% if universe == 'DC' %}selected{% endif %}>DC</option>
+    </select>
+    <span class="uni-filter-count"><strong>{{ rows | length }}</strong> issues</span>
+  </form>
+  <h2 class="uni-h2" style="margin-bottom:10px">Issues per decade</h2>
+  <table class="sims-table uni-compact">
+    <thead><tr><th class="num" style="width:80px">Decade</th><th>Issues</th></tr></thead>
+    <tbody>
+      {% set peak = decades | map(attribute='n') | max %}
+      {% for d in decades %}
+      <tr><td class="num">{{ d.decade }}s</td><td>{{ bar(d.n, peak) }}<span style="font-size:10px;color:var(--text-muted)">{{ d.n }}</span></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="sims-card">
+  <table class="sims-table">
+    <thead><tr><th>Issue</th><th class="num">Year</th><th>Writer</th><th>Artist</th><th>Storyline</th><th>Character</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.title }} #{{ r.issue_number }}</strong>
+          <div style="margin-top:3px">{{ universe_mark(r.universe_name) }}</div></td>
+        <td class="num">{{ r.publication_year }}</td>
+        <td style="font-size:11px">{{ r.writer or 'Not established' }}</td>
+        <td style="font-size:11px">{{ r.artist or 'Not established' }}</td>
+        <td>{{ chip(r.storyline) if r.storyline else '—' }}</td>
+        <td style="font-size:11px">{{ r.character or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

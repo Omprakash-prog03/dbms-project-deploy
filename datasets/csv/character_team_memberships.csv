@@ -1,0 +1,209 @@
+membership_id,character_id,team_id,joining_date,departure_date,membership_status,role
+1,1,1,1963-09-01,,Current,Founding member
+2,3,1,1963-09-01,,Current,Founding member
+3,4,1,1963-09-01,,Current,Founding member
+4,17,1,1963-09-01,,Current,Founding member
+5,16,1,1963-09-01,,Current,Founding member
+6,2,1,1964-03-01,,Current,Team leader
+7,21,1,1965-05-01,,Current,Field leader
+8,22,1,1971-08-01,,Current,Intelligence officer
+9,7,1,1965-02-01,,Current,Magic support
+10,24,1,1968-04-01,,Current,Operations specialist
+11,19,1,1971-12-01,,Current,Air support
+12,18,1,2012-07-01,,Current,Cosmic response
+13,13,1,1968-05-01,,Current,Wakandan liaison
+14,23,1,1989-03-01,,Current,Heavy assault
+15,33,1,1975-07-01,,Current,Science officer
+16,30,1,2012-01-01,2013-06-30,Former,Reserve member
+17,29,2,1963-09-01,,Current,Founder and headmaster
+18,31,2,1963-09-01,,Current,Field leader
+19,32,2,1963-09-01,,Current,Senior member
+20,33,2,1963-09-01,,Current,Science officer
+21,30,2,1975-05-01,,Current,Team leader
+22,11,2,1975-05-01,,Current,Field operative
+23,36,2,1975-05-01,,Current,Heavy assault
+24,37,2,1975-05-01,,Current,Reconnaissance
+25,34,2,1981-07-01,,Current,Field operative
+26,35,2,1990-08-01,,Current,Field operative
+27,38,2,1994-01-01,,Current,Co-leader
+28,39,2,1980-01-01,,Current,Instructor
+29,12,2,1985-04-01,1986-01-15,Former,Reluctant ally
+30,28,2,1993-11-01,1994-08-01,Former,Parole member
+31,67,3,2008-05-01,,Current,Team leader
+32,68,3,2008-05-01,,Current,Assault specialist
+33,69,3,2008-05-01,,Current,Heavy assault
+34,70,3,2008-05-01,,Current,Engineer and quartermaster
+35,71,3,2008-05-01,,Current,Heavy support
+36,72,3,2016-06-01,,Current,Empath and negotiator
+37,73,3,2019-02-01,,Current,Infiltration
+38,15,3,2023-04-01,2023-10-01,Former,Temporary recruit
+39,190,4,1961-11-01,,Current,Team leader
+40,191,4,1961-11-01,,Current,Operations officer
+41,192,4,1961-11-01,,Current,Assault
+42,193,4,1961-11-01,,Current,Heavy assault
+43,12,5,1964-03-01,,Current,Founder and leader
+44,7,5,1964-03-01,1965-02-01,Former,Field operative
+45,199,5,1964-03-01,1965-02-01,Former,Field operative
+46,27,5,1978-06-01,,Current,Field commander
+47,28,5,1978-06-01,,Current,Enforcer
+48,61,5,1965-07-01,1966-02-01,Former,Heavy assault
+49,6,6,1971-12-01,,Current,Convenor
+50,4,6,1971-12-01,,Current,Founding member
+51,57,6,1972-03-01,,Current,Cosmic reserve
+52,40,6,2011-06-01,,Current,Street operations
+53,200,6,2011-06-01,,Current,Street operations
+54,201,6,2011-06-01,,Current,Street operations
+55,202,6,2011-06-01,,Current,Investigation
+56,6,7,1992-10-01,,Current,Convenor
+57,63,7,1992-10-01,,Current,Vampire operations
+58,62,7,1992-10-01,,Current,Demon operations
+59,64,7,1992-10-01,,Current,Blood-borne threats
+60,15,7,1992-10-01,,Current,Night operations
+61,45,8,1964-06-01,,Current,Founder and leader
+62,44,8,1964-06-01,,Current,Air assault
+63,48,8,1964-06-01,,Current,Energy assault
+64,50,8,1964-06-01,,Current,Tracker
+65,49,8,1964-06-01,,Current,Deception
+66,47,8,1964-06-01,,Current,Heavy support
+67,46,8,2000-04-01,2000-09-01,Former,Loose cannon
+68,52,9,1941-08-01,,Current,Supreme leader
+69,20,9,1954-01-01,2014-04-01,Former,Asset
+70,76,9,2010-02-01,,Current,Training officer
+71,14,10,1965-01-01,,Current,Director
+72,22,10,2000-05-01,2014-04-30,Former,Operations
+73,21,10,1998-09-01,2012-01-31,Former,Field agent
+74,194,11,1965-11-01,,Current,King
+75,195,11,1965-11-01,,Current,Queen
+76,196,11,1965-11-01,,Current,Diplomat
+77,197,11,1965-11-01,,Current,Strategic advisor
+78,198,11,1965-11-01,,Current,Royal guard commander
+79,146,12,2012-05-04,,Current,Founding member
+80,147,12,2012-05-04,,Current,Field leader
+81,148,12,2012-05-04,,Current,Founding member
+82,149,12,2012-05-04,,Current,Founding member
+83,161,12,2012-05-04,,Current,Founding member
+84,162,12,2012-05-04,,Current,Founding member
+85,163,12,2015-05-01,,Current,Heavy assault
+86,164,12,2015-05-01,,Current,Air support
+87,152,12,2015-05-01,,Current,Magic support
+88,150,12,2018-05-01,2018-06-30,Former,Recruit
+89,165,12,2018-05-01,,Current,Winter Soldier
+90,151,12,2018-05-01,2018-06-30,Former,Reserve
+91,216,12,2016-05-06,,Current,Wakandan liaison
+92,217,12,2019-04-01,,Current,Cosmic response
+93,155,13,2014-08-01,,Current,Team leader
+94,156,13,2014-08-01,,Current,Assault specialist
+95,157,13,2014-08-01,,Current,Heavy assault
+96,158,13,2014-08-01,,Current,Engineer
+97,159,13,2014-08-01,,Current,Heavy support
+98,218,13,2019-04-26,,Current,Infiltration
+99,219,13,2017-05-01,,Current,Empath
+100,228,14,1945-01-01,,Current,Founder
+101,165,14,1954-01-01,2014-04-04,Former,Asset
+102,160,15,1990-01-01,2015-01-01,Former,Director
+103,82,15,1995-01-01,2012-05-04,Former,Senior field agent
+104,161,15,2001-01-01,2014-04-04,Former,Operations
+105,162,15,1998-01-01,2012-05-04,Former,Field agent
+106,81,15,2013-01-01,2015-06-01,Former,Research consultant
+107,224,16,2018-05-01,,Current,Black Order commander
+108,225,16,2018-05-01,,Current,Heavy assault
+109,226,16,2018-05-01,,Current,Assassin
+110,227,16,2018-05-01,,Current,Assassin
+111,220,17,2017-08-18,,Current,Street operations
+112,221,17,2017-08-18,,Current,Investigator
+113,222,17,2017-08-18,,Current,Community protection
+114,223,17,2017-08-18,,Current,Hand specialist
+115,184,18,2019-03-01,,Current,Convenor
+116,187,18,2019-03-01,,Current,Field operative
+117,189,18,2020-01-01,,Current,Probabilistic advisor
+118,83,19,1960-03-01,,Current,Founding member
+119,84,19,1960-03-01,,Current,Founding member
+120,85,19,1960-03-01,,Current,Founding member
+121,86,19,1960-03-01,,Current,Founding member
+122,87,19,1960-03-01,,Current,Founding member
+123,88,19,1960-03-01,,Current,Founding member
+124,90,19,1960-03-01,,Current,Founding member
+125,89,19,2011-09-01,,Current,Technology officer
+126,91,19,2001-11-01,,Current,Reconnaissance
+127,92,19,1969-07-01,,Current,Field operative
+128,93,19,2001-11-01,,Current,Field operative
+129,134,19,2007-04-01,,Current,Magic support
+130,135,19,1998-01-01,,Current,Reserve member
+131,133,19,1961-12-01,,Current,Science officer
+132,131,19,1987-01-01,,Current,Speed response
+133,132,19,1986-04-01,,Current,Corps liaison
+134,203,20,1940-11-01,,Current,Founding member
+135,204,20,1940-01-01,,Current,Founding member
+136,135,20,1940-07-01,,Current,Founding member
+137,85,20,1941-12-01,1945-09-01,Former,Founding member
+138,205,20,1940-07-01,,Current,Founding member
+139,206,20,1940-01-01,,Current,Founding member
+140,94,21,1984-07-01,,Current,Team leader
+141,127,21,1980-10-01,,Current,Founding member
+142,128,21,1980-10-01,,Current,Founding member
+143,129,21,1965-02-01,,Current,Founding member
+144,130,21,1980-10-01,,Current,Technology officer
+145,131,21,1960-03-01,1980-09-01,Former,Founding member
+146,96,21,1989-11-01,,Current,Tactician
+147,126,21,2009-06-01,,Current,Current Robin
+148,120,22,1987-05-01,,Current,Marksman
+149,121,22,2011-09-01,,Current,Wildcard
+150,112,22,2016-01-01,,Current,Cold field control
+151,122,22,1987-05-01,,Current,Heavy assault
+152,118,22,2016-01-01,,Current,Aquatic operations
+153,236,22,1987-05-01,,Current,"Director, not a member"
+154,109,23,1978-06-01,,Current,Founder and leader
+155,99,23,1978-06-01,,Current,Unpredictable asset
+156,208,23,1978-06-01,,Current,Field operative
+157,115,23,1978-06-01,,Current,Corps commander
+158,111,23,1978-06-01,,Current,Speed counter
+159,209,23,1978-06-01,,Current,Heavy assault
+160,97,24,1996-01-01,,Current,Intelligence director
+161,92,24,1996-01-01,,Current,Field leader
+162,207,24,1996-01-01,,Current,Field operative
+163,102,24,2003-05-01,2004-01-01,Former,Loose ally
+164,87,25,1971-09-01,,Current,Sector 2814 Lantern
+165,132,25,1986-05-01,,Current,Sector 2814 Lantern
+166,205,25,1940-07-01,,Current,Honorary Lantern
+167,115,26,2006-06-01,,Current,Founder and leader
+168,116,27,2007-05-01,,Current,Founder and leader
+169,141,27,2011-09-01,2012-03-01,Former,Field operative
+170,83,28,1939-05-01,,Current,Founder and commander
+171,94,28,1940-04-01,,Current,Partner
+172,95,28,1983-11-01,,Current,Estranged partner
+173,96,28,1989-06-01,,Current,Partner
+174,126,28,2009-06-01,,Current,Current Robin
+175,97,28,1967-01-01,,Current,Partner
+176,98,28,2006-07-01,,Current,Independent ally
+177,102,28,1940-04-01,,Current,Ally and thief
+178,124,29,1971-06-01,,Current,Head of the demon
+179,125,29,1971-06-01,,Current,Operations chief
+180,126,29,2006-09-01,2009-06-01,Former,Raised as an assassin
+181,112,30,1957-06-01,,Current,Leader
+182,113,30,1963-06-01,,Current,Arson specialist
+183,114,30,1977-12-01,,Current,Acrobat and fence
+184,210,30,1959-08-01,,Current,Infiltrator
+185,211,30,1958-10-01,,Current,Weather specialist
+186,236,31,2012-05-01,,Current,Director
+187,212,31,2012-05-01,,Current,Field liaison
+188,172,32,2017-11-17,,Current,Founder and strategist
+189,173,32,2017-11-17,,Current,Front-line commander
+190,174,32,2017-11-17,,Current,Speed support
+191,175,32,2017-11-17,,Current,Atlantean liaison
+192,176,32,2017-11-17,,Current,Technology officer
+193,171,32,2017-11-17,,Current,Front-line commander
+194,178,33,2016-08-05,,Current,Marksman
+195,177,33,2016-08-05,,Current,Wildcard
+196,229,33,2016-08-05,,Current,Heavy assault
+197,180,33,2016-08-05,,Current,"Director, not a member"
+198,230,33,2016-08-05,,Current,Thief
+199,181,34,2018-12-21,,Current,Warlord of Xebel
+200,182,34,2018-12-21,2018-12-21,Former,King (contested)
+201,231,34,2018-12-21,,Current,Queen regent
+202,213,35,2012-10-10,,Current,Founder and leader
+203,142,35,2012-10-10,,Current,Tactical advisor
+204,214,35,2012-10-10,,Current,Field operative
+205,215,35,2012-10-10,,Current,Technical lead
+206,188,36,2021-02-01,,Current,Founder and coordinator
+207,185,36,2021-02-01,,Current,Technical support
+208,186,36,2021-09-01,2022-01-01,Former,Suspicious recruit

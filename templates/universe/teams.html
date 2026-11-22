@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark, uni_badge with context %}
+
+{% block title %}Teams — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Teams and rosters{% endblock %}
+{% block page_subtitle %}{{ teams | length }} teams across both publishers, with every membership dated.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.teams') }}
+<div class="sims-card">
+  <form method="GET" class="uni-filter-bar">
+    <select class="pill-select" name="universe" onchange="this.form.submit()" aria-label="Universe">
+      <option value="">Both universes</option>
+      <option value="Marvel" {% if universe == 'Marvel' %}selected{% endif %}>Marvel</option>
+      <option value="DC" {% if universe == 'DC' %}selected{% endif %}>DC</option>
+    </select>
+    <span class="uni-filter-count"><strong>{{ teams | length }}</strong> teams</span>
+  </form>
+
+  <table class="sims-table">
+    <thead><tr><th>Team</th><th>Universe</th><th>Founded</th><th>Status</th><th class="num">Members</th><th class="num">Current</th><th>Headquarters</th></tr></thead>
+    <tbody>
+      {% for t in teams %}
+      <tr>
+        <td>
+          <a href="{{ url_for('universe.team', team_id=t.team_id) }}" style="font-weight:550">{{ t.team_name }}</a>
+          <div style="font-size:10.5px;color:var(--text-muted)">{{ t.mission }}</div>
+          {% if t.record_origin == 'Original addition' %}{{ uni_badge(t.record_origin) }}{% endif %}
+        </td>
+        <td>{{ universe_mark(t.universe_name) }}</td>
+        <td>{{ t.founding_year or '—' }}</td>
+        <td>{{ chip(t.team_status, 'good' if t.team_status == 'Active' else '') }}</td>
+        <td class="num">{{ t.members }}</td>
+        <td class="num">{{ t.current_members }}</td>
+        <td style="font-size:11px;color:var(--text-muted)">{{ t.headquarters or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

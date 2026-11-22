@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark, uni_badge, pager with context %}
+
+{% block title %}Characters — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Character browser{% endblock %}
+{% block page_subtitle %}{{ '{:,}'.format(total) }} characters across comic and screen continuities.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.characters') }}
+
+<div class="sims-card">
+  <form method="GET" action="{{ url_for('universe.characters') }}" class="uni-filter-bar">
+    <input class="form-input" type="search" name="search" value="{{ filters.search }}"
+           placeholder="Alias, real name or origin…" aria-label="Search characters" style="min-width:230px">
+    <select class="pill-select" name="universe" aria-label="Universe">
+      <option value="">Both universes</option>
+      {% for u in facets.universes %}
+      <option value="{{ u.universe_name }}" {% if filters.universe == u.universe_name %}selected{% endif %}>{{ u.universe_name }}</option>
+      {% endfor %}
+    </select>
+    <select class="pill-select" name="type" aria-label="Character type">
+      <option value="">Any type</option>
+      {% for t in facets.types %}
+      <option value="{{ t.character_type }}" {% if filters.type == t.character_type %}selected{% endif %}>{{ t.character_type }}</option>
+      {% endfor %}
+    </select>
+    <select class="pill-select" name="alignment" aria-label="Alignment">
+      <option value="">Any alignment</option>
+      {% for a in facets.alignments %}
+      <option value="{{ a.alignment }}" {% if filters.alignment == a.alignment %}selected{% endif %}>{{ a.alignment }}</option>
+      {% endfor %}
+    </select>
+    <select class="pill-select" name="continuity" aria-label="Continuity">
+      <option value="">Any continuity</option>
+      {% for c in facets.continuities %}
+      <option value="{{ c.continuity }}" {% if filters.continuity == c.continuity %}selected{% endif %}>{{ c.continuity }}</option>
+      {% endfor %}
+    </select>
+    <button class="action-pill-btn" type="submit">Filter</button>
+    {% if filters.search or filters.universe or filters.type or filters.alignment or filters.continuity %}
+    <a class="uni-filter-reset" href="{{ url_for('universe.characters') }}">Clear</a>
+    {% endif %}
+    <span class="uni-filter-count"><strong>{{ '{:,}'.format(total) }}</strong> matching</span>
+  </form>
+
+  <div class="uni-card-grid">
+    {% for c in rows %}
+    <a class="uni-card" href="{{ url_for('universe.character', character_id=c.character_id) }}">
+      <div class="uni-card-head">
+        <div>
+          <div class="uni-card-title">{{ c.alias }}</div>
+          <div class="uni-card-real">{{ c.real_name if c.real_name and c.real_name != 'Unknown' else 'Real name not established' }}</div>
+        </div>
+        {{ universe_mark(c.universe_name) }}
+      </div>
+      <div class="uni-card-meta">
+        {{ chip(c.character_type) }}
+        {{ chip(c.alignment | lower, c.alignment | lower) }}
+        {{ chip(c.species) }}
+        {% if c.record_origin == 'Original addition' %}{{ uni_badge(c.record_origin) }}{% endif %}
+      </div>
+      <div class="uni-card-foot">
+        {{ c.teams }} team{{ '' if c.teams == 1 else 's' }} · {{ c.powers }} powers · {{ c.continuity }}
+      </div>
+    </a>
+    {% else %}
+    <p class="empty-note">No character matches those filters.</p>
+    {% endfor %}
+  </div>
+
+  {{ pager('universe.characters', page, pages, request.args) }}
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{# Shared bits for the Marvel & DC Universe module. #}
+
+{% macro universe_tabs(active) %}
+{% set tabs = [
+  ('universe.index', 'Overview', '/universe'),
+  ('universe.characters', 'Characters', '/universe/characters'),
+  ('universe.teams', 'Teams', '/universe/teams'),
+  ('universe.memberships', 'Memberships', '/universe/memberships'),
+  ('universe.powers', 'Powers', '/universe/powers'),
+  ('universe.screen', 'Films & series', '/universe/screen'),
+  ('universe.comics', 'Comics', '/universe/comics'),
+  ('universe.missions', 'Missions', '/universe/missions'),
+  ('universe.organizations', 'Organisations', '/universe/organizations'),
+  ('universe.battles', 'Battles', '/universe/battles'),
+  ('universe.relationships', 'Relationships', '/universe/relationships')
+] %}
+<nav class="uni-tabs" aria-label="Universe sections">
+  {% for endpoint, label, path in tabs %}
+  <a class="uni-tab {% if active == endpoint %}active{% endif %}" href="{{ url_for(endpoint) }}"
+     {% if active == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+  {% if current_user.role == 'admin' %}
+  <a class="uni-tab {% if active == 'universe.sql_gallery' %}active{% endif %}"
+     href="{{ url_for('universe.sql_gallery') }}">SQL gallery</a>
+  <a class="uni-tab {% if active == 'universe.verify' %}active{% endif %}"
+     href="{{ url_for('universe.verify') }}">Verification</a>
+  {% endif %}
+</nav>
+{% endmacro %}
+
+
+{% macro chip(text, tone='') %}
+<span class="uni-chip {{ tone }}">{{ text }}</span>
+{% endmacro %}
+
+
+{% macro uni_badge(record_origin) %}
+{% if record_origin == 'Original addition' %}
+<span class="uni-chip original" title="Invented for this demonstration, not Marvel or DC canon">Original addition</span>
+{% endif %}
+{% endmacro %}
+
+
+{% macro universe_mark(name) %}
+<span class="uni-mark {{ 'marvel' if name == 'Marvel' else 'dc' }}">{{ name }}</span>
+{% endmacro %}
+
+
+{% macro pager(endpoint, page, pages, args) %}
+{% if pages > 1 %}
+<div class="uni-pager">
+  {% set query = args.to_dict() %}
+  {% if page > 1 %}
+  <a class="pill-btn" href="{{ url_for(endpoint, page=page-1, search=query.get('search'), universe=query.get('universe'), alignment=query.get('alignment'), type=query.get('type'), continuity=query.get('continuity')) }}">← Previous</a>
+  {% endif %}
+  <span class="uni-pager-label">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}
+  <a class="pill-btn" href="{{ url_for(endpoint, page=page+1, search=query.get('search'), universe=query.get('universe'), alignment=query.get('alignment'), type=query.get('type'), continuity=query.get('continuity')) }}">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+
+{% macro bar(value, maximum, tone='') %}
+{% set width = (value / maximum * 100) if maximum else 0 %}
+<span class="uni-bar {{ tone }}" title="{{ value }}"><span style="width: {{ '%.1f' % width }}%"></span></span>
+{% endmacro %}

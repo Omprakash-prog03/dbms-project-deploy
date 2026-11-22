@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark, bar with context %}
+
+{% block title %}Films &amp; series — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}Films and series{% endblock %}
+{% block page_subtitle %}{{ rows | length }} titles. Every row carries the continuity it belongs to, so adaptations are never mixed.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.screen') }}
+<div class="sims-card" style="margin-bottom:16px">
+  <form method="GET" class="uni-filter-bar">
+    <select class="pill-select" name="universe" onchange="this.form.submit()" aria-label="Universe">
+      <option value="">Both universes</option>
+      <option value="Marvel" {% if filters.universe == 'Marvel' %}selected{% endif %}>Marvel</option>
+      <option value="DC" {% if filters.universe == 'DC' %}selected{% endif %}>DC</option>
+    </select>
+    <select class="pill-select" name="type" onchange="this.form.submit()" aria-label="Content type">
+      <option value="">Any type</option>
+      {% for t in types %}
+      <option value="{{ t.content_type }}" {% if filters.type == t.content_type %}selected{% endif %}>{{ t.content_type }}</option>
+      {% endfor %}
+    </select>
+    <select class="pill-select" name="continuity" onchange="this.form.submit()" aria-label="Continuity" style="min-width:230px">
+      <option value="">Any continuity</option>
+      {% for c in continuities %}
+      <option value="{{ c.continuity }}" {% if filters.continuity == c.continuity %}selected{% endif %}>{{ c.continuity }}</option>
+      {% endfor %}
+    </select>
+    <span class="uni-filter-count"><strong>{{ rows | length }}</strong> titles</span>
+  </form>
+
+  <h2 class="uni-h2" style="margin-bottom:10px">Release timeline</h2>
+  <table class="sims-table uni-compact">
+    <thead><tr><th class="num" style="width:52px">Year</th><th>Titles</th></tr></thead>
+    <tbody>
+      {% set peak = by_year | map(attribute='n') | max %}
+      {% for y in by_year %}
+      <tr>
+        <td class="num">{{ y.release_year }}</td>
+        <td>{{ bar(y.n, peak) }}<span style="font-size:10px;color:var(--text-muted)">{{ y.n }} title{{ '' if y.n == 1 else 's' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="sims-card">
+  <table class="sims-table">
+    <thead><tr><th>Title</th><th class="num">Year</th><th>Type</th><th>Director</th><th>Studio</th><th class="num">Min</th><th>Rating</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <strong>{{ r.title }}</strong>
+          <div style="font-size:10.5px;color:var(--text-muted)">{{ r.synopsis }}</div>
+        </td>
+        <td class="num">{{ r.release_year }}</td>
+        <td>{{ chip(r.content_type) }}<div style="margin-top:4px">{{ universe_mark(r.universe_name) }}</div></td>
+        <td style="font-size:11px">{{ r.director or 'Not established' }}</td>
+        <td style="font-size:11px">{{ r.production_studio }}</td>
+        <td class="num">{{ r.duration_minutes or '—' }}</td>
+        <td><span class="uni-chip">{{ r.rating or '—' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="uni-note">Five animated series have no reliably credited pilot director recorded here,
+    so the cell is blank rather than guessed.</p>
+</div>
+{% endblock %}

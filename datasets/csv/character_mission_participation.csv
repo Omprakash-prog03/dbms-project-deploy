@@ -1,0 +1,265 @@
+participation_id,character_id,mission_id,role,outcome,survival_status
+1,146,1,Founding Avenger,Sacrificed himself to reverse the Snap,Killed
+2,147,1,Field leader,Passed the shield on and retired,Survived
+3,148,1,Front-line commander,Left Earth with the Guardians,Survived
+4,149,1,Science lead,Performed the reversal snap,Survived
+5,154,1,Antagonist,Defeated on two timelines,Killed
+6,161,1,Infiltration,Died acquiring the Soul Stone,Killed
+7,150,1,Recruit,Returned and lost his mentor,Survived
+8,6,2,Team leader,Led the hero faction to victory,Survived
+9,2,2,Field commander,Destroyed the Beyonder construct,Survived
+10,1,2,Technology,Rebuilt the team armour on Battleworld,Survived
+11,4,2,Heavy assault,Held the line at Doomstadt,Survived
+12,56,2,Cosmic observer,Fed on Battleworld and withdrew,Survived
+13,2,3,Anti-registration leader,Surrendered to end the fighting,Killed
+14,1,3,Pro-registration leader,Won the political argument,Survived
+15,5,3,Defector,Revealed his identity and changed sides,Survived
+16,22,3,Pro-registration operative,"Enforced the Act, then defected",Survived
+17,41,3,Unaffiliated,Joined the resistance and was expelled from it,Survived
+18,9,4,Antagonist,"Erased half of all life, then lost the gauntlet",Survived
+19,57,4,Cosmic counter-attack,Led the assault on Thanos,Survived
+20,6,4,Magic support,Coordinated the mystic front,Survived
+21,5,4,Field support,Survived the initial Snap by chance,Survived
+22,73,4,Opportunist,Claimed the gauntlet briefly,Survived
+23,32,5,Phoenix host,Died on the moon by her own choice,Killed
+24,31,5,Team leader,Refused to let the team kill her,Survived
+25,11,5,Field operative,Argued for execution and was overruled,Survived
+26,38,5,Antagonist,Hellfire Club manipulation of the Phoenix,Survived
+27,39,6,Time traveller,Prevented the assassination,Survived
+28,11,6,Future resistance,Held the camp line,Killed
+29,30,6,Future resistance,Covered the escape,Killed
+30,29,6,Strategy,Planned the mind transfer,Killed
+31,54,7,Antagonist,Ruled the altered world for twenty years,Killed
+32,12,7,Founder of the altered X-Men,Drove the resistance,Survived
+33,11,7,Field operative,"One-handed, still the best there is",Survived
+34,31,7,Field leader,Led the raid on Apocalypse,Killed
+35,28,7,Altered X-Men member,Fought alongside the team,Survived
+36,7,8,Reality warper,Restored reality and decimated mutantkind,Survived
+37,12,8,Putative ruler,Lost his children and his world,Survived
+38,29,8,Opposition,Led the attempt to stop her,Killed
+39,199,8,Instigator,Pushed Wanda into the rewrite,Survived
+40,6,8,Opposition,Broke the illusion from within,Survived
+41,14,9,Underground coordinator,Ran the resistance from a hidden base,Survived
+42,1,9,Technology,Built the detection system that ended it,Survived
+43,22,9,Infiltration,Rooted out the replaced agents,Survived
+44,232,9,Antagonist,"Skrull queen, defeated in Central Park",Killed
+45,4,10,Protagonist,Became king of Sakaar,Survived
+46,57,10,Cosmic observer,Warned Earth of the return,Survived
+47,1,10,Responsible party,Voted for the exile,Survived
+48,6,10,Responsible party,Voted for the exile,Survived
+49,18,11,Kree defector,Turned against his own empire,Survived
+50,194,11,Inhuman king,Refused to give up his people,Survived
+51,24,11,Avengers operative,Kept the team coordinated,Survived
+52,14,11,SHIELD director,Ran the intelligence side,Survived
+53,195,11,Inhuman queen,Brokered the final deal,Survived
+54,11,12,Test subject,Escaped and lost his memory,Survived
+55,28,12,Programme operative,Hunted the escapee,Survived
+56,29,12,Post-rescue,Rebuilt his mind,Survived
+57,44,13,Antagonist,"Ran HAMMER, then lost it",Survived
+58,1,13,Opposition,Lost his technology and his company,Survived
+59,14,13,Opposition,Ran a resistance from hiding,Survived
+60,51,13,HAMMER enforcer,Killed in the Siege,Killed
+61,3,14,City defender,Rebuilt Asgard after the siege,Survived
+62,1,14,City defender,Led the aerial counter-attack,Survived
+63,2,14,City defender,Rallied the defence,Survived
+64,44,14,Antagonist,Arrested at the end of the siege,Survived
+65,51,14,HAMMER enforcer,Killed during the assault,Killed
+66,1,15,Protagonist,Admitted the addiction,Survived
+67,23,15,Friend and support,Took over the suit while Stark recovered,Survived
+68,22,15,Ally,Covered the corporate front,Survived
+69,40,16,Protagonist,Rebuilt his life and his law practice,Survived
+70,43,16,Antagonist,Lost the war he started,Survived
+71,51,16,Antagonist enforcer,Assassinated Karen Page,Survived
+72,154,17,Antagonist,Completed the gauntlet,Survived
+73,146,17,Front leader,Lost the fight on Titan,Survived
+74,148,17,Front leader,Struck the chest instead of the head,Survived
+75,153,17,Antagonist turned ally,Killed by Thanos at the start,Killed
+76,156,17,Guardian,Died on Vormir for the Soul Stone,Killed
+77,166,17,Front leader,Held the line in Wakanda,Survived
+78,146,18,Founding Avenger,Snapped Thanos army away and died of it,Killed
+79,147,18,Field leader,Returned the stones and stayed in the past,Survived
+80,149,18,Science lead,Performed the reversal snap,Survived
+81,161,18,Infiltration,Died on Vormir,Killed
+82,162,18,Infiltration,Watched Romanoff die for the stone,Survived
+83,154,18,Antagonist,Killed twice across two timelines,Killed
+84,147,19,Anti-Accords leader,Abandoned the shield,Survived
+85,146,19,Pro-Accords leader,Won the vote and lost the friend,Survived
+86,165,19,Fugitive,Frozen in Wakanda at his own request,Survived
+87,216,19,Neutral crown,Chose justice over revenge,Survived
+88,150,19,Recruit,Recruited to the Berlin airport fight,Survived
+89,161,19,Defector,Let the fugitives go,Survived
+90,148,20,Protagonist,Destroyed Asgard to save its people,Survived
+91,153,20,Ally,"Held Surtur line briefly, then stole an escape",Survived
+92,169,20,Antagonist,Killed by Surtur,Killed
+93,149,20,Gladiator,Two years on Sakaar,Survived
+94,166,21,Protagonist,Accepted her grief and released the town,Survived
+95,152,21,Protagonist,"Same person, earlier name",Survived
+96,237,21,Supporting,"Recreated, then released by Wanda",Killed
+97,81,21,Supporting,Broke into the Hex to help,Survived
+98,153,22,Protagonist,Chose the branches over the throne,Survived
+99,233,22,Variant,Killed He Who Remains,Survived
+100,82,22,Supporting,Not present; TVA files only,Unknown
+101,151,23,Architect of the breach,Opened and stabilised portals,Survived
+102,150,23,Affected,Brought three villains through and fixed them,Survived
+103,152,23,Antagonist,Buried under Mount Wundagore,Presumed dead
+104,166,23,Antagonist,Destroyed the Darkhold and herself,Presumed dead
+105,224,24,Field commander,Killed in space by Tony Stark,Killed
+106,225,24,Heavy assault,Killed in Wakanda by the Avengers,Killed
+107,226,24,Assassin,Killed by Scarlet Witch in Wakanda,Killed
+108,227,24,Assassin,Killed by Vision in Wakanda,Killed
+109,166,24,Defender,Held the Wakandan field,Survived
+110,32,25,Phoenix host,Died stopping the Phoenix,Killed
+111,31,25,Team leader,Killed at Alkali Lake,Killed
+112,11,25,Field operative,Ended the Phoenix threat,Survived
+113,30,25,Field operative,Held the mansion defence,Survived
+114,29,25,Leadership,Killed by the Phoenix,Killed
+115,220,26,Field leader,Buried under Midland Circle and survived,Presumed dead
+116,42,26,Antagonist,Died with the building,Killed
+117,221,26,Investigator,Found the dig sites,Survived
+118,222,26,Community protection,Evacuated Harlem,Survived
+119,223,26,Field operative,Sealed the gate,Survived
+120,6,27,Opposition,Worked against Doom inside Battleworld,Survived
+121,190,27,Reality rebuilder,Restored the multiverse,Survived
+122,13,27,Opposition,Held Wakanda as the last nation,Survived
+123,9,27,Opposition,Killed early and resurrected by Doom,Killed
+124,184,28,Negotiator,Brokered the settlement,Survived
+125,187,28,Field operative,Refused the authority writ,Survived
+126,189,28,Advisor,Predicted the settlement branch,Survived
+127,6,28,Neutral authority,Witnessed and refused to enforce the writ,Survived
+128,86,29,Field leader,Died destroying the Anti-Monitor cannon,Killed
+129,141,29,Field commander,Died fighting the Anti-Monitor directly,Killed
+130,84,29,Front line,Led the final assault,Survived
+131,83,29,Strategy,Coordinated the Earth defences,Survived
+132,85,29,Front line,Held the Amazon front,Survived
+133,110,29,Reluctant ally,"Fought the Anti-Monitor, not for the heroes",Survived
+134,86,30,Protagonist,Restored the timeline at the cost of his mother,Survived
+135,111,30,Antagonist,Caused the original break,Killed
+136,83,30,Altered timeline ally,Thomas Wayne Batman in the altered world,Killed
+137,88,30,Altered timeline antagonist,Waged war on the surface,Killed
+138,85,30,Altered timeline antagonist,Ruled the Amazons at war,Killed
+139,107,31,Antagonist,Broke Batman back,Survived
+140,83,31,Protagonist,Recovered and reclaimed the mantle,Survived
+141,96,31,Supporting,Held the city while Bruce healed,Survived
+142,94,31,Supporting,Took over the cowl briefly,Survived
+143,139,32,Antagonist,Killed by Superman in Metropolis,Killed
+144,84,32,Protagonist,Died in Metropolis and returned,Killed
+145,109,32,Supporting antagonist,Claimed the body for study,Survived
+146,141,32,Supporting,Held the city during the fight,Survived
+147,83,33,Protagonist,"Returned, then faked his death",Survived
+148,99,33,Antagonist,Killed himself to frame Batman,Killed
+149,84,33,Antagonist ally,Sent to stop him by the government,Survived
+150,96,33,Successor,Became the new Robin,Survived
+151,99,34,Antagonist,Failed to break Jim Gordon,Survived
+152,97,34,Victim,Paralysed and became Oracle,Survived
+153,83,34,Protagonist,Refused the joke,Survived
+154,95,35,Victim,Killed by the Joker in Ethiopia,Killed
+155,99,35,Antagonist,Escaped with the crowbar,Survived
+156,83,35,Protagonist,Arrived too late,Survived
+157,103,36,Antagonist,Turned by the year and the acid,Survived
+158,83,36,Investigator,Solved it too late,Survived
+159,102,36,Ally,Worked the case with him,Survived
+160,99,36,Antagonist,Interfered with the investigation,Survived
+161,83,37,Protagonist,Survived the campaign,Survived
+162,102,37,Ally,Saved his life and learned his identity,Survived
+163,104,37,Antagonist,Architect of the plot,Survived
+164,101,37,Antagonist,Controlled Catwoman against him,Survived
+165,83,38,Protagonist,Built the plans and then had to fix them,Survived
+166,124,38,Antagonist,Used the plans against the League,Presumed dead
+167,84,38,Victim,Taken down by a Kryptonite contingency,Survived
+168,85,38,Victim,Drugged into a fight she could not win,Survived
+169,86,38,Victim,Shot in the leg to force a seizure,Survived
+170,87,39,Corps commander,Led the Lantern alliance,Survived
+171,115,39,Reluctant ally,Became a White Lantern briefly,Survived
+172,116,39,Reluctant ally,Fought alongside the Greens,Survived
+173,86,39,Field support,Turned his own ring into a weapon,Survived
+174,115,40,Antagonist,Captured after the battle of Oa,Survived
+175,87,40,Corps defender,Held Oa,Survived
+176,132,40,Corps defender,Held the Mogo line,Survived
+177,116,40,Third party,Escaped with his own Corps,Survived
+178,84,41,Protagonist,Stopped the Superboy-Prime plan,Survived
+179,83,41,Protagonist,Refused the rebuilt world,Survived
+180,85,41,Protagonist,Killed Maxwell Lord and became a fugitive,Survived
+181,110,41,Instigator,Manipulated the crisis from the shadows,Survived
+182,110,42,Antagonist,Killed in the final confrontation,Killed
+183,83,42,Protagonist,Took the Mobius Chair,Survived
+184,85,42,Protagonist,Became the God of War,Survived
+185,86,42,Protagonist,Ran the war fronts,Survived
+186,87,42,Protagonist,Held the air war,Survived
+187,84,43,Protagonist,Returned from retirement,Survived
+188,85,43,Protagonist,Led the intervention,Survived
+189,83,43,Protagonist,Ran the resistance,Survived
+190,87,43,Supporting,Held the orbital front,Survived
+191,83,44,Protagonist,Took the city back block by block,Survived
+192,99,44,Antagonist,Held territory and killed the mayor,Survived
+193,97,44,Protagonist,Became Oracle during the crisis,Survived
+194,96,44,Supporting,Ran courier routes across no man land,Survived
+195,94,44,Supporting,Held the south side,Survived
+196,108,45,Antagonist,Ran the contract against the Titans,Survived
+197,127,45,Protagonist,Took command after the betrayal,Survived
+198,94,45,Protagonist,Captured and rescued,Survived
+199,128,45,Protagonist,Held the team together,Survived
+200,129,45,Protagonist,Lost Terra,Survived
+201,236,46,Director,Ran the programme,Survived
+202,120,46,Marksman,Completed the mission and returned to prison,Survived
+203,121,46,Wildcard,Survived the collar,Survived
+204,122,46,Heavy assault,"Left behind, then recovered",Survived
+205,118,46,Aquatic operations,"Turned on the squad, survived",Survived
+206,109,47,Founder,Organised the coalition,Survived
+207,99,47,Member,Undermined the plan for fun,Survived
+208,208,47,Member,Held the Wonder Woman front,Survived
+209,115,47,Member,Lost the Lantern engagement,Survived
+210,111,47,Member,Countered the Flash,Survived
+211,83,47,Opposition,Broke the coalition planning,Survived
+212,172,48,Founder,Assembled the team,Survived
+213,173,48,Front-line commander,Killed Steppenwolf with Aquaman,Survived
+214,171,48,Resurrected,Turned the battle,Survived
+215,174,48,Speed support,Fed the League energy,Survived
+216,176,48,Technology,Separated the boxes,Survived
+217,175,48,Front line,Held the tunnel,Survived
+218,183,48,Antagonist,Killed by the League,Killed
+219,171,49,Protagonist,Killed Zod,Survived
+220,234,49,Antagonist,Killed by Superman,Killed
+221,172,49,Witness,Watched Wayne Tower fall,Survived
+222,180,50,Director,Ran the mission from an office,Survived
+223,178,50,Marksman,Killed Enchantress brother,Survived
+224,177,50,Wildcard,Held the rooftop,Survived
+225,229,50,Heavy assault,Blew the tunnel,Survived
+226,230,50,Thief,Tried to desert and failed,Survived
+227,175,51,Protagonist,Won the throne and the war,Survived
+228,182,51,Antagonist,Deposed and imprisoned,Survived
+229,181,51,Ally,Fought at Arthur side,Survived
+230,231,51,Ally,Returned from the Trench,Survived
+231,238,51,Antagonist,Lost the duel and survived,Survived
+232,213,52,Protagonist,Stopped the second device,Survived
+233,142,52,Field support,Evacuated the Glades,Survived
+234,215,52,Technical lead,Disarmed the trigger,Survived
+235,214,52,Field support,Held the courthouse,Survived
+236,86,53,Protagonist,Erased his own future self,Survived
+237,111,53,Antagonist ally,"Helped, for his own reasons",Unknown
+238,144,53,Crossover ally,Held the speedster fight,Survived
+239,145,54,Convenor,Assembled and led the Legends,Survived
+240,213,54,Crossover ally,Held 2016 Star City,Survived
+241,144,54,Crossover ally,Fought Savage in 1958,Survived
+242,143,55,Ally,Built Watchtower and kept every secret,Survived
+243,84,55,Protagonist,Became Superman,Survived
+244,109,55,Antagonist,Became the enemy,Survived
+245,188,56,Coordinator,Drafted and signed the accord,Survived
+246,185,56,Technical support,Built the relay network,Survived
+247,132,56,Corps liaison,Signed for Sector 2814,Survived
+248,186,56,Saboteur,Attempted to void the accord,Survived
+249,235,57,Antagonist origin,Killed at the end of time,Killed
+250,151,57,Field lead,Held the incursion line,Survived
+251,150,57,Field support,Unknown to the councils by choice,Survived
+252,153,57,Anomaly,Holding the branches together,Survived
+253,2,58,Opposition,Led the breakout,Survived
+254,20,58,Opposition,Held the perimeter,Survived
+255,14,58,Responsible party,Ran the programme as SHIELD,Survived
+256,76,58,Prisoner,Escaped during the breakout,Survived
+257,83,59,Investigator,Refused the official version,Survived
+258,84,59,Suspect,Cleared only after the war,Survived
+259,85,59,Suspect,Held the Amazon position,Survived
+260,136,59,Justice League Dark,Supplied the occult evidence,Survived
+261,109,60,Reluctant protagonist,Led the villain resistance,Survived
+262,118,60,Reluctant ally,Fought the Syndicate at sea,Survived
+263,112,60,Reluctant ally,Froze the Syndicate line,Survived
+264,83,60,Captured,Held prisoner by the Syndicate,Survived

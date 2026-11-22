@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark, uni_badge with context %}
+
+{% block title %}{{ team.team_name }} — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}{{ team.team_name }}{% endblock %}
+{% block page_subtitle %}{{ team.universe_name }} · {{ team.continuity }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.teams') }}
+<div class="sims-card" style="margin-bottom:16px">
+  <div class="uni-detail-head">
+    <div>
+      <h1 class="uni-detail-title">{{ team.team_name }}</h1>
+      <p class="uni-detail-sub">{{ team.mission }}</p>
+      <div class="uni-detail-chips">
+        {{ universe_mark(team.universe_name) }}
+        {{ chip(team.team_status, 'good' if team.team_status == 'Active' else '') }}
+        {{ chip('Founded ' ~ team.founding_year if team.founding_year else 'Founding year not established') }}
+        {{ uni_badge(team.record_origin) }}
+      </div>
+    </div>
+  </div>
+  <dl class="uni-facts">
+    <div><dt>Headquarters</dt><dd>{{ team.headquarters or 'Not established' }}</dd></div>
+    <div><dt>Members recorded</dt><dd>{{ members | length }}</dd></div>
+    <div><dt>Current members</dt><dd>{{ members | selectattr('membership_status', 'equalto', 'Current') | list | length }}</dd></div>
+    <div><dt>Continuity</dt><dd>{{ team.continuity }}</dd></div>
+  </dl>
+</div>
+
+<div class="sims-card">
+  <h2 class="uni-h2">Membership ledger</h2>
+  <p class="uni-sub">Every row is one row of <code>uni_membership</code>, with the role and the dates.</p>
+  <table class="sims-table">
+    <thead><tr><th>Character</th><th>Type</th><th>Alignment</th><th>Role</th><th>Joined</th><th>Left</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td><a href="{{ url_for('universe.character', character_id=m.character_id) }}">{{ m.alias }}</a></td>
+        <td>{{ chip(m.character_type) }}</td>
+        <td>{{ chip(m.alignment | lower, m.alignment | lower) }}</td>
+        <td>{{ m.role }}</td>
+        <td>{{ m.joining_date or '—' }}</td>
+        <td>{{ m.departure_date or '—' }}</td>
+        <td>{{ chip(m.membership_status, 'good' if m.membership_status == 'Current' else '') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

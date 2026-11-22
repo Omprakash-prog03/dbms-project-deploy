@@ -35,6 +35,8 @@
         {% if access == 'all' or current_user.role in ['admin','faculty'] %}<a class="nav-link {% if request.path.startswith(path) %}active{% endif %}" href="{{ url_for(endpoint) }}" {% if request.path.startswith(path) %}aria-current="page"{% endif %}>{{ icon(symbol,18) }}<span>{{ label }}</span>{% if request.path == path %}<span class="nav-active-dot"></span>{% endif %}</a>{% endif %}
         {% endfor %}
         {% if current_user.role == 'student' %}<a class="nav-link {% if request.path.startswith('/students/') %}active{% endif %}" href="{{ url_for('students.profile_view', student_id=session.student_id) }}">{{ icon('person',18) }}<span>My profile</span></a>{% endif %}
+        <div class="nav-label">DEMONSTRATION DATABASE</div>
+        <a class="nav-link {% if request.path.startswith('/universe') %}active{% endif %}" href="{{ url_for('universe.index') }}" {% if request.path.startswith('/universe') %}aria-current="page"{% endif %}>{{ icon('sparkles',18) }}<span>Marvel &amp; DC Universe</span></a>
         {% if current_user.role in ['admin','faculty'] %}
         <div class="nav-label">CAMPUS OPERATIONS</div>
         {% for label, symbol, endpoint, path in [('Course offerings','calendar','academics.offerings_view','/offerings'),('Enrollments','check-square','operations.enrollments_view','/enrollments'),('Attendance','clock','operations.attendance_view','/attendance'),('Results','chart','operations.results_view','/results'),('Admissions','sparkles','admissions.admissions_view','/admissions'),('Reports & PDF','chart','reports.reports_view','/reports')] %}

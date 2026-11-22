@@ -1,0 +1,127 @@
+"""Power and ability catalogue for the Marvel & DC Universe Database.
+
+100 powers, each with a category, a one-line description and a 1-10 power level.
+Characters reference these by name only, so a typo is a hard build failure
+rather than a dangling foreign key.
+
+Columns: (power_name, category, description, power_level)
+"""
+
+POWERS = [
+    # --- Physical -----------------------------------------------------------
+    ('Super strength', 'Physical', 'Lifts and strikes far beyond human limits; often expressed in hundreds of tonnes.', 9),
+    ('Enhanced strength', 'Physical', 'Peak-human to low-superhuman lifting capacity, roughly two to ten times a strong adult.', 6),
+    ('Invulnerability', 'Physical', 'Body resists penetration, impact and extreme temperature without lasting injury.', 8),
+    ('Regeneration', 'Physical', 'Heals wounds rapidly; the limit is usually decapitation or total incineration.', 7),
+    ('Super speed', 'Physical', 'Moves and reacts at multiples of the speed of sound.', 8),
+    ('Flight', 'Physical', 'Sustained self-propelled flight, by wings, willpower or gravity control.', 6),
+    ('Enhanced agility', 'Physical', 'Balance and acrobatic control beyond any gymnast.', 5),
+    ('Enhanced reflexes', 'Physical', 'Reaction times measured in milliseconds.', 5),
+    ('Enhanced senses', 'Physical', 'Hearing, smell or sight extended far past the human range.', 5),
+    ('Size manipulation', 'Physical', 'Grows to building height or shrinks below the width of an atom.', 5),
+    ('Shape-shifting', 'Physical', 'Alters form, mass and appearance, including the faces of others.', 6),
+    ('Wall-crawling', 'Physical', 'Adheres to and climbs sheer surfaces using micro-scale grip.', 4),
+    ('Density control', 'Physical', 'Raises or lowers personal density from intangible mist to armour-hard.', 5),
+    ('Immortality', 'Physical', 'Does not age and reconstitutes after bodily destruction.', 9),
+    ('Longevity', 'Physical', 'Ages very slowly; centuries of life without true immortality.', 6),
+    # --- Energy -------------------------------------------------------------
+    ('Energy manipulation', 'Energy', 'Shapes raw power into blasts, shields and constructs at will.', 8),
+    ('Energy projection', 'Energy', 'Fires concussive or cutting energy from hands, eyes or weapons.', 7),
+    ('Energy absorption', 'Energy', 'Draws in external power and redirects or stores it.', 7),
+    ('Force field generation', 'Energy', 'Projects barriers that stop bullets, blasts and pressure.', 7),
+    ('Heat generation', 'Energy', 'Raises matter to ignition temperature on contact.', 6),
+    ('Cold generation', 'Energy', 'Drains heat, freezing targets solid.', 6),
+    ('Electrical manipulation', 'Energy', 'Generates and channels current strong enough to stun or kill.', 7),
+    ('Light manipulation', 'Energy', 'Bends, concentrates and extinguishes visible light.', 6),
+    ('Sound manipulation', 'Energy', 'Generates and shapes sonic force, including destructive resonance.', 5),
+    ('Nuclear energy control', 'Energy', 'Channels fusion-scale energy; the highest output of any single body.', 8),
+    ('Kinetic energy absorption', 'Energy', 'Soaks up impact and converts it into stored power.', 6),
+    ('Gravity manipulation', 'Energy', 'Increases, reverses or cancels gravity in a local field.', 8),
+    ('Magnetism manipulation', 'Energy', 'Commands all ferrous and electrically conductive matter.', 8),
+    ('Weather manipulation', 'Energy', 'Summons storms, lightning, wind and pressure fronts.', 7),
+    # --- Mental -------------------------------------------------------------
+    ('Telepathy', 'Mental', 'Reads, projects and edits thoughts across great distances.', 8),
+    ('Telekinesis', 'Mental', 'Moves matter with the mind, from a coin to a continent.', 8),
+    ('Mind control', 'Mental', 'Overrides a target will outright, sometimes for years.', 8),
+    ('Mental resistance', 'Mental', 'Blocks intrusion, possession and illusion.', 6),
+    ('Precognition', 'Mental', 'Sees probable futures; usually involuntary and partial.', 6),
+    ('Empathy', 'Mental', 'Feels and projects emotion, including as a weapon.', 4),
+    ('Illusion casting', 'Mental', 'Builds convincing sensory falsehoods in the target mind.', 6),
+    ('Astral projection', 'Mental', 'Sends the consciousness out of the body onto the astral plane.', 6),
+    ('Genius-level intelligence', 'Mental', 'Operates several fields at Nobel level before turning thirty.', 7),
+    ('Tactical genius', 'Mental', 'Reads a battlefield and writes the counter-plan in seconds.', 7),
+    ('Scientific genius', 'Mental', 'Invents and builds working advanced technology from scrap.', 7),
+    ('Photographic memory', 'Mental', 'Recalls every page, face and coordinate exactly.', 5),
+    ('Lie detection', 'Mental', 'Detects deception through physiological or telepathic cues.', 3),
+    # --- Mystical -----------------------------------------------------------
+    ('Magic', 'Mystical', 'Works structured spells by will, word and gesture.', 9),
+    ('Dimensional manipulation', 'Mystical', 'Opens, collapses and reshapes other dimensions.', 9),
+    ('Teleportation', 'Mystical', 'Moves instantly between known points.', 7),
+    ('Portal creation', 'Mystical', 'Cuts stable doorways between places and realms.', 7),
+    ('Exorcism', 'Mystical', 'Expels possessing entities and closes their footholds.', 5),
+    ('Soul manipulation', 'Mystical', 'Takes, trades and restores souls as objects.', 7),
+    ('Hellfire generation', 'Mystical', 'Summons flame that burns spirit as well as flesh.', 6),
+    # --- Technological ------------------------------------------------------
+    # Physical hardware only. Earned skills and trained minds are the two groups
+    # after the Cosmic block: a level-6 Martial arts mastery is a skill, not a
+    # technology.
+    ('Power armour', 'Technological', 'Wears a powered exoskeleton that fights as well as it flies.', 6),
+    ('Cybernetic enhancement', 'Technological', 'Body rebuilt or augmented with permanent hardware.', 5),
+    ('Nanotechnology', 'Technological', 'Programmable matter that builds, heals and reforms on command.', 6),
+    ('Technopathy', 'Technological', 'Commands machines and networks by direct neural link.', 6),
+    ('Self-replication', 'Technological', 'Copies the self into independent bodies or drones.', 7),
+    ('Piloting', 'Technological', 'Flies fixed-wing, rotary and exotic craft.', 3),
+    # --- Combat skill -------------------------------------------------------
+    ('Weapon mastery', 'Combat skill', 'Expert with every hand weapon, ancient to energy.', 5),
+    ('Marksmanship', 'Combat skill', 'Hits a target the size of a coin at two hundred metres.', 4),
+    ('Martial arts mastery', 'Combat skill', 'Several complete combat disciplines, taught and earned.', 6),
+    ('Swordsmanship', 'Combat skill', 'Blade work at the level of a duelling champion.', 5),
+    ('Archery mastery', 'Combat skill', 'Trick arrows and impossible shots as standard practice.', 4),
+    ('Stealth mastery', 'Combat skill', 'Moves through occupied rooms unseen and unheard.', 4),
+    ('Thief tradecraft', 'Combat skill', 'Locks, safes, alarms and a clean exit.', 4),
+    ('Trick arrows', 'Combat skill', 'A quiver of purpose-built arrows for every circumstance.', 4),
+    # --- Intellect ----------------------------------------------------------
+    ('Hacking', 'Intellect', 'Takes over computer systems, including alien ones, on first contact.', 6),
+    ('Gadgetry', 'Intellect', 'Carries a purpose-built device for nearly any situation.', 4),
+    ('Mechanical engineering', 'Intellect', 'Designs, tears down and rebuilds advanced machines.', 5),
+    ('Espionage', 'Intellect', 'Tradecraft, cover identities and dead drops.', 4),
+    ('Leadership', 'Intellect', 'Holds a fractious team together under fire.', 5),
+    ('Tactical deduction', 'Intellect', 'Solves a scene backwards from three small details.', 6),
+    ('Detective skills', 'Intellect', 'Forensic and investigative method to professional standard.', 6),
+    ('Occult knowledge', 'Intellect', 'Catalogued demonology, wards and ritual history.', 5),
+    ('Multilingualism', 'Intellect', 'Fluent in many living and several dead languages.', 3),
+    ('Interrogation', 'Intellect', 'Extracts information by pressure, patience or tradecraft.', 4),
+    ('Diplomacy', 'Intellect', 'Turns an opponent into a signatory.', 4),
+    # --- Cosmic -------------------------------------------------------------
+    ('Cosmic energy manipulation', 'Cosmic', 'Commands the fundamental power of the universe itself.', 10),
+    ('Cosmic awareness', 'Cosmic', 'Perceives events across galaxies as they happen.', 9),
+    ('Reality manipulation', 'Cosmic', 'Rewrites physical law in a chosen region.', 10),
+    ('Time manipulation', 'Cosmic', 'Stops, rewinds and branches time.', 9),
+    ('Power cosmic', 'Cosmic', 'Herald-grade cosmic power: matter, energy and momentum at will.', 10),
+    ('Matter transmutation', 'Cosmic', 'Turns one substance into another permanently.', 8),
+    ('Psychometry', 'Cosmic', 'Reads an object history by touch.', 4),
+    ('Universal-scale telepathy', 'Cosmic', 'Mind contact that spans a galaxy.', 9),
+    ('Planetary assimilation', 'Cosmic', 'Absorbs and incorporates whole worlds into the self.', 10),
+    # --- Biological ---------------------------------------------------------
+    ('Poison resistance', 'Biological', 'Shrugs off toxins that would stop a human heart.', 4),
+    ('Blood manipulation', 'Biological', 'Commands blood, including the blood of others.', 5),
+    ('Pheromone control', 'Biological', 'Influences behaviour through scent chemistry.', 4),
+    ('Claws', 'Biological', 'Bone or metal claws that cut steel.', 5),
+    ('Amphibious physiology', 'Biological', 'Functions indefinitely in water and on land.', 4),
+    ('Underwater breathing', 'Biological', 'Breathes water as easily as air.', 3),
+    ('Adaptive combat mimicry', 'Biological', 'Copies any fighting style after watching it once.', 6),
+    ('Berserker rage', 'Biological', 'Trades control for a large surge of strength and pain tolerance.', 6),
+    ('Fire immunity', 'Biological', 'Unaffected by flame and extreme heat.', 4),
+    ('Necromancy', 'Biological', 'Raises and commands the dead.', 6),
+    ('Elemental control', 'Biological', 'Commands earth, air, fire or water as an extension of the body.', 8),
+    # --- Additional abilities referenced by the character roster -------------
+    ('Intangibility', 'Physical', 'Passes through solid matter by shifting out of phase.', 5),
+    ('Phasing', 'Physical', 'Vibrates matter out of step with the world to pass through it.', 6),
+    ('Enhanced stamina', 'Physical', 'Outlasts ordinary soldiers across hours of exertion.', 5),
+    ('Telekinetic flight', 'Mental', 'Carries the body on its own telekinesis.', 6),
+    ('Enhanced durability', 'Physical', 'Absorbs punishment no ordinary body could, without true invulnerability.', 6),
+    ('Divine blessing', 'Mystical', 'Channels a god-granted gift, and answers to that god.', 6),
+    ('Elasticity', 'Physical', 'Stretches and reshapes limbs with no lasting damage.', 5),
+    ('Meditation', 'Mental', 'Centres the mind to recover, focus or resist intrusion.', 4),
+    ('Retained youth', 'Physical', 'Slowed ageing without true immortality.', 4),
+]

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs with context %}
+
+{% block title %}SQL gallery — Marvel &amp; DC Universe{% endblock %}
+{% block page_title %}SQL demonstration gallery{% endblock %}
+{% block page_subtitle %}{{ queries | length }} documented queries over the populated universe, run against the live database.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.sql_gallery') }}
+
+<div class="uni-sql-grid">
+  <aside class="sims-card" style="padding:12px">
+    <h2 class="uni-h2" style="margin-bottom:10px;padding:0 6px">Queries</h2>
+    <ul class="uni-sql-list">
+      {% for query in queries %}
+      <li>
+        <a class="{% if loop.index0 == index %}active{% endif %}"
+           href="{{ url_for('universe.sql_gallery', q=loop.index0) }}">
+          <span class="uni-kw">{{ query[0] }} · {{ loop.index }}</span>{{ query[1] }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">{{ result.title }}</h2>
+    <p class="uni-run-note">{{ result.note }}</p>
+    <code class="uni-code">{{ result.sql }}</code>
+
+    {% if not result.ok %}
+      <p class="uni-error" style="margin-top:14px">{{ result.error }}</p>
+    {% else %}
+      <div class="uni-sql-meta">
+        <span><strong>{{ result.total }}</strong> row{{ '' if result.total == 1 else 's' }} returned</span>
+        <span>{{ result.columns | length }} columns</span>
+        {% if result.total > 60 %}<span>showing the first 60</span>{% endif %}
+      </div>
+      <div class="sims-table-container">
+        <table class="sims-table uni-compact">
+          <thead><tr>{% for column in result.columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in result.rows %}
+            <tr>{% for cell in row %}<td>{{ '—' if cell is none else cell }}</td>{% endfor %}</tr>
+            {% else %}
+            <tr><td colspan="{{ result.columns | length }}">No rows.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    <p class="uni-note">The gallery is read-only: only <code>SELECT</code> and
+      <code>WITH</code> statements are accepted. For arbitrary statements, including
+      <code>CREATE TABLE</code> and writes, use
+      <a href="{{ url_for('studio.workspace') }}">SQL Studio</a>, which snapshots every
+      change so it can be undone.</p>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% from 'universe/_macros.html' import universe_tabs, chip, universe_mark, bar with context %}
+
+{% block title %}Marvel &amp; DC Universe — {{ portal_name }}{% endblock %}
+{% block page_title %}Marvel &amp; DC Universe Database{% endblock %}
+{% block page_subtitle %}{{ '{:,}'.format(total_rows) }} connected records across 14 tables: heroes, villains,
+teams, powers, films, comics, storylines, organisations, battles and relationships.{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universe.css') }}">
+{% endblock %}
+
+{% block content %}
+{{ universe_tabs('universe.index') }}
+
+<div class="uni-metric-grid">
+  {% for row in summary %}
+  <div class="sims-card uni-metric-card">
+    <div class="uni-metric-head">
+      {{ universe_mark(row.universe_name) }}
+      <span class="uni-metric-publisher">{{ row.publisher }}</span>
+    </div>
+    <div class="uni-metric-value">{{ '{:,}'.format(row.characters) }}<span>characters</span></div>
+    <dl class="uni-metric-list">
+      <div><dt>Teams</dt><dd>{{ row.teams }}</dd></div>
+      <div><dt>Films &amp; series</dt><dd>{{ row.screen_titles }}</dd></div>
+      <div><dt>Comics</dt><dd>{{ row.comics }}</dd></div>
+      <div><dt>Missions</dt><dd>{{ row.missions }}</dd></div>
+      <div><dt>Organisations</dt><dd>{{ row.organizations }}</dd></div>
+      <div><dt>Battles</dt><dd>{{ row.battles }}</dd></div>
+    </dl>
+    <p class="uni-metric-foot">{{ row.continuity_type }}</p>
+  </div>
+  {% endfor %}
+  <div class="sims-card uni-metric-card uni-metric-total">
+    <div class="uni-metric-head"><span class="uni-metric-publisher">Whole database</span></div>
+    <div class="uni-metric-value">{{ '{:,}'.format(total_rows) }}<span>rows</span></div>
+    <ul class="uni-table-counts">
+      {% for row in counts %}
+      <li><span>{{ row.label }}</span><strong>{{ '{:,}'.format(row.rows) }}</strong></li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="uni-grid-2">
+  <section class="sims-card">
+    <h2 class="uni-h2">Alignment split</h2>
+    <p class="uni-sub">How each publisher divides between good, evil and neutral.</p>
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Universe</th><th>Alignment</th><th class="num">Characters</th><th style="width:38%">Share</th></tr></thead>
+      <tbody>
+        {% set peak = alignment | map(attribute='n') | max %}
+        {% for row in alignment %}
+        <tr>
+          <td>{{ row.universe_name }}</td>
+          <td>{{ chip(row.alignment, row.alignment | lower) }}</td>
+          <td class="num">{{ row.n }}</td>
+          <td>{{ bar(row.n, peak, row.alignment | lower) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">Most common powers</h2>
+    <p class="uni-sub">Holders across both publishers, with the hero/villain split.</p>
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Power</th><th>Category</th><th class="num">Lvl</th><th class="num">Holders</th><th class="num">Heroes</th><th class="num">Villains</th></tr></thead>
+      <tbody>
+        {% for row in top_powers %}
+        <tr>
+          <td>{{ row.power_name }}</td>
+          <td><span class="uni-chip">{{ row.category }}</span></td>
+          <td class="num">{{ row.power_level }}</td>
+          <td class="num">{{ row.holders }}</td>
+          <td class="num">{{ row.heroes }}</td>
+          <td class="num">{{ row.villains }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">Largest teams</h2>
+    <p class="uni-sub">Every roster at a glance. Click through for the full membership ledger.</p>
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Team</th><th>Universe</th><th class="num">Members</th><th class="num">Current</th></tr></thead>
+      <tbody>
+        {% for row in biggest_teams %}
+        <tr>
+          <td>{{ row.team_name }}</td>
+          <td>{{ universe_mark(row.universe_name) }}</td>
+          <td class="num">{{ row.members }}</td>
+          <td class="num">{{ row.current_members }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sims-card">
+    <h2 class="uni-h2">Continuity coverage</h2>
+    <p class="uni-sub">Comic and screen continuities are kept apart, never merged.</p>
+    <table class="sims-table uni-compact">
+      <thead><tr><th>Universe</th><th class="num">Continuities</th><th class="num">First title</th><th class="num">Latest title</th></tr></thead>
+      <tbody>
+        {% for row in lineages %}
+        <tr>
+          <td>{{ row.universe_name }}</td>
+          <td class="num">{{ row.continuities }}</td>
+          <td class="num">{{ row.first_screen_year or '—' }}</td>
+          <td class="num">{{ row.latest_screen_year or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <h3 class="uni-h3">Record origin</h3>
+    <ul class="uni-origin-list">
+      {% for row in coverage %}
+      <li>{{ universe_mark(row.universe_name) }} <strong>{{ row.n }}</strong> {{ row.record_origin | lower }}</li>
+      {% endfor %}
+    </ul>
+    <p class="uni-note">Records marked <em>original addition</em> are invented for this
+      demonstration. Everything else is Marvel or DC canon, and the continuity column says
+      which version of it.</p>
+  </section>
+</div>
+
+<section class="sims-card">
+  <h2 class="uni-h2">Heaviest battles (fictional casualties)</h2>
+  <p class="uni-sub">Casualty figures are story numbers for these fictional events. Where the
+    source gives no number the record stores NULL rather than a guess.</p>
+  <table class="sims-table uni-compact">
+    <thead><tr><th>Battle</th><th>Location</th><th class="num">Year</th><th>Winner</th><th class="num">Casualties</th></tr></thead>
+    <tbody>
+      {% for row in costliest %}
+      <tr>
+        <td>{{ row.battle_name }}</td>
+        <td>{{ row.location }}</td>
+        <td class="num">{{ row.year }}</td>
+        <td>{{ row.winner }}</td>
+        <td class="num">{{ '{:,}'.format(row.casualties) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="sims-card uni-explainer">
+  <h2 class="uni-h2">What this module is</h2>
+  <div class="uni-explainer-grid">
+    <div>
+      <h3 class="uni-h3">A real relational schema</h3>
+      <p>Fourteen tables in third normal form, nineteen foreign keys, seven reporting views.
+        The same DDL ships as MySQL 8 in <code>db/universe_schema.sql</code> and is translated
+        for the embedded engine by a tested dialect layer, so both engines get the same model.</p>
+    </div>
+    <div>
+      <h3 class="uni-h3">Canon where it exists, NULL where it does not</h3>
+      <p>First appearances, directors and creators are the published ones. Where a credit is
+        genuinely not established the cell is blank, and the data dictionary counts how many
+        cells that is, instead of inventing a name.</p>
+    </div>
+    <div>
+      <h3 class="uni-h3">Demonstrable SQL</h3>
+      <p>{% if current_user.role == 'admin' %}<a href="{{ url_for('universe.sql_gallery') }}">The SQL gallery</a>{% else %}The SQL gallery{% endif %}
+        runs fifteen documented queries over this data — joins, aggregates, HAVING, nested
+        queries and subqueries — and shows the rows they return.</p>
+    </div>
+    <div>
+      <h3 class="uni-h3">Verified, not asserted</h3>
+      <p>Every row was validated before insertion and re-read afterwards. The validation
+        report, the insertion log and the live foreign-key check are all on the
+        {% if current_user.role == 'admin' %}<a href="{{ url_for('universe.verify') }}">verification page</a>{% else %}verification page{% endif %}.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

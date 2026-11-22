@@ -1,0 +1,418 @@
+participation_id,battle_id,character_id,side,battle_result,status
+1,1,146,Avengers and allies,Victorious,Survived
+2,1,147,Avengers and allies,Victorious,Survived
+3,1,148,Avengers and allies,Victorious,Survived
+4,1,149,Avengers and allies,Victorious,Survived
+5,1,161,Avengers and allies,Victorious,Survived
+6,1,162,Avengers and allies,Victorious,Survived
+7,1,82,Avengers and allies,Victorious,Killed
+8,1,153,Thanos forces,Defeated,Survived
+9,2,147,Avengers and allies,Victorious,Survived
+10,2,216,Avengers and allies,Victorious,Survived
+11,2,161,Avengers and allies,Victorious,Survived
+12,2,164,Avengers and allies,Victorious,Survived
+13,2,165,Avengers and allies,Victorious,Survived
+14,2,163,Avengers and allies,Victorious,Survived
+15,2,152,Avengers and allies,Victorious,Survived
+16,2,237,Avengers and allies,Victorious,Survived
+17,2,226,Thanos forces,Defeated,Killed
+18,2,227,Thanos forces,Defeated,Killed
+19,2,225,Thanos forces,Defeated,Killed
+20,3,146,Avengers and allies,Defeated,Survived
+21,3,150,Avengers and allies,Defeated,Survived
+22,3,151,Avengers and allies,Defeated,Survived
+23,3,155,Avengers and allies,Defeated,Survived
+24,3,157,Avengers and allies,Defeated,Survived
+25,3,219,Avengers and allies,Defeated,Survived
+26,3,218,Avengers and allies,Defeated,Survived
+27,3,154,Thanos forces,Victorious,Survived
+28,3,224,Thanos forces,Victorious,Killed
+29,4,146,Avengers and allies,Victorious,Killed
+30,4,147,Avengers and allies,Victorious,Survived
+31,4,148,Avengers and allies,Victorious,Survived
+32,4,149,Avengers and allies,Victorious,Survived
+33,4,161,Avengers and allies,Victorious,Killed
+34,4,162,Avengers and allies,Victorious,Survived
+35,4,152,Avengers and allies,Victorious,Survived
+36,4,217,Avengers and allies,Victorious,Survived
+37,4,216,Avengers and allies,Victorious,Survived
+38,4,150,Avengers and allies,Victorious,Survived
+39,4,154,Thanos forces,Defeated,Killed
+40,5,146,Avengers and allies,Victorious,Survived
+41,5,147,Avengers and allies,Victorious,Survived
+42,5,148,Avengers and allies,Victorious,Survived
+43,5,149,Avengers and allies,Victorious,Survived
+44,5,161,Avengers and allies,Victorious,Survived
+45,5,162,Avengers and allies,Victorious,Survived
+46,5,237,Avengers and allies,Victorious,Survived
+47,5,152,Avengers and allies,Victorious,Survived
+48,5,170,Thanos forces,Defeated,Killed
+49,6,147,Avengers and allies,Stalemate,Survived
+50,6,164,Avengers and allies,Stalemate,Survived
+51,6,165,Avengers and allies,Stalemate,Survived
+52,6,152,Avengers and allies,Stalemate,Survived
+53,6,162,Avengers and allies,Stalemate,Survived
+54,6,146,Thanos forces,Stalemate,Survived
+55,6,163,Thanos forces,Stalemate,Survived
+56,6,216,Thanos forces,Stalemate,Survived
+57,7,171,Justice League and allies,Victorious,Survived
+58,7,234,Apokolips and allies,Defeated,Killed
+59,8,172,Justice League and allies,Victorious,Survived
+60,8,177,Apokolips and allies,Defeated,Survived
+61,9,171,Justice League and allies,Victorious,Killed
+62,9,172,Justice League and allies,Victorious,Survived
+63,9,173,Justice League and allies,Victorious,Survived
+64,9,234,Apokolips and allies,Defeated,Killed
+65,10,171,Justice League and allies,Victorious,Survived
+66,10,172,Justice League and allies,Victorious,Survived
+67,10,173,Justice League and allies,Victorious,Survived
+68,10,174,Justice League and allies,Victorious,Survived
+69,10,175,Justice League and allies,Victorious,Survived
+70,10,176,Justice League and allies,Victorious,Survived
+71,10,183,Apokolips and allies,Defeated,Killed
+72,11,175,Justice League and allies,Victorious,Survived
+73,11,181,Justice League and allies,Victorious,Survived
+74,11,231,Justice League and allies,Victorious,Survived
+75,11,182,Apokolips and allies,Defeated,Survived
+76,12,180,Justice League and allies,Victorious,Survived
+77,12,178,Justice League and allies,Victorious,Survived
+78,12,177,Justice League and allies,Victorious,Survived
+79,12,183,Apokolips and allies,Defeated,Survived
+80,12,229,Apokolips and allies,Defeated,Survived
+81,13,84,New Earth heroes,Stalemate,Killed
+82,13,131,New Earth heroes,Stalemate,Survived
+83,13,132,New Earth heroes,Stalemate,Survived
+84,13,204,New Earth heroes,Stalemate,Survived
+85,13,88,New Earth heroes,Stalemate,Survived
+86,13,139,New Earth villains,Stalemate,Killed
+87,14,83,New Earth heroes,Defeated,Survived
+88,14,96,New Earth heroes,Defeated,Survived
+89,14,94,New Earth heroes,Defeated,Survived
+90,14,97,New Earth heroes,Defeated,Survived
+91,14,107,New Earth villains,Victorious,Survived
+92,15,84,New Earth heroes,Victorious,Survived
+93,15,86,New Earth heroes,Victorious,Killed
+94,15,87,New Earth heroes,Victorious,Survived
+95,15,141,New Earth heroes,Victorious,Killed
+96,15,90,New Earth heroes,Victorious,Survived
+97,15,89,New Earth heroes,Victorious,Survived
+98,15,110,New Earth villains,Defeated,Survived
+99,16,88,New Earth heroes,Stalemate,Killed
+100,16,85,New Earth heroes,Stalemate,Killed
+101,16,111,New Earth heroes,Stalemate,Killed
+102,16,89,New Earth heroes,Stalemate,Survived
+103,16,119,New Earth villains,Stalemate,Survived
+104,16,118,New Earth villains,Stalemate,Survived
+105,17,3,Earth-616 heroes,Victorious,Survived
+106,17,1,Earth-616 heroes,Victorious,Survived
+107,17,2,Earth-616 heroes,Victorious,Survived
+108,17,8,Earth-616 heroes,Victorious,Survived
+109,17,249,Earth-616 heroes,Victorious,Survived
+110,17,51,Earth-616 villains,Defeated,Killed
+111,17,46,Earth-616 villains,Defeated,Survived
+112,18,2,Earth-616 heroes,Victorious,Survived
+113,18,1,Earth-616 heroes,Victorious,Survived
+114,18,3,Earth-616 heroes,Victorious,Survived
+115,18,4,Earth-616 heroes,Victorious,Survived
+116,18,5,Earth-616 heroes,Victorious,Survived
+117,18,190,Earth-616 heroes,Victorious,Survived
+118,18,45,Earth-616 villains,Defeated,Survived
+119,18,56,Earth-616 villains,Defeated,Survived
+120,18,8,Earth-616 villains,Defeated,Survived
+121,19,250,Earth-616 heroes,Victorious,Survived
+122,19,57,Earth-616 heroes,Victorious,Survived
+123,19,3,Earth-616 heroes,Victorious,Survived
+124,19,1,Earth-616 heroes,Victorious,Survived
+125,19,73,Earth-616 heroes,Victorious,Survived
+126,19,69,Earth-616 heroes,Victorious,Survived
+127,19,9,Earth-616 villains,Defeated,Survived
+128,20,31,Earth-616 heroes,Victorious,Survived
+129,20,32,Earth-616 heroes,Victorious,Killed
+130,20,11,Earth-616 heroes,Victorious,Survived
+131,20,30,Earth-616 heroes,Victorious,Survived
+132,20,36,Earth-616 heroes,Victorious,Survived
+133,20,37,Earth-616 heroes,Victorious,Survived
+134,21,220,Avengers and allies,Victorious,Survived
+135,21,221,Avengers and allies,Victorious,Survived
+136,21,222,Avengers and allies,Victorious,Survived
+137,21,223,Avengers and allies,Victorious,Survived
+138,22,148,Avengers and allies,Victorious,Survived
+139,22,153,Avengers and allies,Victorious,Presumed dead
+140,22,149,Avengers and allies,Victorious,Survived
+141,22,169,Thanos forces,Defeated,Killed
+142,23,155,Avengers and allies,Victorious,Survived
+143,23,156,Avengers and allies,Victorious,Survived
+144,23,157,Avengers and allies,Victorious,Survived
+145,23,158,Avengers and allies,Victorious,Survived
+146,23,159,Avengers and allies,Victorious,Survived
+147,23,154,Thanos forces,Defeated,Survived
+148,23,218,Thanos forces,Defeated,Survived
+149,24,155,Avengers and allies,Victorious,Survived
+150,24,156,Avengers and allies,Victorious,Survived
+151,24,157,Avengers and allies,Victorious,Survived
+152,24,158,Avengers and allies,Victorious,Survived
+153,24,159,Avengers and allies,Victorious,Survived
+154,24,219,Avengers and allies,Victorious,Survived
+155,25,155,Avengers and allies,Defeated,Survived
+156,25,156,Avengers and allies,Defeated,Killed
+157,25,157,Avengers and allies,Defeated,Survived
+158,25,158,Avengers and allies,Defeated,Survived
+159,25,218,Avengers and allies,Defeated,Survived
+160,25,219,Avengers and allies,Defeated,Survived
+161,25,154,Thanos forces,Victorious,Survived
+162,26,156,Avengers and allies,Defeated,Killed
+163,26,161,Avengers and allies,Defeated,Killed
+164,26,154,Thanos forces,Victorious,Survived
+165,27,83,New Earth heroes,Victorious,Survived
+166,27,243,New Earth heroes,Victorious,Survived
+167,27,96,New Earth heroes,Victorious,Survived
+168,27,207,New Earth heroes,Victorious,Survived
+169,27,94,New Earth heroes,Victorious,Survived
+170,27,99,New Earth villains,Defeated,Survived
+171,27,100,New Earth villains,Defeated,Survived
+172,27,106,New Earth villains,Defeated,Survived
+173,28,83,New Earth heroes,Defeated,Survived
+174,28,84,New Earth heroes,Defeated,Survived
+175,28,85,New Earth heroes,Defeated,Survived
+176,28,86,New Earth heroes,Defeated,Survived
+177,28,87,New Earth heroes,Defeated,Survived
+178,28,124,New Earth villains,Victorious,Survived
+179,28,125,New Earth villains,Victorious,Survived
+180,29,86,New Earth heroes,Victorious,Survived
+181,29,87,New Earth heroes,Victorious,Survived
+182,29,132,New Earth heroes,Victorious,Survived
+183,29,205,New Earth heroes,Victorious,Survived
+184,29,134,New Earth heroes,Victorious,Survived
+185,29,91,New Earth heroes,Victorious,Survived
+186,29,115,New Earth villains,Defeated,Survived
+187,29,116,New Earth villains,Defeated,Survived
+188,29,137,New Earth villains,Defeated,Killed
+189,30,87,New Earth heroes,Victorious,Survived
+190,30,132,New Earth heroes,Victorious,Survived
+191,30,205,New Earth heroes,Victorious,Survived
+192,30,115,New Earth villains,Defeated,Survived
+193,30,116,New Earth villains,Defeated,Survived
+194,31,84,New Earth heroes,Defeated,Survived
+195,31,83,New Earth heroes,Defeated,Survived
+196,31,85,New Earth heroes,Defeated,Survived
+197,31,86,New Earth heroes,Defeated,Survived
+198,31,87,New Earth heroes,Defeated,Survived
+199,31,88,New Earth heroes,Defeated,Survived
+200,31,89,New Earth heroes,Defeated,Survived
+201,31,135,New Earth heroes,Defeated,Survived
+202,31,134,New Earth heroes,Defeated,Survived
+203,31,110,New Earth villains,Victorious,Survived
+204,31,138,New Earth villains,Victorious,Survived
+205,32,84,New Earth heroes,Victorious,Survived
+206,32,83,New Earth heroes,Victorious,Survived
+207,32,85,New Earth heroes,Victorious,Survived
+208,32,86,New Earth heroes,Victorious,Survived
+209,32,87,New Earth heroes,Victorious,Survived
+210,32,141,New Earth heroes,Victorious,Survived
+211,32,90,New Earth heroes,Victorious,Survived
+212,32,110,New Earth villains,Defeated,Survived
+213,32,138,New Earth villains,Defeated,Survived
+214,32,117,New Earth villains,Defeated,Survived
+215,33,94,New Earth heroes,Defeated,Survived
+216,33,127,New Earth heroes,Defeated,Survived
+217,33,128,New Earth heroes,Defeated,Survived
+218,33,129,New Earth heroes,Defeated,Survived
+219,33,130,New Earth heroes,Defeated,Survived
+220,33,131,New Earth heroes,Defeated,Survived
+221,33,108,New Earth villains,Victorious,Survived
+222,34,84,New Earth heroes,Stalemate,Survived
+223,34,83,New Earth heroes,Stalemate,Survived
+224,34,85,New Earth heroes,Stalemate,Survived
+225,34,87,New Earth heroes,Stalemate,Survived
+226,34,86,New Earth heroes,Stalemate,Survived
+227,34,109,New Earth villains,Stalemate,Survived
+228,34,138,New Earth villains,Stalemate,Survived
+229,35,84,New Earth heroes,Victorious,Survived
+230,35,83,New Earth heroes,Victorious,Survived
+231,35,85,New Earth heroes,Victorious,Survived
+232,35,86,New Earth heroes,Victorious,Survived
+233,35,87,New Earth heroes,Victorious,Survived
+234,35,88,New Earth heroes,Victorious,Survived
+235,35,90,New Earth heroes,Victorious,Survived
+236,35,91,New Earth heroes,Victorious,Survived
+237,35,133,New Earth heroes,Victorious,Survived
+238,35,92,New Earth heroes,Victorious,Survived
+239,35,109,New Earth villains,Defeated,Survived
+240,35,99,New Earth villains,Defeated,Survived
+241,35,208,New Earth villains,Defeated,Survived
+242,35,209,New Earth villains,Defeated,Survived
+243,35,106,New Earth villains,Defeated,Survived
+244,36,143,Smallville defenders,Stalemate,Survived
+245,37,213,Team Arrow and allies,Victorious,Survived
+246,37,142,Team Arrow and allies,Victorious,Survived
+247,37,215,Team Arrow and allies,Victorious,Survived
+248,37,252,League of Assassins,Defeated,Survived
+249,38,213,Team Arrow and allies,Victorious,Survived
+250,38,142,Team Arrow and allies,Victorious,Survived
+251,38,215,Team Arrow and allies,Victorious,Survived
+252,38,214,Team Arrow and allies,Victorious,Survived
+253,39,213,Team Arrow and allies,Victorious,Survived
+254,39,214,Team Arrow and allies,Victorious,Survived
+255,39,144,Team Arrow and allies,Victorious,Survived
+256,39,145,Team Arrow and allies,Victorious,Survived
+257,40,148,Avengers and allies,Victorious,Survived
+258,40,239,Avengers and allies,Victorious,Survived
+259,41,147,Avengers and allies,Victorious,Survived
+260,41,161,Avengers and allies,Victorious,Survived
+261,41,164,Avengers and allies,Victorious,Survived
+262,41,160,Avengers and allies,Victorious,Survived
+263,41,228,Thanos forces,Defeated,Survived
+264,42,147,Avengers and allies,Victorious,Survived
+265,42,165,Avengers and allies,Victorious,Survived
+266,42,164,Avengers and allies,Victorious,Survived
+267,42,228,Thanos forces,Defeated,Survived
+268,43,216,Avengers and allies,Defeated,Survived
+269,43,147,Avengers and allies,Defeated,Survived
+270,43,168,Thanos forces,Victorious,Survived
+271,44,150,Avengers and allies,Victorious,Survived
+272,44,147,Avengers and allies,Victorious,Survived
+273,44,149,Avengers and allies,Victorious,Survived
+274,44,153,Thanos forces,Defeated,Survived
+275,45,152,Avengers and allies,Victorious,Survived
+276,45,237,Avengers and allies,Victorious,Survived
+277,45,166,Avengers and allies,Victorious,Survived
+278,46,153,Avengers and allies,Victorious,Survived
+279,46,233,Avengers and allies,Victorious,Survived
+280,46,235,Thanos forces,Defeated,Killed
+281,47,151,Avengers and allies,Victorious,Survived
+282,47,152,Avengers and allies,Victorious,Presumed dead
+283,47,150,Avengers and allies,Victorious,Survived
+284,48,11,X-Men,Victorious,Survived
+285,48,31,X-Men,Victorious,Survived
+286,48,32,X-Men,Victorious,Survived
+287,48,30,X-Men,Victorious,Survived
+288,48,12,Brotherhood of Mutants,Defeated,Survived
+289,48,27,Brotherhood of Mutants,Defeated,Survived
+290,48,28,Brotherhood of Mutants,Defeated,Survived
+291,49,11,X-Men,Victorious,Survived
+292,49,32,X-Men,Victorious,Survived
+293,49,31,X-Men,Victorious,Survived
+294,49,30,X-Men,Victorious,Survived
+295,49,37,X-Men,Victorious,Survived
+296,49,27,Brotherhood of Mutants,Defeated,Survived
+297,50,3,Earth-616 heroes,Victorious,Survived
+298,50,1,Earth-616 heroes,Victorious,Survived
+299,50,2,Earth-616 heroes,Victorious,Survived
+300,50,4,Earth-616 heroes,Victorious,Survived
+301,50,16,Earth-616 heroes,Victorious,Survived
+302,50,17,Earth-616 heroes,Victorious,Survived
+303,50,8,Earth-616 villains,Defeated,Survived
+304,51,12,Earth-616 heroes,Defeated,Survived
+305,51,29,Earth-616 heroes,Defeated,Survived
+306,51,31,Earth-616 heroes,Defeated,Survived
+307,51,38,Earth-616 heroes,Defeated,Survived
+308,51,11,Earth-616 heroes,Defeated,Survived
+309,51,30,Earth-616 heroes,Defeated,Survived
+310,52,31,Earth-616 heroes,Victorious,Survived
+311,52,38,Earth-616 heroes,Victorious,Survived
+312,52,11,Earth-616 heroes,Victorious,Survived
+313,52,30,Earth-616 heroes,Victorious,Survived
+314,52,33,Earth-616 heroes,Victorious,Survived
+315,52,36,Earth-616 heroes,Victorious,Survived
+316,52,54,Earth-616 villains,Defeated,Survived
+317,52,55,Earth-616 villains,Defeated,Survived
+318,53,2,Earth-616 heroes,Victorious,Survived
+319,53,3,Earth-616 heroes,Victorious,Survived
+320,53,1,Earth-616 heroes,Victorious,Survived
+321,53,16,Earth-616 heroes,Victorious,Survived
+322,53,17,Earth-616 heroes,Victorious,Survived
+323,53,21,Earth-616 heroes,Victorious,Survived
+324,53,53,Earth-616 villains,Defeated,Survived
+325,54,3,Earth-616 heroes,Victorious,Survived
+326,54,8,Earth-616 heroes,Victorious,Survived
+327,54,60,Earth-616 heroes,Victorious,Survived
+328,55,165,Avengers and allies,Victorious,Survived
+329,55,164,Avengers and allies,Victorious,Survived
+330,56,149,Avengers and allies,Victorious,Survived
+331,56,163,Avengers and allies,Victorious,Survived
+332,57,149,Avengers and allies,Victorious,Survived
+333,57,160,Avengers and allies,Victorious,Survived
+334,58,148,Avengers and allies,Victorious,Survived
+335,58,149,Avengers and allies,Victorious,Survived
+336,58,153,Avengers and allies,Victorious,Survived
+337,59,83,Batman and the GCPD,Defeated,Survived
+338,59,107,Bane's militia,Victorious,Survived
+339,60,83,Batman and the GCPD,Victorious,Survived
+340,60,243,Batman and the GCPD,Victorious,Survived
+341,60,99,Bane's militia,Defeated,Survived
+342,61,83,Batman and the GCPD,Victorious,Survived
+343,61,106,Bane's militia,Defeated,Survived
+344,62,173,Justice League and allies,Victorious,Survived
+345,62,176,Justice League and allies,Victorious,Survived
+346,62,238,Apokolips and allies,Defeated,Survived
+347,63,94,Titans,Victorious,Survived
+348,63,127,Titans,Victorious,Survived
+349,63,128,Titans,Victorious,Survived
+350,63,129,Titans,Victorious,Survived
+351,63,108,Deathstroke,Defeated,Survived
+352,64,213,Team Arrow and allies,Victorious,Survived
+353,64,214,Team Arrow and allies,Victorious,Survived
+354,64,142,Team Arrow and allies,Victorious,Survived
+355,64,252,League of Assassins,Defeated,Survived
+356,65,204,New Earth heroes,Defeated,Survived
+357,65,91,New Earth heroes,Defeated,Survived
+358,65,87,New Earth heroes,Defeated,Survived
+359,65,84,New Earth heroes,Defeated,Survived
+360,66,87,New Earth heroes,Victorious,Survived
+361,66,132,New Earth heroes,Victorious,Survived
+362,66,205,New Earth heroes,Victorious,Survived
+363,66,204,New Earth heroes,Victorious,Survived
+364,66,115,New Earth villains,Defeated,Survived
+365,67,90,New Earth heroes,Defeated,Survived
+366,67,84,New Earth heroes,Defeated,Survived
+367,67,87,New Earth heroes,Defeated,Survived
+368,67,86,New Earth heroes,Defeated,Survived
+369,68,217,Avengers and allies,Victorious,Survived
+370,68,160,Avengers and allies,Victorious,Survived
+371,68,150,Avengers and allies,Victorious,Survived
+372,68,154,Thanos forces,Defeated,Survived
+373,69,151,Avengers and allies,Victorious,Survived
+374,69,239,Avengers and allies,Victorious,Survived
+375,70,152,Avengers and allies,Victorious,Survived
+376,70,237,Avengers and allies,Victorious,Survived
+377,71,155,Avengers and allies,Victorious,Survived
+378,71,157,Avengers and allies,Victorious,Survived
+379,71,218,Avengers and allies,Victorious,Survived
+380,71,219,Avengers and allies,Victorious,Survived
+381,71,159,Avengers and allies,Victorious,Survived
+382,72,155,Avengers and allies,Victorious,Survived
+383,72,218,Avengers and allies,Victorious,Survived
+384,72,157,Avengers and allies,Victorious,Survived
+385,72,219,Avengers and allies,Victorious,Survived
+386,73,152,Avengers and allies,Defeated,Survived
+387,73,239,Avengers and allies,Defeated,Survived
+388,74,166,Avengers and allies,Stalemate,Presumed dead
+389,74,152,Avengers and allies,Stalemate,Survived
+390,75,171,Justice League and allies,Victorious,Survived
+391,75,172,Justice League and allies,Victorious,Survived
+392,75,173,Justice League and allies,Victorious,Survived
+393,75,234,Apokolips and allies,Defeated,Survived
+394,76,11,X-Men,Victorious,Survived
+395,76,12,X-Men,Victorious,Survived
+396,76,31,X-Men,Victorious,Survived
+397,76,32,X-Men,Victorious,Survived
+398,76,30,X-Men,Victorious,Survived
+399,76,27,Brotherhood of Mutants,Defeated,Survived
+400,76,28,Brotherhood of Mutants,Defeated,Survived
+401,77,173,Justice League and allies,Victorious,Survived
+402,77,172,Justice League and allies,Victorious,Survived
+403,77,183,Apokolips and allies,Defeated,Killed
+404,78,177,Justice League and allies,Victorious,Survived
+405,78,178,Justice League and allies,Victorious,Survived
+406,78,180,Justice League and allies,Victorious,Survived
+407,78,230,Apokolips and allies,Defeated,Survived
+408,78,229,Apokolips and allies,Defeated,Survived
+409,79,180,Justice League and allies,Victorious,Survived
+410,79,178,Justice League and allies,Victorious,Survived
+411,79,177,Apokolips and allies,Defeated,Survived
+412,79,229,Apokolips and allies,Defeated,Survived
+413,79,230,Apokolips and allies,Defeated,Survived
+414,80,213,Team Arrow and allies,Victorious,Survived
+415,80,142,Team Arrow and allies,Victorious,Survived
+416,80,215,Team Arrow and allies,Victorious,Survived
+417,80,252,League of Assassins,Defeated,Survived
